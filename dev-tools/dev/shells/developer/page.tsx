@@ -1,0 +1,43 @@
+import { DeveloperShell } from "@/components/shells/DeveloperShell";
+import { Figure } from "@/components/Figure";
+import { Rule } from "@/components/Rule";
+import { PROJECT } from "@/lib/sample";
+import { formatCoverage, formatCount, formatNairaCompact } from "@/lib/record";
+
+export default function DeveloperShellPreview() {
+  return (
+    <DeveloperShell>
+      <div className="stack-lg">
+        <p className="eyebrow">Shell reference</p>
+        <h1 className="h2-display">Developer console shell</h1>
+        <Rule weight="heavy" />
+        <div
+          className="grid-ruled"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}
+        >
+          <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>
+            <Figure
+              label="Households enrolled"
+              value={formatCount(PROJECT.enrolled)}
+              denominator="Cross River, Akamkpa LGA"
+            />
+          </div>
+          <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>
+            <Figure
+              label="Households paid"
+              value={formatCount(PROJECT.paid)}
+              denominator={`${formatCoverage(PROJECT.paid, PROJECT.enrolled)} enrolled`}
+            />
+          </div>
+          <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>
+            <Figure
+              label="Shortfall"
+              value={formatNairaCompact(PROJECT.shortfallKobo)}
+              denominator={`of ${formatNairaCompact(PROJECT.requiredKobo)} required`}
+            />
+          </div>
+        </div>
+      </div>
+    </DeveloperShell>
+  );
+}

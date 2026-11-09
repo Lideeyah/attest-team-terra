@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/components.css";
+@import "./styles/motion.css";
+
+/* Tailwind's own palette, type scale, radii and shadows are removed so they
+   cannot be used by accident. Nothing in Attest may reach for a value the
+   token stylesheet did not define. */
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --drop-shadow-*: initial;
+  --inset-shadow-*: initial;
+  --blur-*: initial;
+  --ease-*: initial;
+}
+
+/* The tokens, exposed to Tailwind. Utilities read the same values as the
+   component classes, so nothing is ever restated. */
+@theme inline {
+  --color-paper: var(--canvas-paper);
+  --color-elevated: var(--surface-elevated);
+  --color-sunken: var(--surface-sunken);
+  --color-reading: var(--surface-reading);
+
+  --color-hairline: var(--rule-hairline);
+  --color-contrast: var(--rule-contrast);
+  --color-heavy: var(--rule-heavy);
+
+  --color-ink: var(--ink-primary);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-dim: var(--ink-dim);
+
+  --color-bottle: var(--bottle-deep);
+  --color-bottle-mid: var(--bottle-mid);
+  --color-bottle-muted: var(--bottle-muted);
+  --color-bottle-wash: var(--bottle-wash);
+
+  --color-sealed: var(--stamp-sealed-ink);
+  --color-flagged: var(--stamp-flagged-ink);
+  --color-blocked: var(--stamp-blocked-ink);
+  --color-review: var(--stamp-review-ink);
+
+  --spacing-stack: var(--stack);
+  --spacing-stack-lg: var(--stack-lg);
+  --spacing-gutter: var(--gutter);
+  --spacing-section: var(--section);
+}

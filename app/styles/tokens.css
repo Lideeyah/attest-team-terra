@@ -1,0 +1,171 @@
+/* Attest tokens. Every colour, size, duration, easing and travel distance in
+   the product is defined here and nowhere else. A literal value elsewhere is a defect. */
+
+:root {
+  /* ---- Canvas and surfaces ---------------------------------------------- */
+  --canvas-paper: #F7F4EB;
+  --surface-elevated: #EFECE1;
+  --surface-sunken: #E7E3D5;
+  --surface-reading: #FDFCFA;
+
+  /* ---- Rules ------------------------------------------------------------ */
+  --rule-hairline: #D8D4C5;
+  --rule-contrast: #BAAEA2;
+  --rule-heavy: #181816;
+
+  /* ---- Ink -------------------------------------------------------------- */
+  --ink-primary: #181816;
+  --ink-muted: #5C5A55;
+  --ink-dim: #8C887E;
+  --ink-paper: #F7F4EB; /* ink reversed out on bottle */
+
+  /* ---- Bottle green, the anchor tone ------------------------------------ */
+  --bottle-deep: #1E3A2E;
+  --bottle-mid: #2C5342;
+  --bottle-muted: #5A7D6B;
+  --bottle-wash: rgba(30, 58, 46, 0.05);
+
+  /* ---- Status stamps, functional colour --------------------------------- */
+  --stamp-sealed-ink: #181816;
+  --stamp-sealed-wash: #EFECE1;
+  --stamp-sealed-border: #BAAEA2;
+
+  --stamp-flagged-ink: #7A5038;
+  --stamp-flagged-wash: #F2EBE4;
+  --stamp-flagged-border: #CDAE9A;
+
+  --stamp-blocked-ink: #8C3A2E;
+  --stamp-blocked-wash: #F4E7E3;
+  --stamp-blocked-border: #CFA096;
+
+  --stamp-review-ink: #3D4A5C;
+  --stamp-review-wash: #EAECF0;
+  --stamp-review-border: #B2BAC6;
+
+  /* ---- Scrim ------------------------------------------------------------ */
+  --scrim: rgba(24, 24, 22, 0.32);
+
+  /* ---- Typefaces -------------------------------------------------------- */
+  /* All three faces are self-hosted by next/font, which exposes each as a CSS
+     variable, so the token reads that variable and keeps a real fallback
+     stack behind it. */
+  --font-display: var(--font-cabinet, "Cabinet Grotesk"), var(--font-inter-tight, "Inter Tight"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-editorial: var(--font-newsreader, "Newsreader"), Georgia, "Times New Roman", serif;
+  --font-record: var(--font-courier-prime, "Courier Prime"), "Courier New", ui-monospace, monospace;
+
+  /* ---- Type scale ------------------------------------------------------- */
+  --fs-h1: clamp(2.6rem, 5.2vw, 4.1rem);
+  --fs-h2: clamp(1.7rem, 3vw, 2.4rem);
+  --fs-h3: 1.22rem;
+  --fs-lede: 1.125rem;
+  --fs-body: 16px;
+  --fs-eyebrow: 10.5px;
+  --fs-stamp: 10.5px;
+  --fs-btn: 13px;
+  --fs-console: 11px;
+  --fs-figure: clamp(1.6rem, 3vw, 2.4rem);
+  --fs-record-cell: 12px;
+  --fs-input: 14px;
+  --fs-label: 10.5px;
+  --fs-toast: 14px;
+
+  --fw-display: 800;
+  --fw-regular: 400;
+  --fw-stamp: 700;
+
+  --tr-display-lg: -0.03em;
+  --tr-display-sm: -0.02em;
+  --tr-eyebrow: 0.16em;
+  --tr-stamp: 0.13em;
+  --tr-label: 0.13em;
+  --tr-btn: 0.01em;
+  --tr-wordmark: 0.02em;
+
+  --lh-display: 1.02;
+  --lh-lede: 1.62;
+  --lh-body: 1.55;
+  --lh-eyebrow: 1.55;
+  --lh-flat: 1;
+  --lh-console: 1.72;
+  --lh-record-cell: 1.6;
+
+  /* ---- Space and rhythm -------------------------------------------------- */
+  --measure: 1340px;
+  --bp-wide: 1180px;
+  --bp-mid: 1080px;
+  --gutter: 40px;
+  --gutter-tight: 20px;
+  --section: 76px;
+  --section-sm: 48px;
+  --section-tight: 46px;
+  --movement: 152px;
+  --stack: 14px;
+  --stack-lg: 28px;
+  --grid-rule: 1px;
+
+  --pad-btn-y: 13px;
+  --pad-btn-x: 24px;
+  --pad-btn-sm-y: 8px;
+  --pad-btn-sm-x: 15px;
+  --pad-stamp-y: 5px;
+  --pad-stamp-x: 11px;
+  --pad-cell-y: 11px;
+  --pad-cell-x: 14px;
+  --pad-panel: 22px;
+
+  --rail-width: 240px;
+  --field-width: 390px;
+  --field-width-max: 430px;
+  --tap-target: 56px;
+  --sheet-width: 480px;
+  --modal-width: 520px;
+  --mark-size: 17px;
+  --mark-border: 1.5px;
+  --mark-seal: 62%;
+  --punch-size: 16px;
+  --crop-size: 9px;
+  --edge-strip: 3px;
+  --edge-active: 2px;
+  --queue-underline: 2px;
+
+  --radius: 0;
+  --hairline: 1px;
+  /* The structural rule weight. It is not the mark's border: a change to the
+     mark must not silently change every heavy rule in the product. */
+  --rule-weight-heavy: 1.5px;
+  --stroke-tick: 1.5px;
+
+  /* ---- Cadence. 24fps. One frame is 41.667ms. --------------------------- */
+  --frame: 41.667ms;
+  --t-press: 125ms;    /* 3 frames  */
+  --t-base: 208ms;     /* 5 frames  */
+  --t-screen: 292ms;   /* 7 frames  */
+  --t-stamp: 333ms;    /* 8 frames  */
+  --t-draw: 333ms;     /* 8 frames  */
+  --t-ink: 333ms;      /* 8 frames  */
+  --t-resolve: 583ms;  /* 14 frames */
+  --t-tally: 917ms;    /* 22 frames */
+  --t-pulse: 1417ms;   /* 34 frames */
+  --t-dwell: 4000ms;   /* 96 frames, the toast's dwell */
+
+  /* ---- Curves. Two, both mechanical. ----------------------------------- */
+  --ease-shutter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-mechanical: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---- Travel ----------------------------------------------------------- */
+  --d-nudge: 8px;
+  --d-row: 12px;
+  --d-step: 24px;
+  --d-press: 1.5px;
+
+  --z-sheet: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --gutter: var(--gutter-tight);
+    --section: var(--section-sm);
+  }
+}

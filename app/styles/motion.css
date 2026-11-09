@@ -1,0 +1,201 @@
+/* Motion. Cut on a 24fps cadence; every duration is a whole number of frames.
+   Overshoot lives in keyframes, never in a curve. Nothing fades away, springs
+   or loops, except queuePulse, which is the one permitted loop. */
+
+@keyframes recordArrive {
+  from {
+    opacity: 0;
+    transform: translateY(var(--d-row));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The stamp is rotated and centred, so every keyframe carries the full
+   transform. A keyframe that sets scale() alone clobbers the rotation. */
+@keyframes stampLand {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--stamp-rotate, 0deg)) scale(1.28);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--stamp-rotate, 0deg)) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--stamp-rotate, 0deg)) scale(1);
+  }
+}
+
+/* The in-flow stamp, which carries rotation but no centring translate. */
+@keyframes stampLandInline {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--stamp-rotate, 0deg)) scale(1.28);
+  }
+  62% {
+    opacity: 1;
+    transform: rotate(var(--stamp-rotate, 0deg)) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(var(--stamp-rotate, 0deg)) scale(1);
+  }
+}
+
+/* Beat two: the ink setting after impact. */
+@keyframes inkSet {
+  from {
+    opacity: 0.82;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ruleDraw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes disclose {
+  from {
+    opacity: 0;
+    transform: translateY(var(--d-nudge));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheetIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tick {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The one permitted loop. It exists only while a transfer is genuinely in
+   flight and stops the instant the row settles. */
+@keyframes queuePulse {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* ---- Applied primitives ------------------------------------------------ */
+
+.anim-record-arrive {
+  animation: recordArrive var(--t-base) var(--ease-shutter) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+.anim-rule-draw {
+  transform-origin: left;
+  animation: ruleDraw var(--t-draw) var(--ease-mechanical) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+.anim-disclose {
+  animation: disclose var(--t-base) var(--ease-shutter) both;
+}
+
+.anim-sheet-in {
+  animation: sheetIn var(--t-screen) var(--ease-shutter) both;
+}
+
+.anim-scrim-in {
+  animation: scrimIn var(--t-base) var(--ease-shutter) both;
+}
+
+.anim-tick {
+  animation: tick var(--t-press) var(--ease-mechanical) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+.anim-stamp-land {
+  animation:
+    stampLandInline var(--t-stamp) var(--ease-shutter) both,
+    inkSet var(--t-ink) var(--ease-mechanical) var(--t-stamp) both;
+}
+
+.anim-stamp-land-centred {
+  animation:
+    stampLand var(--t-stamp) var(--ease-shutter) both,
+    inkSet var(--t-ink) var(--ease-mechanical) var(--t-stamp) both;
+}
+
+.anim-queue-pulse {
+  animation: queuePulse var(--t-pulse) var(--ease-shutter) infinite;
+}
+
+/* sealPeriod, second beat: everything above the seal line steps back one
+   contrast level without moving and without disappearing. */
+.sealed-above {
+  /* The seal rule draws first; the block above it steps back one contrast
+     level afterwards, not alongside. */
+  transition:
+    color var(--t-base) var(--ease-shutter) var(--t-draw),
+    border-color var(--t-base) var(--ease-shutter) var(--t-draw),
+    opacity var(--t-base) var(--ease-shutter) var(--t-draw);
+}
+
+.sealed-above[data-sealed="true"] {
+  color: var(--ink-muted);
+  border-color: var(--rule-hairline);
+  opacity: 0.86;
+}
+
+/* ---- Reduced motion ---------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .anim-queue-pulse {
+    animation: none !important;
+    opacity: 0.7;
+  }
+}
