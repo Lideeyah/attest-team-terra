@@ -1,0 +1,486 @@
+/* The API contract, as types. These match backend section 4 exactly. When the
+   shared types package ships, these are replaced by an import and deleted. */
+
+export const ERROR_CODES = [
+  "FORBIDDEN",
+  "RATE_LIMITED",
+  "INVALID_REQUEST",
+  "NOT_FOUND",
+  "DUPLICATE_REQUEST",
+  "IDENTITY_DUPLICATE",
+  "BVN_MISMATCH",
+  "IDENTITY_UNREACHABLE",
+  "NAME_MISMATCH",
+  "NAME_ENQUIRY_EXPIRED",
+  "NAME_ENQUIRY_MISMATCH",
+  "BOUNDARY_OUTSIDE",
+  "GPS_UNAVAILABLE",
+  "CONSENT_MISSING",
+  "DEVICE_UNBOUND",
+  "REGISTRY_NOT_FOUND",
+  "REGISTRY_UNREACHABLE",
+  "PDD_UNREADABLE",
+  "PDD_NO_COMMITMENT",
+  "EXTRACTION_LOW_CONFIDENCE",
+  "MODEL_UNAVAILABLE",
+  "ROSTER_EMPTY",
+  "PERIOD_CLOSED",
+  "FUNDING_NOT_RECEIVED",
+  "FUNDING_INSUFFICIENT",
+  "FUNDING_EXCLUDES_CHARGES",
+  "PREFLIGHT_EXCLUSIONS_REQUIRED",
+  "ACCOUNT_NOT_FOUND",
+  "ACCOUNT_DORMANT",
+  "ACCOUNT_RESTRICTED",
+  "BENEFICIARY_FROZEN",
+  "INSUFFICIENT_FUNDS",
+  "LIMIT_EXCEEDED",
+  "BANK_UNAVAILABLE",
+  "TIMEOUT",
+  "TRANSFER_REVERSED",
+  "ANCHOR_PENDING",
+  "ANCHOR_UNREACHABLE",
+  "CHAIN_DISCONTINUITY",
+  "PROOF_INVALID",
+  "LEAF_NOT_IN_ROOT",
+  "TOKEN_EXPIRED",
+  "ALREADY_CONFIRMED",
+  "DISPUTE_ALREADY_OPEN",
+  "DISPUTE_RESOLUTION_BASIS_REQUIRED",
+  "RECONCILIATION_MISMATCH",
+  "PARTICIPANT_DELETE_NOT_PERMITTED",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+export type ApiError = {
+  code: ErrorCode;
+  message: string;
+  field: string | null;
+  remediation: string;
+};
+
+export type Meta = {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+};
+
+export type SuccessEnvelope<T> = {
+  status: "success";
+  message: string;
+  data: T;
+  meta: Meta | null;
+  request_id: string;
+};
+
+export type ErrorEnvelope = {
+  status: "error";
+  error: ApiError;
+  request_id: string;
+};
+
+export type Envelope<T> = SuccessEnvelope<T> | ErrorEnvelope;
+
+/* ---- Domain shapes ------------------------------------------------------ */
+
+/** Amounts are NGN decimal strings with two places, matching the bank. They
+    are never parsed into a float and never converted into another unit. */
+export type Amount = string;
+
+export type Commitment = {
+  percentage: number;
+  basis: "net" | "gross";
+  cadence: "quarterly" | "annual";
+  beneficiary: string;
+  sourceQuote: string;
+  page: number;
+  confidence: number;
+  corrected: boolean;
+  originalPercentage: number | null;
+  correctionReason: string | null;
+};
+
+export type RegistryRecord = {
+  registryId: string;
+  registry: string;
+  name: string;
+  country: string;
+  methodology: string;
+  boundaryName: string;
+  issuances: { vintage: string; credits: number; retired: number }[];
+};
+
+export type ProjectStatus = "onboarding" | "active" | "suspended" | "withdrawn";
+
+export type Project = {
+  id: string;
+  developerId: string;
+  developerName: string;
+  name: string;
+  registry: string;
+  registryId: string;
+  country: string;
+  state: string;
+  localGovernment: string;
+  methodology: string;
+  status: ProjectStatus;
+  commitment: Commitment;
+  enrolled: number;
+  paid: number;
+  openDisputes: number;
+  substantiatedDisputes: number;
+  signalCount: number;
+  confirmationRate: number;
+  lastClosedPeriod: string | null;
+  periods: PeriodSummary[];
+};
+
+export type PeriodSummary = {
+  period: string;
+  state: "open" | "closed" | "closed-late";
+  enrolled: number;
+  paid: number;
+  amountToHouseholds: Amount;
+  chargesBorne: Amount;
+  required: Amount;
+  shortfall: Amount;
+  closedAt: string | null;
+  attestationId: string | null;
+  corrected: boolean;
+};
+
+export type ParticipantStatus =
+  | "active"
+  | "flagged"
+  | "excluded"
+  | "disputed"
+  | "duplicate-blocked"
+  | "removed";
+
+export type Participant = {
+  id: string;
+  projectId: string;
+  name: string;
+  phoneMasked: string;
+  community: string;
+  localGovernment: string;
+  walletState: "active" | "dormant" | "restricted" | "unopened";
+  tier: 1 | 2 | 3;
+  accountNumber: string;
+  accountName: string;
+  nameMatch: "match" | "mismatch" | "unchecked";
+  /* 6A.6: an identity number is held as a hash plus its last four. The full
+     value never reaches a surface, so the contract does not carry one. */
+  bvnLastFour: string;
+  ninLastFour: string;
+  enrolledAt: string;
+  syncDelaySeconds: number;
+  agentId: string;
+  agentName: string;
+  status: ParticipantStatus;
+  statusReason: string | null;
+  flags: string[];
+  boundary: "inside" | "outside";
+};
+
+export type Payment = {
+  transferId: string;
+  period: string;
+  amount: Amount;
+  state: TransferState;
+  sessionId: string | null;
+  settledAt: string | null;
+  confirmedAt: string | null;
+  disputeId: string | null;
+};
+
+export type Agent = {
+  id: string;
+  projectId: string;
+  name: string;
+  email: string;
+  enrolments: number;
+  flagRate: number;
+  averageSyncDelaySeconds: number;
+  status: "active" | "suspended" | "invited";
+  aboveFlagThreshold: boolean;
+  deviceBound: boolean;
+};
+
+export type RunState =
+  | "draft"
+  | "awaiting-funding"
+  | "funded"
+  | "preflight-running"
+  | "preflight-failed"
+  | "executing"
+  | "partially-complete"
+  | "complete"
+  | "cancelled"
+  | "failed";
+
+export type Run = {
+  id: string;
+  projectId: string;
+  period: string;
+  state: RunState;
+  rosterSize: number;
+  declaredGross: Amount;
+  fundingAmount: Amount;
+  createdAt: string;
+  executedAt: string | null;
+  counts: Record<TransferState, number>;
+  failures: { class: ErrorCode; count: number }[];
+};
+
+export type Arithmetic = {
+  commitmentPct: number;
+  declaredGross: Amount;
+  required: Amount;
+  estimatedCharges: Amount;
+  totalNeeded: Amount;
+  funded: Amount;
+  shortfall: Amount;
+};
+
+export type TransferState =
+  | "queued"
+  | "in_flight"
+  | "settled"
+  | "failed"
+  | "reversed"
+  | "unconfirmed";
+
+export type Transfer = {
+  id: string;
+  runId: string;
+  participantId: string;
+  participantName: string;
+  community: string;
+  amount: Amount;
+  fee: Amount;
+  vat: Amount;
+  stamp_duty: Amount;
+  total_debit: Amount;
+  state: TransferState;
+  failureClass: ErrorCode | null;
+  sessionId: string | null;
+  queuedAt: string;
+  settledAt: string | null;
+  confirmedAt: string | null;
+  rail: "intrabank" | "interbank";
+};
+
+export type Attestation = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  period: string;
+  enrolled: number;
+  paid: number;
+  amountToHouseholds: Amount;
+  chargesBorne: Amount;
+  required: Amount;
+  shortfall: Amount;
+  confirmationRate: number;
+  hash: string;
+  previousHash: string | null;
+  merkleRoot: string;
+  chainPosition: number;
+  anchor: { network: string; topicId: string; sequence: number | null; at: string | null };
+  anchorState: "anchored" | "pending" | "unreachable";
+  supersededBy: string | null;
+  supersedes: string | null;
+  closedAt: string;
+  closedLate: boolean;
+};
+
+export type Dispute = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  participantId: string | null;
+  participantName: string | null;
+  period: string;
+  category: "not-received" | "wrong-amount" | "not-enrolled";
+  body: string;
+  state:
+    | "open"
+    | "developer-responded"
+    | "awaiting-participant"
+    | "substantiated"
+    | "unsubstantiated"
+    | "escalated";
+  resolutionBasis: string | null;
+  transferId: string | null;
+  raisedAt: string;
+  updatedAt: string;
+  responses: { at: string; author: string; body: string }[];
+};
+
+export type Signal = {
+  id: string;
+  class:
+    | "onward-concentration"
+    | "velocity"
+    | "shared-device"
+    | "dormant-reactivation"
+    | "round-tripping";
+  severity: "low" | "medium" | "high";
+  projectId: string;
+  projectName: string;
+  period: string;
+  accounts: number;
+  raisedAt: string;
+  state: "open" | "attached" | "closed";
+  caseId: string | null;
+  summary: string;
+};
+
+export type GraphNode = {
+  id: string;
+  label: string;
+  kind: "household" | "intermediary" | "concentrator";
+  amount: Amount;
+};
+
+export type GraphEdge = {
+  from: string;
+  to: string;
+  amount: Amount;
+  hop: number;
+  minutesAfterSettlement: number;
+};
+
+export type AccountGraph = {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  sampled: boolean;
+  sampleSize: number;
+  populationSize: number;
+};
+
+export type Case = {
+  id: string;
+  signalIds: string[];
+  projectId: string;
+  projectName: string;
+  severity: "low" | "medium" | "high";
+  state: "open" | "investigating" | "substantiated" | "unsubstantiated" | "closed";
+  openedAt: string;
+  actions: { at: string; action: string; note: string; by: string }[];
+};
+
+export type VerificationException = {
+  id: string;
+  kind: "failed-check" | "name-mismatch" | "tier-limit";
+  projectId: string;
+  projectName: string;
+  participantRef: string;
+  detail: string;
+  raisedAt: string;
+  resolution: string | null;
+};
+
+export type Reconciliation = {
+  projectId: string;
+  projectName: string;
+  period: string;
+  inbound: Amount;
+  outbound: Amount;
+  charges: Amount;
+  balance: Amount;
+  state: "reconciled" | "mismatch" | "period-open" | "awaiting-settlement";
+  delta: Amount;
+  candidateCauses: string[];
+};
+
+export type Receipt = {
+  token: string;
+  participantName: string;
+  projectName: string;
+  payments: {
+    period: string;
+    amount: Amount;
+    settledAt: string;
+    confirmedAt: string | null;
+    sessionId: string;
+  }[];
+  disputeOpen: boolean;
+};
+
+export type RegisterRow = {
+  id: string;
+  name: string;
+  developerName: string;
+  country: string;
+  registry: string;
+  registryId: string;
+  commitmentPct: number;
+  enrolled: number;
+  paid: number;
+  lastClosedPeriod: string | null;
+  openDisputes: number;
+  status: ProjectStatus;
+};
+
+export type GeographyBucket = {
+  h3: string;
+  centroid: [number, number];
+  households: number;
+};
+
+export type Tariff = {
+  schedule: string;
+  rows: { band: string; min: Amount; max: Amount | null; fee: Amount; vat: Amount; stamp_duty: Amount; total: Amount }[];
+  intrabank: { fee: Amount; vat: Amount; stamp_duty: Amount; total: Amount };
+};
+
+export type Session = {
+  userId: string;
+  email: string;
+  organisation: string;
+  role: "developer" | "institution" | "agent" | "ops" | "admin";
+  projectId: string | null;
+  emailVerified: boolean;
+};
+
+export type Invite = {
+  code: string;
+  projectName: string;
+  agentName: string;
+  state: "valid" | "expired" | "redeemed" | "revoked";
+  expiresAt: string;
+};
+
+export type ExtractionResult = {
+  commitment: Commitment;
+  sourceQuote: string;
+  page: number;
+  confidence: number;
+};
+
+export type DisclosureBundle = {
+  leaf: string;
+  proof: string[];
+  rootReference: string;
+  attestationId: string;
+  period: string;
+  projectName: string;
+};
+
+export type VerificationResult = {
+  outcome: "match" | "no-match";
+  attestation: Attestation | null;
+  checkedAt: string;
+};
+
+export type DisclosureVerificationResult = {
+  outcome: "match" | "no-match";
+  period: string | null;
+  projectName: string | null;
+  anchorReachable: boolean;
+  checkedAt: string;
+};

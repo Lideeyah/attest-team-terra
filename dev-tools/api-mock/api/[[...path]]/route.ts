@@ -1,0 +1,175 @@
+import { NextResponse } from "next/server";
+import { handle, statusFor } from "@/lib/mock/router";
+import { readForced, streamConfig } from "@/lib/mock/forced";
+import { runTransfers } from "@/lib/mock/seed";
+
+/* The mock server, mounted at the contract's own paths. It is copied into the
+   application by scripts/sync-dev-tools.mjs only when ATTEST_API_MODE is
+   anything other than "live", so a production build pointed at the real
+   backend does not carry fabricated records at the contract's own URLs. */
+
+async function readBody(request: Request): Promise<Record<string, unknown>> {
+  const type = request.headers.get("content-type") ?? "";
+  if (!type.includes("application/json")) {
+    return {};
+  }
+  const text = await request.text();
+  if (!text) {
+    return {};
+  }
+  const parsed: unknown = JSON.parse(text);
+  return typeof parsed === "object" && parsed !== null
+    ? (parsed as Record<string, unknown>)
+    : {};
+}
+
+function respond(request: Request, body: Record<string, unknown>) {
+  const url = new URL(request.url);
+  const { envelope, replayed } = handle(request.method, url, body, {
+    idempotencyKey: request.headers.get("Idempotency-Key"),
+  });
+  const headers: Record<string, string> = {};
+  if (replayed) {
+    /* Backend section 3: the same key and body replays the original. */
+    headers["Idempotent-Replayed"] = "true";
+  }
+  return NextResponse.json(envelope, { status: statusFor(envelope), headers });
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** The mock Server-Sent Events stream for a live run. The rate is transfers
+    per second; each transfer emits its queued, in-flight and outcome events.
+    The failure and reversal shares are drawn from a seeded generator, so the
+    share holds at any transfer count and failures do not all arrive first. */
+function stream(request: Request, runId: string): Response {
+  const config = streamConfig();
+  const transfers = runTransfers(runId, "proj_ekuri", config.transfers);
+  const random = mulberry32(runId.length * 7919 + config.transfers);
+  const encoder = new TextEncoder();
+  let index = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  const body = new ReadableStream({
+    start(controller) {
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
+      };
+      const stop = () => {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        controller.close();
+      };
+
+      const emit = () => {
+        /* A code forced from /dev/states fails the stream itself, so the live
+           run screen's disconnected state is reachable by clicking. */
+        const forced = readForced(`/api/runs/${runId}/stream`);
+        if (forced) {
+          send("stream.error", { code: forced });
+          stop();
+          return;
+        }
+
+        if (index >= transfers.length) {
+          send("run.complete", {
+            runId,
+            settled: transfers.length,
+            at: new Date().toISOString(),
+          });
+          stop();
+          return;
+        }
+
+        const transfer = transfers[index];
+        const roll = random();
+        const outcome =
+          roll < config.failureShare
+            ? "transfer.failed"
+            : roll < config.failureShare + config.reversalShare
+              ? "transfer.reversed"
+              : "transfer.settled";
+
+        send("transfer.queued", { id: transfer.id, state: "queued" });
+        send("transfer.in_flight", { id: transfer.id, state: "in_flight" });
+        if (outcome === "transfer.failed") {
+          send("transfer.failed", {
+            id: transfer.id,
+            state: "failed",
+            failureClass: transfer.failureClass ?? "ACCOUNT_NOT_FOUND",
+          });
+        } else {
+          send("transfer.settled", {
+            id: transfer.id,
+            state: "settled",
+            sessionId: transfer.sessionId,
+          });
+          if (outcome === "transfer.reversed") {
+            /* The sandbox settles and then reverses about a minute later. The
+               settlement stands and the reversal is a correction. */
+            send("transfer.reversed", {
+              id: transfer.id,
+              state: "reversed",
+              reason: "TRANSFER_REVERSED",
+            });
+          }
+        }
+        index += 1;
+      };
+
+      const interval = Math.max(4, Math.round(1000 / Math.max(1, config.rate)));
+      timer = setInterval(emit, interval);
+    },
+    cancel() {
+      if (timer) {
+        clearInterval(timer);
+      }
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-store",
+      connection: "keep-alive",
+    },
+  });
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments[1] === "runs" && segments[3] === "stream" && segments.length === 4) {
+    return stream(request, segments[2]);
+  }
+  return respond(request, {});
+}
+
+export async function POST(request: Request) {
+  return respond(request, await readBody(request));
+}
+
+export async function PATCH(request: Request) {
+  return respond(request, await readBody(request));
+}
+
+export async function PUT(request: Request) {
+  return respond(request, await readBody(request));
+}
+
+export async function DELETE(request: Request) {
+  return respond(request, {});
+}

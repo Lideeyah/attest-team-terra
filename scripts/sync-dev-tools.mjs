@@ -1,31 +1,57 @@
-/* Developer tooling must not exist in the production build, not merely be
-   route-guarded. These trees are copied into the app only when
-   ATTEST_DEV_TOOLS is set, or when the development server starts. Any other
-   run removes them, so a production bundle has no such route. */
+/* Developer tooling and the mock server must not exist in a production build,
+   not merely be route-guarded. Each tree below is copied into the application
+   only when its condition holds, and removed otherwise, so the deployed bundle
+   has no such route at all.
+
+   ATTEST_DEV_TOOLS=1   includes /dev and /api/dev
+   ATTEST_API_MODE=live excludes the mock server and the inbound hook mock */
 
 import { cpSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
 
-const TREES = [
-  { from: join(root, "dev-tools", "dev"), to: join(root, "app", "dev") },
-  { from: join(root, "dev-tools", "api-dev"), to: join(root, "app", "api", "dev") },
-];
-
-const wanted =
+const devTools =
   process.env.ATTEST_DEV_TOOLS === "1" ||
   process.env.npm_lifecycle_event === "predev";
 
+const mockApi = process.env.ATTEST_API_MODE !== "live";
+
+const TREES = [
+  { from: join(root, "dev-tools", "dev"), to: join(root, "app", "dev"), when: devTools },
+  { from: join(root, "dev-tools", "api-dev"), to: join(root, "app", "api", "dev"), when: devTools },
+  {
+    from: join(root, "dev-tools", "api-mock", "api"),
+    to: join(root, "app", "api", "[[...path]]"),
+    when: mockApi,
+    inner: "[[...path]]",
+  },
+  {
+    from: join(root, "dev-tools", "api-mock", "hooks"),
+    to: join(root, "app", "hooks"),
+    when: mockApi,
+  },
+];
+
 for (const tree of TREES) {
   rmSync(tree.to, { recursive: true, force: true });
-  if (wanted && existsSync(tree.from)) {
-    cpSync(tree.from, tree.to, { recursive: true });
+  if (!tree.when) {
+    continue;
+  }
+  const source = tree.inner ? join(tree.from, tree.inner) : tree.from;
+  if (existsSync(source)) {
+    cpSync(source, tree.to, { recursive: true });
   }
 }
 
+/* Next writes a route validator from the route tree. Removing a route without
+   clearing it leaves the validator importing a file that no longer exists. */
+for (const stale of [join(root, ".next", "types"), join(root, ".next", "dev", "types")]) {
+  rmSync(stale, { recursive: true, force: true });
+}
+
 process.stdout.write(
-  wanted
-    ? "developer tooling included at /dev and /api/dev\n"
-    : "developer tooling excluded from this build\n",
+  `developer tooling ${devTools ? "included" : "excluded"}, mock server ${
+    mockApi ? "included" : "excluded"
+  }\n`,
 );

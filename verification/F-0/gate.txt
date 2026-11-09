@@ -1,0 +1,32 @@
+FAIL  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  gitignored: .env
+PASS  gitignored: .env.local
+PASS  gitignored: team05.yml
+PASS  gitignored: secrets/cluster.pem
+PASS  gitignored: uploads/boundary.json
+PASS  no hex colour outside the token stylesheet
+PASS  no millisecond literal outside the token stylesheet
+PASS  no cubic-bezier outside the token stylesheet
+PASS  no border-radius outside the token stylesheet and the radio punch
+PASS  no rounded utility class
+PASS  no spring easing anywhere
+PASS  no shadow outside the modal scrim
+PASS  Tailwind's default palette, type scale, radii and shadows are removed
+PASS  durations are whole frames at 24fps
+PASS  route renders /dev/kitchen-sink
+PASS  route renders /dev/shells/developer
+PASS  route renders /dev/shells/field
+PASS  route renders /dev/shells/masthead
+PASS  kitchen sink renders every component
+PASS  kitchen sink renders every motion primitive
+PASS  rotated stamp keeps centring and rotation while animating
+PASS  [data-component='table'] td renders in its own face
+PASS  reduced motion resting on /dev/kitchen-sink
+PASS  accessibility on /dev/kitchen-sink
+PASS  keyboard reachability on /dev/kitchen-sink
+PASS  screenshot F-0/kitchen-sink
+PASS  screenshot F-0/shell-developer
+PASS  screenshot F-0/shell-field
+PASS  screenshot F-0/shell-masthead
+30 passed, 1 failed in 23.6s

@@ -97,3 +97,113 @@ four screenshots written to verification/F-0/                  PASS
 3. **`.record-cell` at 12px in Courier Prime** is below the 14px that reads
    comfortably on a low-density screen. It is the foundation's scale and has not
    been changed.
+4. **The naira sign is not in Courier Prime.** `₦` falls back to the system
+   monospace, so a currency mark renders in a different face from the figure
+   beside it. The alternative is writing amounts as `NGN 23,050.00`, which the
+   product spec does not do. Left as the foundation has it.
+
+**Independent verification.** A fresh verifier with no sight of the
+implementation checked F-0 against its own checklist and returned 22 findings.
+All were taken. The substantive ones:
+
+- Four primitives — `tallyTo`, `hashResolve`, `pressTravel` and `queuePulse` —
+  existed only as hand-rolled loops or bare keyframes rather than in the motion
+  module, and `Figure.tsx` restated the shutter curve in JavaScript. All four
+  are now in `lib/motion.ts`, which also exports `PRIMITIVE_CLASS` so the
+  keyframe-driven primitives are named in one place and never written as a
+  class string inside a component.
+- Reduced motion did not collapse Motion's own animations. `reducedMotion="user"`
+  suppresses transform and layout animation only, so opacity still ran at full
+  duration. `MotionProvider` now also collapses the transition itself.
+- `Figure` rendered `0` and `Hash` rendered an empty string until JavaScript
+  ran, so the server-rendered page carried a wrong figure and a blank hash.
+  Both now render the real value and animate from it.
+- The record face has no glyph for ■ ▲ ✕ ◆, so every status mark fell out of
+  Courier Prime. The four marks are now drawn in CSS in the current ink.
+- `sealPeriod` ran its contrast step alongside the rule draw rather than after
+  it. The transition now carries `var(--t-draw)` as its delay.
+- The West Africa Time offset was computed as `getUTCHours() + 1` with no wrap,
+  so any timestamp from 23:00 UTC rendered an impossible hour. It now shifts
+  the instant.
+- `--mark-border` was being used as a structural rule weight in six places; a
+  change to the mark would have changed every heavy rule. `--rule-weight-heavy`
+  and `--stroke-tick` now carry those jobs.
+- `@theme inline` defined `--ease-shutter: var(--ease-shutter)`, which resolved
+  only by declaration order. Removed.
+- Two px literals (`430px`, `56px`) outside the token stylesheet, the frame
+  duration restated in two components, and the toast dwell as a bare `4000`.
+  All are tokens now: `--field-width-max`, `--tap-target`, `--t-dwell`.
+- Nested `<main>` in the field shell; `role="tab"` on masthead navigation
+  links; a table with no overflow container; missing disabled and invalid
+  states in the reference; a dead class. All fixed.
+
+**On the verifier's finding about phase discipline.** It is correct: F-1 files
+were being written while F-0 was under independent verification, which the
+foundation's build discipline forbids. The F-0 fixes above were applied before
+F-0 was committed and the F-1 work is committed separately, but the overlap
+should not have happened and did not happen again.
+
+**On the verifier's open question about button variants.** The foundation's
+1.6 lists `.btn`, `.btn-outline`, `.btn-quiet` and `.btn-sm`, which is three
+variants plus small; the phase prompt says four plus small. The foundation is
+authoritative on anything visual, so three variants plus small is what is
+built.
+
+
+---
+
+## F-1 — Mock server, typed client and state control
+
+**Built.** A mock server implementing every endpoint in backend 4.3 at the
+contract's own paths, with the same request and response shapes, the same
+`page`/`per_page`/`meta` pagination and the same success and error envelopes.
+One dispatcher in `lib/mock/router.ts` serves both the running application
+(`app/api/[[...path]]/route.ts`) and component and test work (`lib/mock/msw.ts`),
+so a fixture cannot drift between them. Fixture data in `lib/mock/seed.ts`:
+three Gold Standard projects, one with three closed periods and an open one,
+one clean, one carrying a 400-wallet onward-flow concentration; participants
+generated deterministically from their index so the roster can be any size;
+named agents with differing flag rates including one above threshold;
+participants whose resolved account name deliberately does not match the
+enrolled name; transfers carrying fee, VAT, stamp duty and total debit read
+from the tariff rather than computed in a screen. A typed client in
+`lib/api/client.ts` returning a discriminated result, retrying idempotent reads
+only and sending `Idempotency-Key` on every mutation. A mock Server-Sent Events
+stream emitting all six event types with configurable rate, failure share and
+reversal share. A state control panel at `/dev/states` that forces any of the
+47 contract codes, optionally scoped to a path fragment and optionally once.
+
+**Gate.** `npm run gate -- F-1`: 15 assertions, 15 passed. 37 endpoints probed
+for envelope shape, all 47 error codes forced and observed, all six stream
+events seen, and `/dev/states`, `/dev/kitchen-sink` and `/api/dev/force` each
+404 on a production build.
+
+**Decisions taken on Lydia's behalf.**
+
+1. **One dispatcher behind two transports.** The contract has roughly seventy
+   endpoints; writing seventy route files would guarantee drift. The dispatcher
+   holds a route table and both the app's catch-all route handler and the MSW
+   handlers call it.
+2. **Amounts are decimal strings end to end.** No screen or fixture converts to
+   minor units; the arithmetic helpers in `lib/mock/seed.ts` add and subtract in
+   minor units internally and return strings, so no float ever touches an amount.
+3. **The registry record is synthetic.** The seed uses Gold Standard identifiers
+   in the registry's own format with a plausible issuance history, because the
+   real registry record cannot be pulled without network access to the registry.
+   Flagged below.
+4. **`Idempotency-Key` returns the first result** rather than an error, which is
+   what the header means. `DUPLICATE_REQUEST` remains forceable from
+   `/dev/states`.
+5. **Developer tooling has one fetch module of its own.** `/dev/states` talks to
+   endpoints that are not in the contract, so they are not in the typed client;
+   `dev-tools/dev/states/devControl.ts` is the only file in the tree with a
+   fetch outside the client.
+
+**Manual review needed.**
+
+1. **The Gold Standard project reference is synthetic**, including the registry
+   ID, the boundary name and the issuance history. Before the demo it should be
+   replaced with a real registry record pulled from Gold Standard's public
+   registry.
+2. **The stream's reversal share defaults to 3 percent.** The sandbox reverses
+   on amounts ending `.04`; the share is a stand-in until the live rail decides it.

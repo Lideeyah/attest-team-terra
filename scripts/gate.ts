@@ -2,6 +2,8 @@
    result and exits non-zero if any failed. Phases are written before the code
    they gate. */
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { closeBrowser } from "./gate/assert";
 import { failed, collected } from "./gate/report";
 import { stopAll } from "./gate/server";
@@ -36,8 +38,18 @@ async function main(): Promise<void> {
 
   const failures = failed();
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  process.stdout.write(
-    `\n${collected().length - failures.length} passed, ${failures.length} failed in ${seconds}s\n`,
+  const summary = `${collected().length - failures.length} passed, ${failures.length} failed in ${seconds}s`;
+  process.stdout.write(`\n${summary}\n`);
+
+  /* The result is written beside the phase's screenshots so the contact sheet
+     can show it without re-running anything. */
+  const directory = join(process.cwd(), "verification", phase);
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(
+    join(directory, "gate.txt"),
+    `${collected()
+      .map((result) => `${result.passed ? "PASS" : "FAIL"}  ${result.name}`)
+      .join("\n")}\n${summary}\n`,
   );
   if (failures.length > 0) {
     process.exitCode = 1;

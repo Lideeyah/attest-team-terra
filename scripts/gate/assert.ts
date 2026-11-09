@@ -424,3 +424,32 @@ export function fileContains(name: string, path: string, patterns: RegExp[]): vo
   const missing = patterns.filter((pattern) => !pattern.test(text));
   record(name, missing.length === 0, missing.map((pattern) => pattern.source).join(", "));
 }
+
+/** Builds with ATTEST_API_MODE=live and asserts the mock server and the
+    developer tooling are not in the route tree at all. */
+export function liveBuildExcludesMock(): void {
+  try {
+    const output = execFileSync("npm", ["run", "build"], {
+      cwd: ROOT,
+      stdio: "pipe",
+      env: { ...process.env, ATTEST_API_MODE: "live", ATTEST_DEV_TOOLS: "0" },
+    }).toString();
+    const routes = output
+      .split("\n")
+      .filter((line) => /^[┌├└]/.test(line))
+      .map((line) => line.replace(/^[┌├└]\s*[○ƒλ]?\s*/, "").trim());
+    const leaked = routes.filter(
+      (route) => route.startsWith("/api") || route.startsWith("/dev") || route.startsWith("/hooks"),
+    );
+    record(
+      "a live build carries no mock server and no developer tooling",
+      leaked.length === 0,
+      leaked.length ? `routes ${leaked.join(", ")}` : routes.join(", "),
+    );
+  } catch (error) {
+    const output = error instanceof Error && "stdout" in error
+      ? String((error as { stdout?: Buffer }).stdout ?? "")
+      : String(error);
+    record("a live build carries no mock server and no developer tooling", false, output.split("\n").slice(-5).join(" | "));
+  }
+}
