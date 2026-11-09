@@ -78,3 +78,18 @@ export const SIGNAL_LINES = [
     meta: "1 record · 17ms",
   },
 ];
+
+/** Twelve rows for the ledger movement, each a household, an amount and a
+    timestamp. They are the open run's own transfers. */
+export const LEDGER_ROWS = runTransfers(OPEN_RUN.id, PROJECT.id, 12);
+
+/** The figures the landing page states, with the source attributed beneath
+    them. These are the published figures the problem rests on, not Attest's
+    own data. */
+export const EVIDENCE = {
+  enrolled: 21_658,
+  paid: 7_375,
+  coveragePercent: 34,
+  source:
+    "Farm Africa benefit-sharing disclosure, 2024. Households enrolled in the programme against households recorded as paid.",
+};

@@ -219,27 +219,33 @@ export async function fps(
 ): Promise<void> {
   await withPage(async (page, baseUrl) => {
     await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
-    await page.evaluate(() => {
-      const samples: number[] = [];
-      let last = performance.now();
-      const tick = (now: number) => {
-        samples.push(now - last);
-        last = now;
+    await page.evaluate(`
+      (function () {
+        var samples = [];
+        var last = performance.now();
+        function tick(now) {
+          samples.push(now - last);
+          last = now;
+          window.requestAnimationFrame(tick);
+        }
         window.requestAnimationFrame(tick);
-      };
-      window.requestAnimationFrame(tick);
-      (window as unknown as { __frames: number[] }).__frames = samples;
-    });
+        window.__frames = samples;
+      })();
+    `);
     await action(page);
-    const frames = await page.evaluate(
-      () => (window as unknown as { __frames: number[] }).__frames.slice(4),
-    );
-    const budget = 1000 / min;
+    const frames = (await page.evaluate("window.__frames.slice(4)")) as number[];
+    /* A frame that lands on the display's own interval is not a dropped
+       frame, so the budget carries a millisecond of tolerance around it. */
+    const budget = 1000 / min + 1;
     /* The slowest few frames of any navigation are scheduling noise rather
        than the animation, so the assertion is made on the 95th percentile. */
     const sorted = [...frames].sort((a, b) => a - b);
     const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 0;
-    record(name, p95 <= budget, `p95 ${p95.toFixed(1)}ms, budget ${budget.toFixed(1)}ms, ${frames.length} frames`);
+    record(
+      name,
+      p95 <= budget,
+      `p95 ${p95.toFixed(1)}ms, budget ${budget.toFixed(1)}ms, ${frames.length} frames`,
+    );
   });
 }
 
@@ -441,7 +447,12 @@ export function liveBuildExcludesMock(): void {
     const output = execFileSync("npm", ["run", "build"], {
       cwd: ROOT,
       stdio: "pipe",
-      env: { ...process.env, ATTEST_API_MODE: "live", ATTEST_DEV_TOOLS: "0" },
+      env: {
+        ...process.env,
+        ATTEST_API_MODE: "live",
+        ATTEST_DEV_TOOLS: "0",
+        NEXT_DIST_DIR: ".next-live",
+      },
     }).toString();
     const routes = output
       .split("\n")
@@ -471,4 +482,81 @@ export function liveBuildExcludesMock(): void {
     });
     execFileSync("npx", ["next", "typegen"], { cwd: ROOT, stdio: "pipe" });
   }
+}
+
+/** Renders a route at several widths and asserts every named movement is
+    present, resolves on the way down and resolves again on the way back up. */
+export async function viewportRenders(
+  path: string,
+  movements: string[],
+  widths: number[],
+): Promise<void> {
+  for (const width of widths) {
+    await withPage(async (page, baseUrl) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+
+      const present = await page.evaluate(() =>
+        Array.from(document.querySelectorAll("[data-movement]")).map(
+          (element) => element.getAttribute("data-movement") ?? "",
+        ),
+      );
+      const missing = movements.filter((movement) => !present.includes(movement));
+      record(
+        `every movement is present at ${width}px`,
+        missing.length === 0,
+        missing.join(", "),
+      );
+      if (missing.length > 0) {
+        return;
+      }
+
+      const resolvedGoingDown = await scrollThrough(page, movements, "down");
+      const unresolvedDown = movements.filter(
+        (movement) => !resolvedGoingDown.includes(movement),
+      );
+      record(
+        `every movement resolves scrolling down at ${width}px`,
+        unresolvedDown.length === 0,
+        unresolvedDown.join(", "),
+      );
+
+      const resolvedGoingUp = await scrollThrough(page, movements, "up");
+      const unresolvedUp = movements.filter(
+        (movement) => !resolvedGoingUp.includes(movement),
+      );
+      record(
+        `every movement resolves scrolling back up at ${width}px`,
+        unresolvedUp.length === 0,
+        unresolvedUp.join(", "),
+      );
+    });
+  }
+}
+
+async function scrollThrough(
+  page: Page,
+  movements: string[],
+  direction: "down" | "up",
+): Promise<string[]> {
+  const resolved = new Set<string>();
+  const height = await page.evaluate(() => document.body.scrollHeight);
+  const steps = 60;
+  for (let step = 0; step <= steps; step += 1) {
+    const ratio = direction === "down" ? step / steps : 1 - step / steps;
+    await page.evaluate((offset) => window.scrollTo(0, offset), height * ratio);
+    await page.waitForTimeout(40);
+    const states = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("[data-movement]"))
+        .filter((element) => element.getAttribute("data-resolved") === "true")
+        .map((element) => element.getAttribute("data-movement") ?? ""),
+    );
+    for (const movement of states) {
+      resolved.add(movement);
+    }
+    if (movements.every((movement) => resolved.has(movement))) {
+      break;
+    }
+  }
+  return [...resolved];
 }

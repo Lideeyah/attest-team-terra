@@ -49,6 +49,7 @@ export function MastheadShell({
                 key={section.href}
                 href={section.href}
                 className="tab"
+                prefetch={false}
                 aria-current={active ? "page" : undefined}
               >
                 {section.label}

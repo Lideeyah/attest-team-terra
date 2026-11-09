@@ -428,3 +428,69 @@ Akassa   2026-Q3  closed       1,205 of 1,402   short ₦5.4m    mismatch ₦90,
 **Gate.** `npm run gate -- F-1`: 42 assertions, 42 passed, including that a
 run's counts follow the shares when the panel moves them and that a period's
 paid count is the transfers that cleared.
+
+---
+
+## F-2 — The landing page
+
+**Built.** The six-movement scroll-linked composition at `/`. Movement 1 is one
+sentence in `h1.display` on paper with a single heavy rule beneath it, which
+rises in once on load and then does nothing: no scroll indicator, no animated
+arrow, nothing autoplaying. Movement 2 tallies three figures — households
+enrolled, households recorded as paid, coverage — with the source attributed in
+an eyebrow beneath. Movement 3 builds the ledger, scroll position driving the
+row count so scrolling up removes rows and scrolling down adds them. Movement 4
+lands the stamps, impact then ink, staggered. Movement 5 seals the period: the
+heavy rule draws across and the block above steps back one contrast level
+without moving. Movement 6 resolves the attestation hash and the sealed block
+takes its place on a register beside two other projects, carrying crop marks,
+with the page's one button beneath it. Below the composition: a section for
+developers, a section for institutions, and a footer. Everything is transform
+and opacity; nothing animates a property that triggers layout.
+
+**Gate.** `npm run gate -- F-2`: 27 assertions, 27 passed. Every movement
+present and resolving in both directions at 390, 768, 1280 and 1920; 60fps
+through the full scroll in both directions; six intelligible stills under
+reduced motion; the accent on exactly the mark, the h1 and the call to action;
+nothing from the anti-slop list; and the hero sentence asserted to be the named
+placeholder and to be flagged here.
+
+**What the gate found about the gate.** The browser assertions had been running
+against a development server, and a development server does not hydrate under
+the headless browser the gate drives — its hot-reload socket fails, and no
+client code runs. Every assertion about anything the client does was therefore
+passing against a dead page, including F-0's reduced-motion check. The gate now
+builds and serves two production configurations side by side, one carrying the
+developer tooling and the mock and one carrying neither, in separate output
+directories. F-0 and F-1 were re-run against them: F-0 is 31 of 31 and F-1 is
+42 of 42, and three real console errors surfaced on the way, where the
+navigation shells were prefetching routes that later phases will build.
+
+**Decisions taken on Lydia's behalf.**
+
+1. **The movement headings are set in ink rather than in bottle.** The type
+   system puts h2 in the anchor tone, but this page carries five of them and
+   the exit checklist asks for exactly one accent element besides the h1 and
+   the mark. The accent appears three times on the page: the mark, the h1 and
+   the button. `.h2-display-ink` is the landing page's own rule and is used
+   nowhere else.
+2. **Each movement is 160vh of scroll** with its content pinned, which makes
+   the page about 860vh rather than the 600vh the document suggests. At 600vh
+   the stamps and the seal resolved faster than they could be read.
+3. **A movement reports its own state.** Each section carries `data-movement`
+   and `data-resolved`, so the sequence is readable from the page rather than
+   inferred from a scroll position. It is how the gate asserts the composition
+   and it costs nothing at run time.
+4. **The figures are written straight into the DOM** from the motion value
+   rather than through React state, so a scroll does not re-render the page.
+
+**Manual review needed.**
+
+1. **The hero sentence** is "The money is promised, sometimes paid, and never
+   provable.", the first of the four proposals in foundation 5.1, carried as
+   the placeholder the build instructions name. It is Lydia's to settle.
+2. **The source attribution in Movement 2** reads "Farm Africa benefit-sharing
+   disclosure, 2024. Households enrolled in the programme against households
+   recorded as paid." The figures are the ones the build instructions give
+   (21,658 enrolled, 7,375 paid, 34 percent); the citation's exact title and
+   year should be confirmed against the publication before the deck is shown.

@@ -1,21 +1,42 @@
 import { spawn, type ChildProcess } from "node:child_process";
 
+/* The gate's servers. Both are production builds: a development server does
+   not hydrate under the headless browser the gate drives, so an assertion
+   about anything the client does would pass against a dead page. One build
+   carries the developer tooling and the mock server, the other carries
+   neither, and they are served side by side from separate output
+   directories. */
+
 type RunningServer = {
   baseUrl: string;
   stop: () => void;
 };
 
-let running: RunningServer | null = null;
-let child: ChildProcess | null = null;
+const READY_TIMEOUT_MS = 300_000;
 
-const PORT = 3123;
-const READY_TIMEOUT_MS = 180_000;
+const TOOLING_PORT = 3123;
+const LIVE_PORT = 3124;
+
+const TOOLING_ENV = {
+  ATTEST_DEV_TOOLS: "1",
+  ATTEST_API_MODE: "mock",
+  NEXT_DIST_DIR: ".next-tooling",
+  /* A secret for the gate's own signing, so the inbound hook's accepting path
+     is asserted rather than assumed. */
+  FORGE_WEBHOOK_SECRET: "gate-forge-secret-not-a-real-credential",
+};
+
+const LIVE_ENV = {
+  ATTEST_DEV_TOOLS: "0",
+  ATTEST_API_MODE: "live",
+  NEXT_DIST_DIR: ".next-live",
+};
 
 async function waitForReady(baseUrl: string): Promise<void> {
   const started = Date.now();
   for (;;) {
     try {
-      const response = await fetch(baseUrl, { cache: "no-store" });
+      const response = await fetch(`${baseUrl}/healthz`, { cache: "no-store" });
       if (response.ok || response.status === 404) {
         return;
       }
@@ -29,79 +50,72 @@ async function waitForReady(baseUrl: string): Promise<void> {
   }
 }
 
-/** Starts the development server once per gate run and reuses it. */
-export async function server(): Promise<RunningServer> {
-  if (running) {
-    return running;
-  }
-  const baseUrl = `http://127.0.0.1:${PORT}`;
-  child = spawn("npm", ["run", "dev", "--", "--port", String(PORT)], {
-    stdio: "ignore",
-    env: {
-      ...process.env,
-      ATTEST_DEV_TOOLS: "1",
-      NEXT_PUBLIC_ATTEST_DEV_TOOLS: "1",
-      /* A secret for the gate's own signing, so the hook's accepting path is
-         asserted rather than assumed. */
-      FORGE_WEBHOOK_SECRET:
-        process.env.FORGE_WEBHOOK_SECRET ?? "gate-forge-secret-not-a-real-credential",
-    },
-  });
-  await waitForReady(baseUrl);
-  running = {
-    baseUrl,
-    stop: () => {
-      child?.kill("SIGTERM");
-      child = null;
-      running = null;
-    },
-  };
-  return running;
-}
-
-export function stopServer(): void {
-  running?.stop();
-}
-
-let prodRunning: RunningServer | null = null;
-let prodChild: ChildProcess | null = null;
-const PROD_PORT = 3124;
-
-function run(command: string, args: string[], env: NodeJS.ProcessEnv): Promise<void> {
+function run(args: string[], env: NodeJS.ProcessEnv): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, { stdio: "inherit", env });
+    const proc = spawn("npm", args, { stdio: "pipe", env });
+    let output = "";
+    proc.stdout?.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    proc.stderr?.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
     proc.on("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`${command} exited ${code}`)),
+      code === 0
+        ? resolve()
+        : reject(new Error(`${args.join(" ")} exited ${code}\n${output.slice(-1200)}`)),
     );
   });
 }
 
-/** Builds and starts a production server. Used for bundle budgets and for
-    asserting that developer tooling is absent from a production build. */
-export async function prodServer(): Promise<RunningServer> {
-  if (prodRunning) {
-    return prodRunning;
+type Slot = { running: RunningServer | null; child: ChildProcess | null };
+
+const tooling: Slot = { running: null, child: null };
+const live: Slot = { running: null, child: null };
+
+async function start(
+  slot: Slot,
+  port: number,
+  extraEnv: Record<string, string>,
+): Promise<RunningServer> {
+  if (slot.running) {
+    return slot.running;
   }
-  const env = { ...process.env, ATTEST_DEV_TOOLS: "0", NEXT_PUBLIC_ATTEST_DEV_TOOLS: "0" };
-  await run("npm", ["run", "build"], env);
-  const baseUrl = `http://127.0.0.1:${PROD_PORT}`;
-  prodChild = spawn("npm", ["run", "start", "--", "--port", String(PROD_PORT)], {
+  const env = { ...process.env, ...extraEnv };
+  await run(["run", "build"], env);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  slot.child = spawn("npm", ["run", "start", "--", "--port", String(port)], {
     stdio: "ignore",
     env,
   });
   await waitForReady(baseUrl);
-  prodRunning = {
+  slot.running = {
     baseUrl,
     stop: () => {
-      prodChild?.kill("SIGTERM");
-      prodChild = null;
-      prodRunning = null;
+      slot.child?.kill("SIGTERM");
+      slot.child = null;
+      slot.running = null;
     },
   };
-  return prodRunning;
+  return slot.running;
+}
+
+/** The build the gate drives: production, with the developer tooling and the
+    mock server included. */
+export async function server(): Promise<RunningServer> {
+  return start(tooling, TOOLING_PORT, TOOLING_ENV);
+}
+
+/** The build that goes to production: no developer tooling, no mock. */
+export async function prodServer(): Promise<RunningServer> {
+  return start(live, LIVE_PORT, LIVE_ENV);
+}
+
+export function stopServer(): void {
+  tooling.running?.stop();
 }
 
 export function stopAll(): void {
-  running?.stop();
-  prodRunning?.stop();
+  tooling.running?.stop();
+  live.running?.stop();
 }

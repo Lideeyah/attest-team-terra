@@ -103,6 +103,13 @@ a:hover {
   color: var(--bottle-deep);
 }
 
+/* The landing page is the one surface where an h2 is set in ink rather than
+   in the anchor tone: it carries five of them, and the accent is meant to
+   appear three times on a page. The type is unchanged; only the colour is. */
+.h2-display-ink {
+  color: var(--ink-primary);
+}
+
 .h3-display {
   font-size: var(--fs-h3);
   letter-spacing: var(--tr-display-sm);

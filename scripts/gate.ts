@@ -9,10 +9,12 @@ import { failed, collected } from "./gate/report";
 import { stopAll } from "./gate/server";
 import { f0 } from "./gate/phases/f0";
 import { f1 } from "./gate/phases/f1";
+import { f2 } from "./gate/phases/f2";
 
 const PHASES: Record<string, () => Promise<void>> = {
   "F-0": f0,
   "F-1": f1,
+  "F-2": f2,
 };
 
 async function main(): Promise<void> {

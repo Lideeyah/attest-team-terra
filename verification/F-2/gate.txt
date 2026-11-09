@@ -1,0 +1,28 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /
+PASS  every movement is present at 390px
+PASS  every movement resolves scrolling down at 390px
+PASS  every movement resolves scrolling back up at 390px
+PASS  every movement is present at 768px
+PASS  every movement resolves scrolling down at 768px
+PASS  every movement resolves scrolling back up at 768px
+PASS  every movement is present at 1280px
+PASS  every movement resolves scrolling down at 1280px
+PASS  every movement resolves scrolling back up at 1280px
+PASS  every movement is present at 1920px
+PASS  every movement resolves scrolling down at 1920px
+PASS  every movement resolves scrolling back up at 1920px
+PASS  no layout-triggering property is animated on the landing page
+PASS  nothing from the anti-slop list on the landing page
+PASS  no infinite animation on the landing page
+PASS  no emoji in the product surface
+PASS  the accent appears only on the h1, the mark and the call to action
+PASS  60fps through the full landing scroll
+PASS  reduced motion resting on /
+PASS  reduced motion renders six intelligible stills
+PASS  the hero sentence is the named placeholder and is flagged for review
+PASS  accessibility on /
+PASS  keyboard reachability on /
+PASS  screenshot F-2/landing
+27 passed, 0 failed in 32.1s

@@ -49,6 +49,7 @@ export function FieldShell({
                 key={tab.href}
                 href={tab.href}
                 className="field-tab"
+                prefetch={false}
                 aria-current={active ? "page" : undefined}
               >
                 {tab.label}

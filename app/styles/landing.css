@@ -1,0 +1,112 @@
+/* The landing page. One continuous object through six movements, scroll-linked
+   and never autoplay. Transform and opacity only: nothing here animates a
+   property that triggers layout. */
+
+.landing {
+  /* Six movements, each pinned for the length of its own scroll. */
+  --movement-scroll: 100vh;
+}
+
+.movement {
+  position: relative;
+  height: calc(var(--movement-scroll) * 1.6);
+}
+
+.movement-pinned {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.movement-still {
+  height: 100vh;
+}
+
+.ledger-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--stack-lg);
+  align-items: baseline;
+  padding: var(--pad-cell-y) 0;
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  will-change: transform, opacity;
+}
+
+.ledger-row-stamped {
+  grid-template-columns: 1fr auto auto auto;
+}
+
+.figure-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--grid-rule);
+  background: var(--rule-hairline);
+  border: var(--hairline) solid var(--rule-hairline);
+}
+
+.figure-cell {
+  background: var(--surface-reading);
+  padding: var(--pad-panel);
+  display: grid;
+  gap: calc(var(--stack) / 2);
+}
+
+.register-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: var(--stack-lg);
+  align-items: baseline;
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+  background: var(--surface-reading);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.register-row-sealed {
+  background: var(--surface-elevated);
+}
+
+.landing-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--section-tight);
+}
+
+@media (max-width: 1080px) {
+  .landing-foot {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .figure-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-row,
+  .ledger-row-stamped,
+  .register-row {
+    grid-template-columns: 1fr auto;
+    row-gap: calc(var(--stack) / 2);
+  }
+}
+
+/* Reduced motion renders the six movements as six static compositions that
+   still read as a sequence, rather than collapsing them to nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .movement {
+    height: auto;
+  }
+
+  .movement-pinned {
+    position: static;
+    min-height: 0;
+    padding-block: var(--section);
+  }
+
+  .movement-still {
+    height: auto;
+    padding-block: var(--section);
+  }
+}

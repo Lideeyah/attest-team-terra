@@ -61,6 +61,10 @@ export function DeveloperShell({
                 <Link
                   href={section.href}
                   className="console-nav-link"
+                  /* The sections a later phase builds do not exist yet, and a
+                     prefetch of a route that is not there is a 404 in the
+                     console rather than a faster navigation. */
+                  prefetch={false}
                   aria-current={active ? "page" : undefined}
                 >
                   {section.label}
@@ -71,7 +75,7 @@ export function DeveloperShell({
         </ul>
         <div className="console-rail-foot">
           <p className="eyebrow">{organisation}</p>
-          <Link href="/signin" className="btn-quiet btn-sm">
+          <Link href="/signin" className="btn-quiet btn-sm" prefetch={false}>
             Sign out
           </Link>
         </div>
