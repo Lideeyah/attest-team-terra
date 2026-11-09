@@ -9,6 +9,9 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    /* The gate builds two further configurations side by side. */
+    ".next-tooling/**",
+    ".next-live/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

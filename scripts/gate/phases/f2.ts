@@ -81,6 +81,10 @@ export async function f2(): Promise<void> {
   await reducedMotion("/");
   await stillsReadable();
 
+  await primitivesPlayed();
+  await pageHeight();
+  await fitsThePhone();
+
   await heroSentenceFlagged();
 
   await a11y("/");
@@ -193,5 +197,142 @@ async function stillsReadable(): Promise<void> {
     "reduced motion renders six intelligible stills",
     stills.length === 6 && broken.length === 0,
     broken.map((still) => `${still.name}: ${still.hidden} hidden, ${still.text} chars`).join(" | "),
+  );
+}
+
+
+/** The movements play the named primitives rather than something that looks
+    like them: the stamp overshoots and then sets, and the rule draws. */
+async function primitivesPlayed(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+  const context = await browser.newContext({
+    reducedMotion: "no-preference",
+    viewport: { width: 1280, height: 900 },
+  });
+  const page = await context.newPage();
+  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+
+  const stampSection = (await page.evaluate(
+    `document.querySelector('[data-movement="stamp"]').offsetTop`,
+  )) as number;
+  const stampHeight = (await page.evaluate(
+    `document.querySelector('[data-movement="stamp"]').offsetHeight`,
+  )) as number;
+
+  /* Sample the stamp's scale as it lands. The primitive overshoots past its
+     resting size and comes back; a linear shrink never goes below one. The
+     sampler runs before the movement is reached, so the impact is caught. */
+  await page.evaluate(`
+    (function () {
+      window.__scales = [];
+      var tick = function () {
+        var stamp = document.querySelector('[data-movement="stamp"] .stamp');
+        if (stamp) {
+          var matrix = new DOMMatrix(getComputedStyle(stamp).transform);
+          window.__scales.push(Math.hypot(matrix.a, matrix.b));
+        }
+        window.requestAnimationFrame(tick);
+      };
+      window.requestAnimationFrame(tick);
+    })();
+  `);
+  for (let step = 1; step <= 12; step += 1) {
+    await page.evaluate(
+      `window.scrollTo(0, ${Math.round(stampSection + (stampHeight * step) / 16)})`,
+    );
+    await page.waitForTimeout(90);
+  }
+  await page.waitForTimeout(600);
+  const scales = (await page.evaluate("window.__scales")) as number[];
+  const overshot = scales.some((scale) => scale > 1.1);
+  const settled = scales.some((scale) => scale < 0.995);
+  record(
+    "the stamp plays both beats: impact past its size, then the ink setting",
+    overshot && settled,
+    `max ${Math.max(...scales, 0).toFixed(3)}, min ${Math.min(...scales, 9).toFixed(3)}`,
+  );
+
+  /* The hash is not shown before it resolves. */
+  await page.evaluate("window.scrollTo(0, 0)");
+  await page.waitForTimeout(300);
+  const hashAtTop = (await page.evaluate(
+    `(function () {
+      var node = document.querySelector('[data-movement="record"] .hash');
+      if (!node) { return "missing"; }
+      return getComputedStyle(node).opacity;
+    })()`,
+  )) as string;
+  record(
+    "the attestation hash is not shown before it resolves",
+    Number(hashAtTop) < 0.05,
+    `opacity ${hashAtTop}`,
+  );
+
+  await browser.close();
+}
+
+/** The composition is about six screens of scroll, not ten. */
+async function pageHeight(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  const screens =
+    ((await page.evaluate("document.body.scrollHeight")) as number) / 900;
+  await browser.close();
+  /* Six movements that each hold while they play cannot fit in six screens of
+     scroll. Eight is the ceiling: beyond that a composition sits frozen while
+     the reader scrolls past it. */
+  record(
+    "the composition is under eight screens of scroll",
+    screens <= 8,
+    `${screens.toFixed(1)} screens`,
+  );
+}
+
+/** At phone width every movement's composition fits the screen. */
+async function fitsThePhone(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  const tooTall: string[] = [];
+  for (const movement of MOVEMENTS) {
+    const top = (await page.evaluate(
+      `document.querySelector('[data-movement="${movement}"]').offsetTop`,
+    )) as number;
+    const sectionHeight = (await page.evaluate(
+      `document.querySelector('[data-movement="${movement}"]').offsetHeight`,
+    )) as number;
+    /* The middle of the pin, which is where the composition is held: the
+       sticky block holds for the difference between the section and the
+       screen, and after that the section scrolls away like anything else. */
+    await page.evaluate(
+      `window.scrollTo(0, ${Math.round(top + Math.max(0, (sectionHeight - 844) / 2))})`,
+    );
+    await page.waitForTimeout(250);
+    const box = (await page.evaluate(
+      `JSON.stringify((function () {
+        var inner = document.querySelector('[data-movement="${movement}"] .measure');
+        var rect = inner.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom };
+      })())`,
+    )) as string;
+    const rect = JSON.parse(box) as { top: number; bottom: number };
+    if (rect.top < -8 || rect.bottom > 844) {
+      tooTall.push(`${movement} ${Math.round(rect.top)}..${Math.round(rect.bottom)}`);
+    }
+  }
+  await browser.close();
+  record(
+    "every composition fits the phone screen at 390px",
+    tooTall.length === 0,
+    tooTall.join(", "),
   );
 }

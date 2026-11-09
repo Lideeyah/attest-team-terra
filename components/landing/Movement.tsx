@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   motion,
   useMotionValue,
@@ -29,13 +35,18 @@ export function Movement({ name, children, still = false }: MovementProps) {
     target: ref,
     offset: ["start end", "end start"],
   });
-  /* The movement's own progress: zero as it arrives, one as it leaves. */
-  const progress = useTransform(scrollYProgress, [0.15, 0.75], [0, 1], {
+  /* The movement's own progress: zero as it arrives, one as it leaves. The
+     composition plays across most of the travel rather than finishing early
+     and sitting frozen while the pin runs out. */
+  /* The composition plays across the middle of the travel. The last movement
+     never leaves the top of the screen, because the page ends beneath it, so
+     the mapping resolves before a section would have to exit. */
+  const progress = useTransform(scrollYProgress, [0.15, 0.68], [0, 1], {
     clamp: true,
   });
 
   useMotionValueEvent(progress, "change", (value) => {
-    if (value >= 0.98 && ref.current) {
+    if (value >= 0.95 && ref.current) {
       ref.current.setAttribute("data-resolved", "true");
     }
   });
@@ -62,22 +73,6 @@ export function Movement({ name, children, still = false }: MovementProps) {
   );
 }
 
-/** Writes a motion value into a node's text without re-rendering React. */
-export function useTextFromMotion(
-  value: MotionValue<number>,
-  format: (input: number) => string,
-) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useMotionValueEvent(value, "change", (next) => {
-    if (ref.current) {
-      ref.current.textContent = format(next);
-    }
-  });
-  return ref;
-}
-
-export { motion };
-
 /** A value driven by a movement's progress, or its resting value when the
     reader has asked for reduced motion. */
 export function useReveal(
@@ -90,3 +85,71 @@ export function useReveal(
   const resting = useMotionValue(output[1]);
   return reduced ? resting : driven;
 }
+
+/** True once the movement's progress passes a mark. A primitive that records
+    something permanent fires here and is not taken back on the way up; one
+    that counts rows follows the scroll in both directions. */
+export function useCrossed(
+  progress: MotionValue<number>,
+  mark: number,
+  options: { once?: boolean } = {},
+): boolean {
+  const reduced = useReducedMotion();
+  const once = options.once ?? true;
+  const [crossed, setCrossed] = useState(reduced === true);
+
+  useMotionValueEvent(progress, "change", (value) => {
+    if (reduced) {
+      return;
+    }
+    if (value >= mark) {
+      setCrossed(true);
+    } else if (!once) {
+      setCrossed(false);
+    }
+  });
+
+  return crossed;
+}
+
+/** How many of a list have arrived at this point in the movement. Scroll
+    position drives the count, so scrolling up removes rows. */
+export function useArrivedCount(
+  progress: MotionValue<number>,
+  total: number,
+  range: [number, number],
+): number {
+  const reduced = useReducedMotion();
+  const [count, setCount] = useState(reduced === true ? total : 0);
+
+  useMotionValueEvent(progress, "change", (value) => {
+    if (reduced) {
+      return;
+    }
+    const span = range[1] - range[0];
+    const ratio = Math.min(1, Math.max(0, (value - range[0]) / span));
+    setCount(Math.round(ratio * total));
+  });
+
+  return count;
+}
+
+const NARROW = "(max-width: 720px)";
+
+function subscribeToWidth(onChange: () => void): () => void {
+  const query = window.matchMedia(NARROW);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** The phone layout, so a composition can show the rows that fit rather than
+    a column taller than the screen. */
+export function useNarrow(): boolean {
+  return useSyncExternalStore(
+    subscribeToWidth,
+    () => window.matchMedia(NARROW).matches,
+    () => false,
+  );
+}
+
+export { motion };

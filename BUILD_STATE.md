@@ -3,7 +3,8 @@
 Phase complete: F-0 — foundation. Gate green, 31 of 31.
 Phase complete: F-1 — mock server, typed client and /dev/states. Gate green,
 42 of 42, verified over four passes.
-Phase complete: F-2 — the landing page. Gate green, 27 of 27, in verification.
+Phase complete: F-2 — the landing page. Gate green, 31 of 31, verified and
+corrected.
 Next phase: F-3 — the public register and verification surfaces.
 
 The gate runs against two production builds, not a development server: a

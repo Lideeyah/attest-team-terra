@@ -494,3 +494,60 @@ navigation shells were prefetching routes that later phases will build.
    recorded as paid." The figures are the ones the build instructions give
    (21,658 enrolled, 7,375 paid, 34 percent); the citation's exact title and
    year should be confirmed against the publication before the deck is shown.
+
+**Independent verification of F-2.** The verifier confirmed the measurable
+half — 60fps under 4x CPU throttling with no dropped frames, six intelligible
+stills under reduced motion, exactly one accent element besides the h1 and the
+mark, nothing from the anti-slop list, no verdict about any project in the copy
+— and then found that the movements were not playing the system's primitives
+at all. Eight failures, all taken:
+
+1. **Movement 4 was not `stampLand`.** It was a scroll-linked scale that fell
+   from 1.28 to 1 and never overshot, with no second beat: a linear
+   shrink-and-fade in place of the signature animation. The stamp now plays the
+   primitive through `Stamp`'s own `animate` prop, triggered when the movement
+   is reached rather than driven by scroll position, and the gate samples its
+   scale while it lands: 1.280 to 0.970 to 1, impact then ink.
+2. **Movement 5's contrast step did not reach the headline**, because the
+   heading set its own colour and the sealed rule could not override it. The
+   step now reaches the heading, the eyebrows, the figures and the stamps, and
+   the opacity change the primitive does not specify is gone: it is a contrast
+   change, not a fade.
+3. **The attestation hash was visible from the top of the page** and then
+   scrambled, so the one effect that is earned because a hash genuinely
+   computes was resolving to a value the reader had already seen. The hash is
+   now part of the movement's own reveal and resolves as it arrives, and it
+   replays on a second pass.
+4. **The call to action was prefetching a route that does not exist yet**,
+   which put a 404 in the console on every load. `/register` is F-3's work; the
+   link now carries `prefetch={false}` until it exists.
+5. **The page was about 960vh**, with most of each pin spent frozen. It is now
+   7.6 screens, and the gate holds it under eight.
+6. **At 390px the ledger was taller than the phone**, clipped top and bottom.
+   The compositions show the rows that fit at phone width, and the gate
+   measures every movement at the middle of its own pin against the screen.
+7. **The hero sentence.** The verifier is right that foundation 5.1 says none
+   of the four proposals is applied and the F-2 prompt says to carry the
+   product spec's one-line. The orchestration prompt for this unattended run
+   says the opposite, by name: use "The money is promised, sometimes paid, and
+   never provable." The later and more specific instruction is the one that was
+   followed, and the conflict is recorded here so Lydia can settle both.
+8. **The primitives were bypassed and token values restated.** `tallyTo`,
+   `recordArrive`, `stampLand` and `ruleDraw` all existed and none was used;
+   `[12, 0]`, `[1.28, 1]`, `transformOrigin: "left"` and the literal class
+   string `"anim-record-arrive"` were written into the page. Every movement now
+   plays its primitive from `lib/motion.ts` or its class from `PRIMITIVE_CLASS`,
+   and no token value is restated in the component.
+
+**Two of the verifier's observations changed the composition rather than fixing
+a defect.** It is one continuous object, not six scenes: Movements 3, 4 and 5
+now follow the same four rows, so the period that seals is the one the reader
+watched being built, and the rows are above the rule when it draws. And what is
+recorded is not taken back: the figures and the stamps play once and stay,
+while the ledger's row count still follows the scroll in both directions, which
+is the only reversal the document asks for.
+
+**Gate.** `npm run gate -- F-2`: 31 assertions, 31 passed, including that the
+stamp overshoots and settles, that the hash is not shown before it resolves,
+that the composition is under eight screens and that every movement fits a
+390px screen at the middle of its own pin.

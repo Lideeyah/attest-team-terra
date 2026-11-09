@@ -21,8 +21,12 @@ PASS  the accent appears only on the h1, the mark and the call to action
 PASS  60fps through the full landing scroll
 PASS  reduced motion resting on /
 PASS  reduced motion renders six intelligible stills
+PASS  the stamp plays both beats: impact past its size, then the ink setting
+PASS  the attestation hash is not shown before it resolves
+PASS  the composition is under eight screens of scroll
+PASS  every composition fits the phone screen at 390px
 PASS  the hero sentence is the named placeholder and is flagged for review
 PASS  accessibility on /
 PASS  keyboard reachability on /
 PASS  screenshot F-2/landing
-27 passed, 0 failed in 32.1s
+31 passed, 0 failed in 37.6s

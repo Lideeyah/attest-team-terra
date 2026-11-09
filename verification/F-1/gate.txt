@@ -40,4 +40,4 @@ PASS  /dev/kitchen-sink absent from the production build
 PASS  /api/dev/force absent from the production build
 PASS  /api/dev/stream-config absent from the production build
 PASS  a live build carries no mock server and no developer tooling
-42 passed, 0 failed in 28.4s
+42 passed, 0 failed in 26.8s

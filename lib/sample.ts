@@ -93,3 +93,20 @@ export const EVIDENCE = {
   source:
     "Farm Africa benefit-sharing disclosure, 2024. Households enrolled in the programme against households recorded as paid.",
 };
+
+
+/** The register as the landing page shows it: every project's latest closed
+    period, with its figures computed rather than typed. */
+export const REGISTER_ROWS = PROJECTS.map((project) => {
+  const period =
+    project.periods.filter((candidate) => candidate.state !== "open").at(-1) ??
+    project.periods[0];
+  return {
+    id: project.id,
+    name: project.name,
+    period: period.period,
+    paid: period.paid,
+    enrolled: period.enrolled,
+    attestationId: period.attestationId ?? project.id,
+  };
+});

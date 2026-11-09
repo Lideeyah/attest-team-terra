@@ -151,6 +151,9 @@
   animation:
     stampLandInline var(--t-stamp) var(--ease-shutter) both,
     inkSet var(--t-ink) var(--ease-mechanical) var(--t-stamp) both;
+  /* A stagger moves both beats together, so the ink still sets after the
+     impact rather than during it. */
+  animation-delay: var(--stagger, 0ms), calc(var(--t-stamp) + var(--stagger, 0ms));
 }
 
 .anim-stamp-land-centred {
@@ -165,19 +168,38 @@
 
 /* sealPeriod, second beat: everything above the seal line steps back one
    contrast level without moving and without disappearing. */
-.sealed-above {
+.sealed-above,
+.sealed-above .h2-display-ink,
+.sealed-above .h3-display,
+.sealed-above .record-cell,
+.sealed-above .eyebrow,
+.sealed-above .figure-denominator,
+.sealed-above .stamp {
   /* The seal rule draws first; the block above it steps back one contrast
      level afterwards, not alongside. */
   transition:
     color var(--t-base) var(--ease-shutter) var(--t-draw),
-    border-color var(--t-base) var(--ease-shutter) var(--t-draw),
-    opacity var(--t-base) var(--ease-shutter) var(--t-draw);
+    border-color var(--t-base) var(--ease-shutter) var(--t-draw);
 }
 
-.sealed-above[data-sealed="true"] {
+/* sealPeriod steps the contrast of everything above the rule down one level.
+   It is a contrast change, not a fade: nothing is removed and nothing moves. */
+.sealed-above[data-sealed="true"],
+.sealed-above[data-sealed="true"] .h2-display-ink,
+.sealed-above[data-sealed="true"] .h3-display,
+.sealed-above[data-sealed="true"] .record-cell {
   color: var(--ink-muted);
   border-color: var(--rule-hairline);
-  opacity: 0.86;
+}
+
+.sealed-above[data-sealed="true"] .eyebrow,
+.sealed-above[data-sealed="true"] .figure-denominator {
+  color: var(--rule-contrast);
+}
+
+.sealed-above[data-sealed="true"] .stamp {
+  color: var(--ink-muted);
+  border-color: var(--rule-hairline);
 }
 
 /* ---- Reduced motion ---------------------------------------------------- */

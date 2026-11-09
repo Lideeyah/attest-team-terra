@@ -9,7 +9,10 @@
 
 .movement {
   position: relative;
-  height: calc(var(--movement-scroll) * 1.6);
+  /* A movement is a little over one screen of scroll. The composition holds
+     for the difference between the section and the pinned block, which is
+     long enough to read and short enough that nothing sits frozen. */
+  height: calc(var(--movement-scroll) * 1.2);
 }
 
 .movement-pinned {
@@ -31,7 +34,6 @@
   align-items: baseline;
   padding: var(--pad-cell-y) 0;
   border-bottom: var(--hairline) solid var(--rule-hairline);
-  will-change: transform, opacity;
 }
 
 .ledger-row-stamped {
@@ -51,6 +53,28 @@
   padding: var(--pad-panel);
   display: grid;
   gap: calc(var(--stack) / 2);
+}
+
+.seal-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--section-tight);
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .seal-layout {
+    grid-template-columns: 1fr;
+    gap: var(--stack-lg);
+  }
+}
+
+/* At phone width the ledger shows the rows that fit rather than a composition
+   taller than the screen. */
+@media (max-width: 720px) {
+  .ledger-row[data-overflow="true"] {
+    display: none;
+  }
 }
 
 .register-row {
@@ -86,7 +110,29 @@
 
   .ledger-row,
   .ledger-row-stamped,
-  .register-row {
+  .seal-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--section-tight);
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .seal-layout {
+    grid-template-columns: 1fr;
+    gap: var(--stack-lg);
+  }
+}
+
+/* At phone width the ledger shows the rows that fit rather than a composition
+   taller than the screen. */
+@media (max-width: 720px) {
+  .ledger-row[data-overflow="true"] {
+    display: none;
+  }
+}
+
+.register-row {
     grid-template-columns: 1fr auto;
     row-gap: calc(var(--stack) / 2);
   }
