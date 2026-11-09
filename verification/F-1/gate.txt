@@ -24,6 +24,7 @@ PASS  the inbound hook de-duplicates on event id
 PASS  the inbound hook refuses a signed body that is not JSON
 PASS  the mock stream emits every event type
 PASS  stream rate, failure share and reversal share are configurable
+PASS  a transfer the stream reports as failed is failed in the transfer list
 PASS  the stream emits no event the contract does not enumerate
 PASS  a forced code drops the stream
 PASS  no screen calls fetch on an API path directly
@@ -37,4 +38,4 @@ PASS  /dev/kitchen-sink absent from the production build
 PASS  /api/dev/force absent from the production build
 PASS  /api/dev/stream-config absent from the production build
 PASS  a live build carries no mock server and no developer tooling
-39 passed, 0 failed in 22.8s
+40 passed, 0 failed in 24.9s

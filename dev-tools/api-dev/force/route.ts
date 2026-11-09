@@ -11,11 +11,14 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
+  const body = (await request.json().catch(() => null)) as {
     code?: string | null;
     pathFragment?: string | null;
     once?: boolean;
   };
+  if (body === null) {
+    return NextResponse.json({ error: "Body was not JSON." }, { status: 400 });
+  }
   const code =
     body.code && (ERROR_CODES as readonly string[]).includes(body.code)
       ? (body.code as ErrorCode)

@@ -40,6 +40,15 @@ export async function closeBrowser(): Promise<void> {
 /* ---- Static assertions -------------------------------------------------- */
 
 export function typecheck(): void {
+  /* The route types are generated from the route tree, which the developer
+     and mock trees change. Regenerating first means a typecheck never fails
+     on a stale validator from a previous run. */
+  try {
+    execFileSync("npx", ["next", "typegen"], { cwd: ROOT, stdio: "pipe" });
+  } catch {
+    /* A failure here surfaces as a type error below, where it is reported. */
+  }
+
   try {
     execFileSync("npx", ["tsc", "--noEmit"], { cwd: ROOT, stdio: "pipe" });
     record("typecheck: tsc --noEmit", true);

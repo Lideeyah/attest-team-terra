@@ -511,6 +511,7 @@ export async function f1(): Promise<void> {
     body: JSON.stringify({ rate: 120, failureShare: 0.2, reversalShare: 0.15, transfers: 60 }),
   });
   const seen = new Set<string>();
+  const streamed = new Map<string, string>();
   const controller = new AbortController();
   const streamResponse = await fetch(`${baseUrl}/api/runs/run_2026q4/stream`, {
     signal: controller.signal,
@@ -523,9 +524,17 @@ export async function f1(): Promise<void> {
     if (done) {
       break;
     }
+    let event = "";
     for (const line of decoder.decode(value).split("\n")) {
       if (line.startsWith("event:")) {
-        seen.add(line.slice(6).trim());
+        event = line.slice(6).trim();
+        seen.add(event);
+      }
+      if (line.startsWith("data:") && event.startsWith("transfer.")) {
+        const payload = JSON.parse(line.slice(5)) as { id?: string; state?: string };
+        if (payload.id && payload.state) {
+          streamed.set(payload.id, payload.state);
+        }
       }
     }
     if (STREAM_EVENTS.every((event) => seen.has(event))) {
@@ -552,6 +561,24 @@ export async function f1(): Promise<void> {
     JSON.stringify(config.data ?? {}),
   );
 
+  /* What the stream reports is what the table behind it says. */
+  const streamFailures = [...streamed.entries()]
+    .filter(([, state]) => state === "failed")
+    .map(([id]) => id);
+  const listed = await fetch(`${baseUrl}/api/runs/run_2026q4/transfers?page=1&per_page=100`);
+  const listedPayload = (await listed.json()) as Envelope & {
+    data?: { id: string; state: string; failureClass: string | null }[];
+  };
+  const disagreeing = streamFailures.filter((id) => {
+    const row = listedPayload.data?.find((candidate) => candidate.id === id);
+    return row !== undefined && (row.state !== "failed" || row.failureClass === null);
+  });
+  record(
+    "a transfer the stream reports as failed is failed in the transfer list",
+    disagreeing.length === 0,
+    disagreeing.slice(0, 4).join(", "),
+  );
+
   record(
     "the stream emits no event the contract does not enumerate",
     [...seen].every((event) => STREAM_EVENTS.includes(event)),
@@ -576,11 +603,14 @@ export async function f1(): Promise<void> {
     ["app/**/*.tsx", "components/**/*.tsx", "dev-tools/**/*.tsx", "dev-tools/**/*.ts"],
     ["dev-tools/dev/states/devControl.ts", "app/dev/states/devControl.ts"],
   );
+  /* A `.catch()` that turns a transport failure into a typed result is the
+     discipline rather than a breach of it, so the pattern ignores a method
+     call and nothing is excluded from the search. */
   grepAbsent(
     "no caller uses try/catch for an expected error",
-    /\bcatch\s*[({]/,
+    /(?<![.\w])catch\s*[({]/,
     ["app/**/*.tsx", "components/**/*.tsx", "lib/**/*.ts"],
-    ["lib/api/client.ts", "lib/api/client.test.ts", "lib/mock/**"],
+    ["lib/api/client.test.ts"],
   );
   grepAbsent(
     "no NEXT_PUBLIC_ variable carries a key, secret or token",

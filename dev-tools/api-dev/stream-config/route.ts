@@ -10,12 +10,15 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
+  const body = (await request.json().catch(() => null)) as {
     rate?: number;
     failureShare?: number;
     reversalShare?: number;
     transfers?: number;
   };
+  if (body === null) {
+    return NextResponse.json({ error: "Body was not JSON." }, { status: 400 });
+  }
   const next = setStreamConfig({
     ...(Number.isFinite(body.rate) ? { rate: Number(body.rate) } : {}),
     ...(Number.isFinite(body.failureShare)

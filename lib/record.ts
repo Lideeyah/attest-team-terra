@@ -26,20 +26,22 @@ export function truncateHash(hash: string, head = 10, tail = 6): string {
   return `${hash.slice(0, head)}…${hash.slice(-tail)}`;
 }
 
-const NAIRA_MAJOR_UNITS = 100;
+/* Amounts are NGN decimal strings with two places, matching the bank. They
+   are never parsed into a float and never converted into another unit, so
+   formatting works on the string's own parts. */
 
-/** A kobo amount as naira. Figures are always shown in full, never rounded. */
-export function formatNaira(kobo: number): string {
-  const naira = kobo / NAIRA_MAJOR_UNITS;
-  return `₦${naira.toLocaleString("en-NG", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+/** ₦23,050.00. Figures are shown in full, never rounded. */
+export function formatNaira(amount: string): string {
+  const [major = "0", minor = "00"] = amount.split(".");
+  const grouped = Number(major).toLocaleString("en-NG");
+  return `₦${grouped}.${minor.padEnd(2, "0").slice(0, 2)}`;
 }
 
-/** A compact naira figure for display at figure scale: ₦48.2m. */
-export function formatNairaCompact(kobo: number): string {
-  const naira = kobo / NAIRA_MAJOR_UNITS;
+/** A compact figure for display at figure scale: ₦48.2m. The full amount is
+    always available beside it, because a rounded figure is not the record. */
+export function formatNairaCompact(amount: string): string {
+  const [major = "0"] = amount.split(".");
+  const naira = Number(major);
   const million = 1_000_000;
   const thousand = 1_000;
   if (naira >= million) {
@@ -48,7 +50,7 @@ export function formatNairaCompact(kobo: number): string {
   if (naira >= thousand) {
     return `₦${(naira / thousand).toFixed(1)}k`;
   }
-  return `₦${naira.toFixed(0)}`;
+  return `₦${naira}`;
 }
 
 export function formatCount(value: number): string {

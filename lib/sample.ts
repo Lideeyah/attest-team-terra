@@ -1,102 +1,75 @@
-/* Reference data for the component and motion reference at /dev/kitchen-sink.
-   Figures are consistent with one another: Ekuri Forest Initiative enrols
-   2,090 households against a 60 percent Plan Vivo commitment of ₦48.2m, has
-   funded ₦31.4m, and has settled 1,284 transfers for the open period. */
+import {
+  AGENTS,
+  PROJECTS,
+  RUNS,
+  attestationsFor,
+  runTransfers,
+} from "@/lib/mock/seed";
+import type { Transfer } from "@/lib/api/contract";
 
-export const PROJECT = {
-  id: "proj_ekuri_forest",
-  name: "Ekuri Forest Initiative",
-  registry: "Plan Vivo",
-  registryId: "PV-NG-0417",
-  state: "Cross River",
-  localGovernment: "Akamkpa",
-  methodology: "Plan Vivo Standard v5.0, avoided deforestation",
-  period: "2026-Q4",
-  enrolled: 2090,
-  paid: 1284,
-  requiredKobo: 4_820_000_000,
-  fundedKobo: 3_140_000_000,
-  shortfallKobo: 1_680_000_000,
-  attestationHash:
-    "9f2c41ab7e0d5386c14f90b2ad77e5610c8f3b24d9ea17458b06cf2e3d71a845",
-} as const;
+/* The component and motion reference reads the mock's own seed, so a figure
+   on /dev/kitchen-sink is the figure the product serves. Nothing here is a
+   second set of numbers. */
 
-export type TransferRow = {
-  id: string;
-  participant: string;
-  community: string;
-  amountKobo: number;
-  sessionId: string;
-  at: string;
-  state: "settled" | "unconfirmed" | "failed" | "in-flight";
-};
+export const PROJECT = PROJECTS[0];
 
-export const TRANSFERS: TransferRow[] = [
-  {
-    id: "trf_8841",
-    participant: "Adaeze Okonkwo",
-    community: "Old Ekuri",
-    amountKobo: 2_305_000,
-    sessionId: "000014261109142207104883",
-    at: "2026-11-09T13:22:07Z",
-    state: "settled",
-  },
-  {
-    id: "trf_8842",
-    participant: "Ebong Asuquo",
-    community: "New Ekuri",
-    amountKobo: 2_305_000,
-    sessionId: "000014261109142231104884",
-    at: "2026-11-09T13:22:31Z",
-    state: "settled",
-  },
-  {
-    id: "trf_8843",
-    participant: "Ngozi Eyo",
-    community: "Okokori",
-    amountKobo: 2_305_000,
-    sessionId: "000014261109142258104885",
-    at: "2026-11-09T13:22:58Z",
-    state: "unconfirmed",
-  },
-  {
-    id: "trf_8844",
-    participant: "Musa Abdullahi",
-    community: "Iko Esai",
-    amountKobo: 2_305_000,
-    sessionId: "000014261109142314104886",
-    at: "2026-11-09T13:23:14Z",
-    state: "failed",
-  },
-  {
-    id: "trf_8845",
-    participant: "Blessing Udoh",
-    community: "Old Ekuri",
-    amountKobo: 2_305_000,
-    sessionId: "000014261109142340104887",
-    at: "2026-11-09T13:23:40Z",
-    state: "in-flight",
-  },
-];
+export const OPEN_PERIOD =
+  PROJECT.periods.find((period) => period.state === "open") ?? PROJECT.periods[0];
+
+export const CLOSED_PERIOD =
+  PROJECT.periods.filter((period) => period.state !== "open").at(-1) ?? PROJECT.periods[0];
+
+export const OPEN_RUN = RUNS.find((run) => run.id === "run_2026q4") ?? RUNS[0];
+
+export const ATTESTATION =
+  attestationsFor(PROJECT.id).at(-1) ?? attestationsFor(PROJECT.id)[0];
+
+/** Five rows of the open run, one in each state the table has to show. */
+export const TRANSFERS: Transfer[] = (() => {
+  const rows = runTransfers(OPEN_RUN.id, PROJECT.id, 400);
+  const pick = (state: Transfer["state"]) =>
+    rows.find((row) => row.state === state);
+  const chosen = [
+    pick("settled"),
+    pick("unconfirmed"),
+    pick("failed"),
+    pick("reversed"),
+    rows.find((row) => row.state === "settled" && row.rail === "interbank"),
+  ].filter((row): row is Transfer => row !== undefined);
+  return chosen;
+})();
+
+export const AGENT_ABOVE_THRESHOLD =
+  AGENTS.find((agent) => agent.aboveFlagThreshold) ?? AGENTS[0];
+
+export const COVERAGE_SERIES = PROJECT.periods.map((period) => ({
+  label: period.period,
+  paid: period.paid,
+  enrolled: period.enrolled,
+}));
+
+export const COMMITMENT_QUOTATION = PROJECT.commitment.sourceQuote;
+
+export const COMMITMENT_SOURCE = `Project design document, page ${PROJECT.commitment.page}`;
 
 export const SIGNAL_LINES = [
   {
     id: "sig_line_1",
     at: "2026-11-09T13:21:02Z",
-    text: "graph.walk proj_ekuri_forest depth=2",
+    text: "graph.walk proj_delta depth=2",
     meta: "412 nodes · 61ms",
   },
   {
     id: "sig_line_2",
     at: "2026-11-09T13:21:03Z",
-    text: "onward.flow wallet_30418 → wallet_30418_agent",
+    text: "onward.flow wallet_30418 → acc_concentrator_1",
     meta: "4 transfers · 38ms",
   },
   {
     id: "sig_line_3",
     at: "2026-11-09T13:21:05Z",
-    text: "signal.raised collection_pattern agent_ag_0094",
-    meta: "confidence 0.71 · 22ms",
+    text: "signal.raised onward_concentration sig_0231",
+    meta: "400 accounts · 22ms",
   },
   {
     id: "sig_line_4",
@@ -105,16 +78,3 @@ export const SIGNAL_LINES = [
     meta: "1 record · 17ms",
   },
 ];
-
-export const COVERAGE_SERIES = [
-  { label: "2025-Q4", paid: 0, enrolled: 0 },
-  { label: "2026-Q1", paid: 318, enrolled: 1140 },
-  { label: "2026-Q2", paid: 902, enrolled: 1612 },
-  { label: "2026-Q3", paid: 1407, enrolled: 1904 },
-  { label: "2026-Q4", paid: 1284, enrolled: 2090 },
-];
-
-export const COMMITMENT_QUOTATION =
-  "At least sixty percent of net revenue from the sale of Plan Vivo Certificates shall be distributed to participating households in the Ekuri community, quarterly, in the year following issuance.";
-
-export const COMMITMENT_SOURCE = "Project design document, page 44";

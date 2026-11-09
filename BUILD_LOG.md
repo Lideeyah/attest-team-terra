@@ -307,3 +307,59 @@ and the live run screen will read the failure class from
 event outside the six appears.
 
 **Gate.** `npm run gate -- F-1`: 39 assertions, 39 passed.
+
+**Third verification pass.** A–F all held under probing, with no regressions.
+Two things came back, and both were right:
+
+- **The stricter stream reading had broken the thing it was meant to fix.**
+  With `failureClass` removed from the event, the screen was told to look the
+  class up in `GET /api/runs/:id/transfers` — but two independent generators
+  were deciding which transfers failed, so a transfer the stream reported as
+  failed was settled in the table, at a different rate, and the run's own
+  `counts` were a third hand-written figure. One generator decides now:
+  `transferStateAt()` draws each outcome from the configured shares, the
+  stream reads each transfer's own state rather than rolling its own, and a
+  run's counts and failure breakdown are tallied from the same source. The
+  gate asserts that a transfer the stream reports as failed is failed in the
+  transfer list and carries a class.
+- **Widening the try/catch grep covered nothing**, because the exclusions
+  removed every file in `lib` that contains a `catch`. The pattern now ignores
+  a `.catch()` method call, which is the discipline rather than a breach of it,
+  and nothing is excluded but the test file.
+
+**What that exposed, and what followed.** Once the counts were computed, the
+projects' typed figures disagreed with them. The product's first principle is
+that coverage is computed and never typed, so the fixture now obeys it too: a
+period declares only which period it is, whether it is open, when it closed and
+whether it was corrected, and every figure in it — households paid, the amount
+households received, the charges borne, the commitment required, the shortfall
+and the confirmation rate — is tallied from the run behind it. A project's
+totals are its periods'. The record that comes out of it reads as a record
+rather than as a set of figures somebody chose:
+
+```
+Ekuri    2026-Q1  closed       980 of 1,140   short ₦11.4m   confirmed 0.72
+         2026-Q2  closed late  1,382 of 1,612 short ₦9.1m    confirmed 0.71
+         2026-Q3  closed       1,611 of 1,904 short ₦6.8m    confirmed 0.72
+         2026-Q4  open         1,738 of 2,090 short ₦8.1m    confirmed 0.72
+Hadejia  2026-Q3  closed       714 of 846     commitment met confirmed 0.82
+Akassa   2026-Q3  closed       1,205 of 1,402 short ₦3.4m    confirmed 0.30
+```
+
+Akassa's confirmation rate is the fixture's point: the money cleared and the
+households did not acknowledge it, which is what the onward-flow signal and
+case 0231 are about.
+
+**One source of figures.** `lib/sample.ts` held a second set of numbers for the
+component reference. It now derives from the mock's seed, so a figure on
+`/dev/kitchen-sink` is a figure the product serves. Amounts are NGN decimal
+strings everywhere; `lib/record.ts` formats the string's own parts and nothing
+in the front end converts a unit.
+
+**Two smaller items from the same pass.** The three developer endpoints refuse
+a malformed body rather than failing on it. And the forced stream drop logs
+`failed to pipe response` in the development server: that is the connection
+being dropped deliberately, which is the mechanism rather than a defect, and
+it is what makes the live run screen's reconnecting state reachable.
+
+**Gate.** `npm run gate -- F-1`: 40 assertions, 40 passed. `F-0`: 31 of 31.

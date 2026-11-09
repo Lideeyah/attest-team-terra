@@ -10,7 +10,10 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as { projectId?: string; rows?: number | null };
+  const body = (await request.json().catch(() => null)) as { projectId?: string; rows?: number | null };
+  if (body === null) {
+    return NextResponse.json({ error: "Body was not JSON." }, { status: 400 });
+  }
   const projectId = body.projectId ?? "proj_ekuri";
   setRosterSize(
     projectId,

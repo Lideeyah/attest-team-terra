@@ -7,6 +7,7 @@
    ATTEST_API_MODE=live excludes the mock server and the inbound hook mock */
 
 import { cpSync, existsSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -49,6 +50,10 @@ for (const tree of TREES) {
 for (const stale of [join(root, ".next", "types"), join(root, ".next", "dev", "types")]) {
   rmSync(stale, { recursive: true, force: true });
 }
+
+/* The route types are generated from the route tree this script just changed,
+   so they are rebuilt here rather than left stale for the next typecheck. */
+spawnSync("npx", ["next", "typegen"], { cwd: root, stdio: "ignore" });
 
 process.stdout.write(
   `developer tooling ${devTools ? "included" : "excluded"}, mock server ${

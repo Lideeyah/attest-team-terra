@@ -36,25 +36,16 @@ function respond(request: Request, body: Record<string, unknown>) {
   return NextResponse.json(envelope, { status: statusFor(envelope), headers });
 }
 
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 /** The mock Server-Sent Events stream for a live run. The rate is transfers
     per second; each transfer emits its queued, in-flight and outcome events.
     The failure and reversal shares are drawn from a seeded generator, so the
     share holds at any transfer count and failures do not all arrive first. */
 function stream(request: Request, runId: string): Response {
   const config = streamConfig();
+  /* The transfers carry their own outcomes, drawn from the configured shares,
+     so what the stream reports is what the transfer list and the run's counts
+     say. Nothing here decides an outcome of its own. */
   const transfers = runTransfers(runId, "proj_ekuri", config.transfers);
-  const random = mulberry32(runId.length * 7919 + config.transfers);
   const encoder = new TextEncoder();
   let index = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -95,24 +86,18 @@ function stream(request: Request, runId: string): Response {
         }
 
         const transfer = transfers[index];
-        const roll = random();
-        const outcome =
-          roll < config.failureShare
-            ? "transfer.failed"
-            : roll < config.failureShare + config.reversalShare
-              ? "transfer.reversed"
-              : "transfer.settled";
 
         send("transfer.queued", { id: transfer.id, state: "queued" });
         send("transfer.in_flight", { id: transfer.id, state: "in_flight" });
         /* Each event carries the transfer id and its new state and nothing
-           else, as the contract says. The run screen patches its own table
-           and reads the failure class from /api/runs/:id/transfers. */
-        if (outcome === "transfer.failed") {
+           else, as the contract says. The run screen patches its own table and
+           reads the failure class from /api/runs/:id/transfers, where the same
+           row carries it. */
+        if (transfer.state === "failed") {
           send("transfer.failed", { id: transfer.id, state: "failed" });
         } else {
           send("transfer.settled", { id: transfer.id, state: "settled" });
-          if (outcome === "transfer.reversed") {
+          if (transfer.state === "reversed") {
             /* The sandbox settles and then reverses about a minute later. The
                settlement stands and the reversal is a correction. */
             send("transfer.reversed", { id: transfer.id, state: "reversed" });

@@ -149,6 +149,8 @@ export type PeriodSummary = {
   closedAt: string | null;
   attestationId: string | null;
   corrected: boolean;
+  /** Settlement and acknowledgement are separate facts, and both are shown. */
+  confirmationRate: number;
 };
 
 export type ParticipantStatus =

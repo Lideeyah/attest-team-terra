@@ -69,6 +69,13 @@ export function streamConfig(): StreamConfig {
   return { ...stream };
 }
 
+/** The shares the fixture's own outcomes are drawn from. The stream, the
+    transfer list and a run's counts all read these, so the panel moves all
+    three together. */
+export function fixtureShares(): { failureShare: number; reversalShare: number } {
+  return { failureShare: stream.failureShare, reversalShare: stream.reversalShare };
+}
+
 /* The roster size the mock serves for a project. It exists so a screen can be
    profiled at ten thousand rows without a query parameter the contract does
    not have. It is set from /api/dev, which no production build carries. */

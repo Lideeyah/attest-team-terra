@@ -24,14 +24,18 @@ import { Table, type Column } from "@/components/Table";
 import { Tabs } from "@/components/Tabs";
 import { ToastProvider, useToast } from "@/components/Toast";
 import {
+  ATTESTATION,
+  CLOSED_PERIOD,
   COMMITMENT_QUOTATION,
   COMMITMENT_SOURCE,
   COVERAGE_SERIES,
+  OPEN_PERIOD,
+  OPEN_RUN,
   PROJECT,
   SIGNAL_LINES,
   TRANSFERS,
-  type TransferRow,
 } from "@/lib/sample";
+import type { Transfer, TransferState as RecordState } from "@/lib/api/contract";
 import {
   coveragePercent,
   formatCount,
@@ -94,24 +98,22 @@ const COLOUR_GROUPS = [
   },
 ];
 
-const TRANSFER_STAMP: Record<
-  TransferRow["state"],
-  { state: StampState; label: string }
-> = {
+const TRANSFER_STAMP: Record<RecordState, { state: StampState; label: string }> = {
   settled: { state: "sealed", label: "Settled" },
   unconfirmed: { state: "flagged", label: "Unconfirmed" },
   failed: { state: "blocked", label: "Failed" },
-  "in-flight": { state: "review", label: "In flight" },
+  reversed: { state: "blocked", label: "Reversed" },
+  queued: { state: "review", label: "Queued" },
+  in_flight: { state: "review", label: "In flight" },
 };
 
-const STRIP_STATE: Record<
-  TransferRow["state"],
-  "flagged" | "blocked" | "review" | undefined
-> = {
+const STRIP_STATE: Record<RecordState, "flagged" | "blocked" | "review" | undefined> = {
   settled: undefined,
   unconfirmed: "flagged",
   failed: "blocked",
-  "in-flight": "review",
+  reversed: "blocked",
+  queued: "review",
+  in_flight: "review",
 };
 
 function Section({
@@ -341,11 +343,11 @@ function FormSheet() {
 }
 
 function TransferTable() {
-  const columns: Column<TransferRow>[] = [
+  const columns: Column<Transfer>[] = [
     {
       key: "participant",
       header: "Participant",
-      cell: (row) => row.participant,
+      cell: (row) => row.participantName,
     },
     {
       key: "community",
@@ -360,14 +362,18 @@ function TransferTable() {
       numeric: true,
       sortable: true,
       sorted: "descending",
-      cell: (row) => formatNaira(row.amountKobo),
+      cell: (row) => formatNaira(row.amount),
     },
     {
       key: "session",
       header: "NIBSS session",
-      cell: (row) => row.sessionId,
+      cell: (row) => row.sessionId ?? "—",
     },
-    { key: "at", header: "Settled", cell: (row) => formatTimestamp(row.at) },
+    {
+      key: "settled",
+      header: "Settled",
+      cell: (row) => (row.settledAt ? formatTimestamp(row.settledAt) : "—"),
+    },
     {
       key: "state",
       header: "State",
@@ -387,7 +393,7 @@ function TransferTable() {
       columns={columns}
       rows={TRANSFERS}
       rowKey={(row) => row.id}
-      activeRowKey="trf_8843"
+      activeRowKey={TRANSFERS[1]?.id}
     />
     </div>
   );
@@ -435,7 +441,7 @@ function Overlays() {
             been confirmed by the participant. A reminder was sent by SMS on 10
             November.
           </p>
-          <Hash value={PROJECT.attestationHash} />
+          <Hash value={ATTESTATION.hash} />
         </div>
       </Sheet>
 
@@ -454,9 +460,9 @@ function Overlays() {
       >
         <div className="stack">
           <p className="prose">
-            Commitment requires {formatNairaCompact(PROJECT.requiredKobo)}. You
-            are funding {formatNairaCompact(PROJECT.fundedKobo)}. Shortfall{" "}
-            {formatNairaCompact(PROJECT.shortfallKobo)}, recorded in this
+            Commitment requires {formatNairaCompact(OPEN_PERIOD.required)}. You
+            are funding {formatNairaCompact(OPEN_RUN.fundingAmount)}. Shortfall{" "}
+            {formatNairaCompact(OPEN_PERIOD.shortfall)}, recorded in this
             period&rsquo;s attestation.
           </p>
           <p className="prose-muted">
@@ -495,13 +501,13 @@ function MotionSheet({
             {(row) => (
               <Strip
                 state={STRIP_STATE[row.state]}
-                inFlight={row.state === "in-flight"}
+                inFlight={row.state === "queued"}
               >
                 <span className="record-cell" style={{ flex: 1 }}>
-                  {row.participant}
+                  {row.participantName}
                 </span>
                 <span className="record-cell numeric">
-                  {formatNaira(row.amountKobo)}
+                  {formatNaira(row.amount)}
                 </span>
                 <Stamp
                   state={TRANSFER_STAMP[row.state].state}
@@ -540,7 +546,7 @@ function MotionSheet({
                 <h3 className="h3-display">Period 2026-Q4</h3>
                 <p className="record-cell">
                   {formatCoverage(PROJECT.paid, PROJECT.enrolled)} households
-                  paid · {formatNaira(PROJECT.fundedKobo)} funded
+                  paid · {formatNaira(OPEN_RUN.fundingAmount)} funded
                 </p>
               </div>
             </PeriodSeal>
@@ -586,7 +592,7 @@ function MotionSheet({
       <div className="stack">
         <p className="eyebrow" data-primitive="hashResolve">hashResolve, on anchoring</p>
         <div key={`hash-${replayKey}`} data-component="hash">
-          <Hash value={PROJECT.attestationHash} resolve />
+          <Hash value={ATTESTATION.hash} resolve />
         </div>
       </div>
 
@@ -675,10 +681,10 @@ function MotionSheet({
         </p>
         <Strip state="review" inFlight>
           <span className="record-cell" style={{ flex: 1 }}>
-            Blessing Udoh · Old Ekuri
+            {TRANSFERS[0]?.participantName} · {TRANSFERS[0]?.community}
           </span>
-          <span className="record-cell numeric">{formatNaira(2_305_000)}</span>
-          <Stamp state="review" label="In flight" recordId="trf_8845" />
+          <span className="record-cell numeric">{formatNaira(TRANSFERS[0]?.amount ?? "0.00")}</span>
+          <Stamp state="review" label="In flight" recordId={TRANSFERS[0]?.id ?? "trf"} />
         </Strip>
       </div>
     </div>
@@ -802,13 +808,13 @@ export function KitchenSink() {
               <Strip
                 key={row.id}
                 state={STRIP_STATE[row.state]}
-                inFlight={row.state === "in-flight"}
+                inFlight={row.state === "queued"}
               >
                 <span className="record-cell" style={{ flex: 1 }}>
-                  {row.participant} · {row.community}
+                  {row.participantName} · {row.community}
                 </span>
                 <span className="record-cell numeric">
-                  {formatNaira(row.amountKobo)}
+                  {formatNaira(row.amount)}
                 </span>
                 <Stamp
                   state={TRANSFER_STAMP[row.state].state}
@@ -832,9 +838,9 @@ export function KitchenSink() {
               next period.
             </Notice>
             <Notice tone="flagged" title="Shortfall">
-              Commitment requires {formatNairaCompact(PROJECT.requiredKobo)}. You
-              are funding {formatNairaCompact(PROJECT.fundedKobo)}. Shortfall{" "}
-              {formatNairaCompact(PROJECT.shortfallKobo)}, recorded in this
+              Commitment requires {formatNairaCompact(OPEN_PERIOD.required)}. You
+              are funding {formatNairaCompact(OPEN_RUN.fundingAmount)}. Shortfall{" "}
+              {formatNairaCompact(OPEN_PERIOD.shortfall)}, recorded in this
               period&rsquo;s attestation.
             </Notice>
             <Notice tone="blocked" title="Duplicate identity">
@@ -865,8 +871,8 @@ export function KitchenSink() {
                   <div className="stack">
                     <p className="record-cell">
                       {formatCoverage(PROJECT.paid, PROJECT.enrolled)} households
-                      paid · {formatNaira(PROJECT.fundedKobo)} funded ·{" "}
-                      {formatNaira(PROJECT.shortfallKobo)} short
+                      paid · {formatNaira(OPEN_RUN.fundingAmount)} funded ·{" "}
+                      {formatNaira(OPEN_PERIOD.shortfall)} short
                     </p>
                     <p className="prose-muted">
                       The period is open, so every figure in it can still change.
@@ -879,8 +885,8 @@ export function KitchenSink() {
                 label: "2026-Q3, sealed",
                 panel: (
                   <div className="stack">
-                    <Stamp state="sealed" label="Anchored" recordId="att_2026q3" />
-                    <Hash value={PROJECT.attestationHash} />
+                    <Stamp state="sealed" label="Anchored" recordId={ATTESTATION.id} />
+                    <Hash value={ATTESTATION.hash} />
                     <p className="prose-muted">
                       Sealed on 1 October 2026 and anchored to Hedera Consensus
                       Service. Nothing in it can be edited.
@@ -893,7 +899,16 @@ export function KitchenSink() {
                 label: "2026-Q2, sealed",
                 panel: (
                   <p className="record-cell">
-                    902 of 1,612 households paid · coverage 56.0%
+                    {formatCoverage(
+                      PROJECT.periods[1].paid,
+                      PROJECT.periods[1].enrolled,
+                    )}{" "}
+                    households paid · coverage{" "}
+                    {coveragePercent(
+                      PROJECT.periods[1].paid,
+                      PROJECT.periods[1].enrolled,
+                    )}
+                    %
                   </p>
                 ),
               },
@@ -941,7 +956,7 @@ export function KitchenSink() {
               data-component="registered"
             >
               <div className="stack-lg">
-                <p className="eyebrow">Attestation · {PROJECT.period}</p>
+                <p className="eyebrow">Attestation · {CLOSED_PERIOD.period}</p>
                 <h3 className="h3-display">{PROJECT.name}</h3>
                 <p className="record-cell">
                   {PROJECT.registry} {PROJECT.registryId} · {PROJECT.state},{" "}
@@ -950,10 +965,10 @@ export function KitchenSink() {
                 <Rule weight="hairline" />
                 <p className="record-cell">
                   {formatCoverage(PROJECT.paid, PROJECT.enrolled)} households
-                  paid · {formatNaira(PROJECT.fundedKobo)} settled ·{" "}
-                  {formatNaira(PROJECT.requiredKobo)} required
+                  paid · {formatNaira(OPEN_RUN.fundingAmount)} settled ·{" "}
+                  {formatNaira(OPEN_PERIOD.required)} required
                 </p>
-                <Hash value={PROJECT.attestationHash} full />
+                <Hash value={ATTESTATION.hash} full />
               </div>
             </div>
           </Registered>

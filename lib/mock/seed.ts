@@ -1,6 +1,8 @@
+import { fixtureShares } from "@/lib/mock/forced";
 import type {
   AccountGraph,
   Agent,
+  ErrorCode,
   Amount,
   Attestation,
   Case,
@@ -15,6 +17,7 @@ import type {
   Signal,
   Tariff,
   Transfer,
+  TransferState,
   VerificationException,
 } from "@/lib/api/contract";
 
@@ -141,62 +144,40 @@ const DELTA_COMMITMENT: Commitment = {
 
 /* ---- Periods -------------------------------------------------------------- */
 
-function ekuriPeriods(): PeriodSummary[] {
-  const closed: PeriodSummary[] = [
-    {
-      period: "2026-Q1",
-      state: "closed",
-      enrolled: 1140,
-      paid: 318,
-      amountToHouseholds: multiplyAmount(AMOUNT_PER_HOUSEHOLD, 318),
-      chargesBorne: "0.00",
-      required: "18420000.00",
-      shortfall: "11089100.00",
-      closedAt: "2026-04-01T09:12:44Z",
-      attestationId: "att_ekuri_2026q1",
-      corrected: false,
-    },
-    {
-      period: "2026-Q2",
-      state: "closed-late",
-      enrolled: 1612,
-      paid: 902,
-      amountToHouseholds: multiplyAmount(AMOUNT_PER_HOUSEHOLD, 902),
-      chargesBorne: "2418.75",
-      required: "27410000.00",
-      shortfall: "6618900.00",
-      closedAt: "2026-07-14T16:02:10Z",
-      attestationId: "att_ekuri_2026q2",
-      corrected: false,
-    },
-    {
-      period: "2026-Q3",
-      state: "closed",
-      enrolled: 1904,
-      paid: 1407,
-      amountToHouseholds: multiplyAmount(AMOUNT_PER_HOUSEHOLD, 1407),
-      chargesBorne: "3225.00",
-      required: "35200000.00",
-      shortfall: "2768650.00",
-      closedAt: "2026-10-01T08:30:02Z",
-      attestationId: "att_ekuri_2026q3",
-      corrected: true,
-    },
-  ];
-  const open: PeriodSummary = {
-    period: "2026-Q4",
-    state: "open",
-    enrolled: 2090,
-    paid: 1284,
-    amountToHouseholds: multiplyAmount(AMOUNT_PER_HOUSEHOLD, 1284),
-    chargesBorne: "1612.50",
-    required: "48200000.00",
-    shortfall: "18604800.00",
-    closedAt: null,
-    attestationId: null,
-    corrected: false,
+/* A period carries only what is declared: which period it is, whether it is
+   open, when it closed and whether it was corrected. Every figure in it is
+   computed from the run behind it by computeCoverage below, because a figure
+   that can be typed is a figure that can be authored. */
+function periodStub(
+  period: string,
+  state: PeriodSummary["state"],
+  closedAt: string | null,
+  attestationId: string | null,
+  corrected = false,
+): PeriodSummary {
+  return {
+    period,
+    state,
+    enrolled: 0,
+    paid: 0,
+    amountToHouseholds: "0.00",
+    chargesBorne: "0.00",
+    required: "0.00",
+    shortfall: "0.00",
+    closedAt,
+    attestationId,
+    corrected,
+    confirmationRate: 0,
   };
-  return [...closed, open];
+}
+
+function ekuriPeriods(): PeriodSummary[] {
+  return [
+    periodStub("2026-Q1", "closed", "2026-04-01T09:12:44Z", "att_ekuri_2026q1"),
+    periodStub("2026-Q2", "closed-late", "2026-07-14T16:02:10Z", "att_ekuri_2026q2"),
+    periodStub("2026-Q3", "closed", "2026-10-01T08:30:02Z", "att_ekuri_2026q3", true),
+    periodStub("2026-Q4", "open", null, null),
+  ];
 }
 
 /* ---- Projects ------------------------------------------------------------- */
@@ -245,32 +226,8 @@ export const PROJECTS: Project[] = [
     confirmationRate: 0.93,
     lastClosedPeriod: "2026-Q3",
     periods: [
-      {
-        period: "2026-Q2",
-        state: "closed",
-        enrolled: 720,
-        paid: 720,
-        amountToHouseholds: multiplyAmount("19400.00", 720),
-        chargesBorne: "0.00",
-        required: "13968000.00",
-        shortfall: "0.00",
-        closedAt: "2026-07-01T10:04:19Z",
-        attestationId: "att_hadejia_2026q2",
-        corrected: false,
-      },
-      {
-        period: "2026-Q3",
-        state: "closed",
-        enrolled: 846,
-        paid: 846,
-        amountToHouseholds: multiplyAmount("19400.00", 846),
-        chargesBorne: "0.00",
-        required: "16412400.00",
-        shortfall: "0.00",
-        closedAt: "2026-10-01T09:41:55Z",
-        attestationId: "att_hadejia_2026q3",
-        corrected: false,
-      },
+      periodStub("2026-Q2", "closed", "2026-07-01T10:04:19Z", "att_hadejia_2026q2"),
+      periodStub("2026-Q3", "closed", "2026-10-01T09:41:55Z", "att_hadejia_2026q3"),
     ],
   },
   {
@@ -294,19 +251,7 @@ export const PROJECTS: Project[] = [
     confirmationRate: 0.34,
     lastClosedPeriod: "2026-Q3",
     periods: [
-      {
-        period: "2026-Q3",
-        state: "closed",
-        enrolled: 1402,
-        paid: 1308,
-        amountToHouseholds: multiplyAmount("21400.00", 1308),
-        chargesBorne: "14056.25",
-        required: "29202800.00",
-        shortfall: "1189600.00",
-        closedAt: "2026-10-02T11:18:07Z",
-        attestationId: "att_delta_2026q3",
-        corrected: false,
-      },
+      periodStub("2026-Q3", "closed", "2026-10-02T11:18:07Z", "att_delta_2026q3"),
     ],
   },
 ];
@@ -575,23 +520,46 @@ const FAILURE_CLASSES = [
   "INSUFFICIENT_FUNDS",
 ] as const;
 
+/* How many households in a hundred acknowledge the payment. Akassa's figure
+   is the pattern worth looking at: the money cleared and the households did
+   not confirm it, which is what the onward-flow signal is about. */
+const CONFIRMATION_RATE: Record<string, number> = {
+  proj_ekuri: 81,
+  proj_hadejia: 93,
+  proj_delta: 34,
+};
+
 export function transferIdFor(runId: string, index: number): string {
   return `trf_${runId.slice(-6)}_${String(index + 1).padStart(5, "0")}`;
 }
 
+/** The outcome of one transfer. The stream, the transfer list and the run's
+    counts all read this, so a row the stream reports as failed is failed in
+    the table behind it and carries the class the retry control acts on. The
+    shares come from the configured fixture, so the panel changes all three at
+    once rather than only the stream. */
+export function transferStateAt(
+  runId: string,
+  index: number,
+  shares: { failureShare: number; reversalShare: number },
+): TransferState {
+  const seed = index * 97 + runId.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0);
+  const roll = mulberry32(seed)();
+  if (roll < shares.failureShare) {
+    return "failed";
+  }
+  if (roll < shares.failureShare + shares.reversalShare) {
+    return "reversed";
+  }
+  /* A settled transfer the participant has not acknowledged is its own state,
+     and it is visible. */
+  return index % 9 === 4 ? "unconfirmed" : "settled";
+}
+
 export function transferAt(runId: string, index: number, projectId: string): Transfer {
   const participant = participantAt(projectId, index);
-  const random = mulberry32(index * 97 + runId.length);
-  const roll = random();
   const interbank = index % 11 === 0;
-  const state: Transfer["state"] =
-    roll > 0.94
-      ? "failed"
-      : roll > 0.9
-        ? "unconfirmed"
-        : roll > 0.885
-          ? "reversed"
-          : "settled";
+  const state = transferStateAt(runId, index, fixtureShares());
   const failureClass =
     state === "failed"
       ? FAILURE_CLASSES[index % FAILURE_CLASSES.length]
@@ -623,7 +591,7 @@ export function transferAt(runId: string, index: number, projectId: string): Tra
         ? null
         : new Date(Date.parse(queuedAt) + 4200).toISOString(),
     confirmedAt:
-      state === "settled" && index % 5 !== 0
+      state === "settled" && index % 100 < CONFIRMATION_RATE[projectId]
         ? new Date(Date.parse(queuedAt) + 86_400_000).toISOString()
         : null,
     rail: interbank ? "interbank" : "intrabank",
@@ -636,97 +604,131 @@ export function runTransfers(runId: string, projectId: string, count: number): T
   );
 }
 
+function tally(runId: string, projectId: string, size: number): {
+  counts: Run["counts"];
+  failures: Run["failures"];
+} {
+  const counts: Run["counts"] = {
+    queued: 0,
+    in_flight: 0,
+    settled: 0,
+    failed: 0,
+    reversed: 0,
+    unconfirmed: 0,
+  };
+  const byClass = new Map<string, number>();
+  for (let index = 0; index < size; index += 1) {
+    const transfer = transferAt(runId, index, projectId);
+    counts[transfer.state] += 1;
+    if (transfer.failureClass) {
+      byClass.set(transfer.failureClass, (byClass.get(transfer.failureClass) ?? 0) + 1);
+    }
+  }
+  return {
+    counts,
+    failures: [...byClass.entries()]
+      .map(([failureClass, count]) => ({ class: failureClass as ErrorCode, count }))
+      .sort((left, right) => right.count - left.count),
+  };
+}
+
+function run(
+  id: string,
+  projectId: string,
+  period: string,
+  state: Run["state"],
+  rosterSize: number,
+  declaredGross: Amount,
+  fundingAmount: Amount,
+  createdAt: string,
+  executedAt: string | null,
+): Run {
+  const { counts, failures } = rosterSize === 0
+    ? { counts: { queued: 0, in_flight: 0, settled: 0, failed: 0, reversed: 0, unconfirmed: 0 }, failures: [] }
+    : tally(id, projectId, rosterSize);
+  return {
+    id,
+    projectId,
+    period,
+    state,
+    rosterSize,
+    declaredGross,
+    fundingAmount,
+    createdAt,
+    executedAt,
+    counts,
+    failures,
+  };
+}
+
 export const RUNS: Run[] = [
-  {
-    id: "run_2026q1",
-    projectId: "proj_ekuri",
-    period: "2026-Q1",
-    state: "complete",
-    rosterSize: 1140,
-    declaredGross: "30700000.00",
-    fundingAmount: "18420000.00",
-    createdAt: "2026-03-28T08:00:00Z",
-    executedAt: "2026-03-30T09:02:00Z",
-    counts: { queued: 0, in_flight: 0, settled: 318, failed: 702, reversed: 4, unconfirmed: 116 },
-    failures: [
-      { class: "ACCOUNT_NOT_FOUND", count: 402 },
-      { class: "ACCOUNT_DORMANT", count: 180 },
-      { class: "LIMIT_EXCEEDED", count: 64 },
-      { class: "TIMEOUT", count: 38 },
-      { class: "INSUFFICIENT_FUNDS", count: 18 },
-    ],
-  },
-  {
-    id: "run_2026q2",
-    projectId: "proj_ekuri",
-    period: "2026-Q2",
-    state: "complete",
-    rosterSize: 1612,
-    declaredGross: "45683333.33",
-    fundingAmount: "27410000.00",
-    createdAt: "2026-07-10T08:00:00Z",
-    executedAt: "2026-07-12T11:20:00Z",
-    counts: { queued: 0, in_flight: 0, settled: 902, failed: 560, reversed: 7, unconfirmed: 143 },
-    failures: [
-      { class: "ACCOUNT_NOT_FOUND", count: 288 },
-      { class: "ACCOUNT_DORMANT", count: 152 },
-      { class: "LIMIT_EXCEEDED", count: 71 },
-      { class: "TIMEOUT", count: 34 },
-      { class: "INSUFFICIENT_FUNDS", count: 15 },
-    ],
-  },
-  {
-    id: "run_2026q3",
-    projectId: "proj_ekuri",
-    period: "2026-Q3",
-    state: "complete",
-    rosterSize: 1904,
-    declaredGross: "58666666.67",
-    fundingAmount: "35200000.00",
-    createdAt: "2026-09-28T08:00:00Z",
-    executedAt: "2026-09-29T10:14:02Z",
-    counts: { queued: 0, in_flight: 0, settled: 1407, failed: 318, reversed: 12, unconfirmed: 167 },
-    failures: [
-      { class: "ACCOUNT_NOT_FOUND", count: 104 },
-      { class: "ACCOUNT_DORMANT", count: 88 },
-      { class: "LIMIT_EXCEEDED", count: 61 },
-      { class: "TIMEOUT", count: 42 },
-      { class: "INSUFFICIENT_FUNDS", count: 23 },
-    ],
-  },
-  {
-    id: "run_2026q4",
-    projectId: "proj_ekuri",
-    period: "2026-Q4",
-    state: "executing",
-    rosterSize: 2090,
-    declaredGross: "80333333.33",
-    fundingAmount: "31400000.00",
-    createdAt: "2026-11-09T12:40:00Z",
-    executedAt: "2026-11-09T13:20:00Z",
-    counts: { queued: 412, in_flight: 36, settled: 1284, failed: 221, reversed: 9, unconfirmed: 128 },
-    failures: [
-      { class: "ACCOUNT_NOT_FOUND", count: 78 },
-      { class: "ACCOUNT_DORMANT", count: 54 },
-      { class: "LIMIT_EXCEEDED", count: 41 },
-      { class: "TIMEOUT", count: 33 },
-      { class: "INSUFFICIENT_FUNDS", count: 15 },
-    ],
-  },
-  {
-    id: "run_draft",
-    projectId: "proj_ekuri",
-    period: "2026-Q4",
-    state: "draft",
-    rosterSize: 0,
-    declaredGross: "0.00",
-    fundingAmount: "0.00",
-    createdAt: "2026-11-09T15:02:00Z",
-    executedAt: null,
-    counts: { queued: 0, in_flight: 0, settled: 0, failed: 0, reversed: 0, unconfirmed: 0 },
-    failures: [],
-  },
+  run("run_2026q1", "proj_ekuri", "2026-Q1", "complete", 1140, "56700000.00", "23000000.00", "2026-03-28T08:00:00Z", "2026-03-30T09:02:00Z"),
+  run("run_2026q2", "proj_ekuri", "2026-Q2", "complete", 1612, "68300000.00", "32100000.00", "2026-07-10T08:00:00Z", "2026-07-12T11:20:00Z"),
+  run("run_2026q3", "proj_ekuri", "2026-Q3", "complete", 1904, "73300000.00", "37400000.00", "2026-09-28T08:00:00Z", "2026-09-29T10:14:02Z"),
+  run("run_2026q4", "proj_ekuri", "2026-Q4", "executing", 2090, "80333333.33", "40500000.00", "2026-11-09T12:40:00Z", "2026-11-09T13:20:00Z"),
+  run("run_draft", "proj_ekuri", "2026-Q4", "draft", 0, "0.00", "0.00", "2026-11-09T15:02:00Z", null),
+  run("run_hadejia_q2", "proj_hadejia", "2026-Q2", "complete", 720, "25396363.64", "13968000.00", "2026-06-28T08:00:00Z", "2026-06-30T10:00:00Z"),
+  run("run_hadejia_q3", "proj_hadejia", "2026-Q3", "complete", 846, "29840000.00", "16412400.00", "2026-09-28T08:00:00Z", "2026-09-30T09:30:00Z"),
+  run("run_delta_q3", "proj_delta", "2026-Q3", "complete", 1402, "44600000.00", "26200000.00", "2026-09-29T08:00:00Z", "2026-09-30T14:10:00Z"),
 ];
+
+/* Coverage is computed from transfers that cleared, never typed. The fixture
+   obeys the same rule the product does: a period's paid count, the amount
+   households received and the charges borne are tallied from the run behind
+   it, and a project's totals are the sum of its periods. A reversed transfer
+   is not a payment; an unconfirmed one is, because the money arrived and the
+   acknowledgement is a separate fact. */
+function computeCoverage(): void {
+  for (const project of PROJECTS) {
+    for (const period of project.periods) {
+      const periodRun = RUNS.find(
+        (candidate) =>
+          candidate.projectId === project.id &&
+          candidate.period === period.period &&
+          candidate.state !== "draft",
+      );
+      if (!periodRun) {
+        continue;
+      }
+      let households = 0;
+      let paidOut: Amount = "0.00";
+      let charges: Amount = "0.00";
+      let confirmed = 0;
+      for (let index = 0; index < periodRun.rosterSize; index += 1) {
+        const transfer = transferAt(periodRun.id, index, project.id);
+        if (transfer.state === "settled" || transfer.state === "unconfirmed") {
+          households += 1;
+          paidOut = addAmounts(paidOut, transfer.amount);
+          charges = addAmounts(charges, subtractAmounts(transfer.total_debit, transfer.amount));
+          if (transfer.confirmedAt) {
+            confirmed += 1;
+          }
+        }
+      }
+      period.enrolled = periodRun.rosterSize;
+      period.paid = households;
+      period.amountToHouseholds = paidOut;
+      period.chargesBorne = charges;
+      period.required = multiplyAmount(
+        periodRun.declaredGross,
+        project.commitment.percentage / 100,
+      );
+      period.shortfall = subtractAmounts(period.required, paidOut);
+      period.confirmationRate =
+        households === 0 ? 0 : Number((confirmed / households).toFixed(2));
+    }
+
+    const open = project.periods.find((period) => period.state === "open");
+    const latest = open ?? project.periods.at(-1);
+    project.confirmationRate = latest?.confirmationRate ?? 0;
+    project.enrolled = latest?.enrolled ?? project.enrolled;
+    project.paid = latest?.paid ?? project.paid;
+    project.lastClosedPeriod =
+      project.periods.filter((period) => period.state !== "open").at(-1)?.period ?? null;
+  }
+}
+
+computeCoverage();
 
 /* ---- Attestations --------------------------------------------------------- */
 
