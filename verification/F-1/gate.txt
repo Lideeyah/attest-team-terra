@@ -1,5 +1,9 @@
 PASS  typecheck: tsc --noEmit
 PASS  typecheck: no any
+PASS  gitignored: app/dev/states/page.tsx
+PASS  gitignored: app/api/dev/force/route.ts
+PASS  gitignored: app/api/[[...path]]/route.ts
+PASS  gitignored: app/hooks/forge/route.ts
 PASS  client tests against the mock
 PASS  every contract endpoint answers in the contract envelope (80 probed)
 PASS  every list endpoint returns a meta block
@@ -7,13 +11,21 @@ PASS  every error code is forceable (47 codes)
 PASS  every forced error carries a message and a remediation
 PASS  error codes carry the bank's own status codes
 PASS  per_page is capped at one hundred
+PASS  a query parameter outside the contract is ignored
+PASS  the roster size is settable from /api/dev for profiling
+PASS  the readiness probe answers
 PASS  the same key and body replays the original response
 PASS  the same key with a different body is refused
+PASS  a batch that differs below the top level is refused
 PASS  the inbound hook refuses an unverified body
+PASS  the inbound hook refuses a malformed signature without failing
 PASS  the inbound hook accepts a verified body
+PASS  the inbound hook de-duplicates on event id
+PASS  the inbound hook refuses a signed body that is not JSON
 PASS  the mock stream emits every event type
 PASS  stream rate, failure share and reversal share are configurable
-PASS  a forced code fails the stream itself
+PASS  the stream emits no event the contract does not enumerate
+PASS  a forced code drops the stream
 PASS  no screen calls fetch on an API path directly
 PASS  no caller uses try/catch for an expected error
 PASS  no NEXT_PUBLIC_ variable carries a key, secret or token
@@ -25,4 +37,4 @@ PASS  /dev/kitchen-sink absent from the production build
 PASS  /api/dev/force absent from the production build
 PASS  /api/dev/stream-config absent from the production build
 PASS  a live build carries no mock server and no developer tooling
-27 passed, 0 failed in 23.0s
+39 passed, 0 failed in 22.8s

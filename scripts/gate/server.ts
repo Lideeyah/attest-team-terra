@@ -37,7 +37,15 @@ export async function server(): Promise<RunningServer> {
   const baseUrl = `http://127.0.0.1:${PORT}`;
   child = spawn("npm", ["run", "dev", "--", "--port", String(PORT)], {
     stdio: "ignore",
-    env: { ...process.env, ATTEST_DEV_TOOLS: "1", NEXT_PUBLIC_ATTEST_DEV_TOOLS: "1" },
+    env: {
+      ...process.env,
+      ATTEST_DEV_TOOLS: "1",
+      NEXT_PUBLIC_ATTEST_DEV_TOOLS: "1",
+      /* A secret for the gate's own signing, so the hook's accepting path is
+         asserted rather than assumed. */
+      FORGE_WEBHOOK_SECRET:
+        process.env.FORGE_WEBHOOK_SECRET ?? "gate-forge-secret-not-a-real-credential",
+    },
   });
   await waitForReady(baseUrl);
   running = {

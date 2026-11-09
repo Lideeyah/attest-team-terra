@@ -2,7 +2,7 @@
 
 Phase complete: F-0 — foundation. Gate green, 31 of 31. Verified and committed.
 Phase complete: F-1 — mock server, typed client and /dev/states. Gate green,
-27 of 27. Verified, fixed and committed; a re-verification is in flight.
+39 of 39. Verified twice, fixed and committed.
 Next phase: F-2 — the landing page, six scroll-linked movements.
 
 Resume by pasting the orchestration prompt from

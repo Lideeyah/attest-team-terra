@@ -27,18 +27,23 @@ const SUBSCRIBED_EVENTS = [
   "webhook.test",
 ];
 
+const HEX_SIGNATURE = /^[0-9a-f]{64}$/;
+
 function verified(rawBody: string, timestamp: string, signature: string): boolean {
   const secret = process.env.FORGE_WEBHOOK_SECRET ?? "";
   if (!secret || !signature.startsWith("sha256=")) {
     return false;
   }
+  const given = signature.slice("sha256=".length).toLowerCase();
+  /* The value is checked as hex before it is decoded. Buffer.from truncates
+     at the first invalid pair, which would hand timingSafeEqual two buffers
+     of different lengths and throw on input an attacker controls. */
+  if (!HEX_SIGNATURE.test(given)) {
+    return false;
+  }
   const expected = createHmac("sha256", secret)
     .update(`${timestamp}.${rawBody}`)
     .digest("hex");
-  const given = signature.slice("sha256=".length);
-  if (given.length !== expected.length) {
-    return false;
-  }
   return timingSafeEqual(Buffer.from(given, "hex"), Buffer.from(expected, "hex"));
 }
 
@@ -63,8 +68,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = JSON.parse(rawBody) as { event_id?: string };
-  const eventId = parsed.event_id ?? "";
+  /* A signed body can still be malformed. A crash would turn one bad
+     delivery into five retries, so it is refused rather than thrown. */
+  let eventId = "";
+  try {
+    const parsed = JSON.parse(rawBody) as { event_id?: string };
+    eventId = parsed.event_id ?? "";
+  } catch {
+    return NextResponse.json(
+      { status: "error", error: { code: "INVALID_REQUEST", message: "Body was not JSON." } },
+      { status: 400 },
+    );
+  }
   if (eventId && seen.has(eventId)) {
     return NextResponse.json({ status: "success", message: "Already handled", data: { eventId } });
   }

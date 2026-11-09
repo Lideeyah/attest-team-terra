@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
 import {
+  gitIgnores,
   grepAbsent,
   liveBuildExcludesMock,
   record,
@@ -204,6 +205,9 @@ async function force(baseUrl: string, code: string | null): Promise<void> {
 export async function f1(): Promise<void> {
   typecheck();
 
+  /* Every generated tree is ignored, checked rather than assumed. */
+  gitIgnores(["app/dev/states/page.tsx", "app/api/dev/force/route.ts", "app/api/[[...path]]/route.ts", "app/hooks/forge/route.ts"]);
+
   /* The client is exercised against the mock through MSW. */
   try {
     execFileSync("npm", ["test"], { cwd: ROOT, stdio: "pipe" });
@@ -321,6 +325,42 @@ export async function f1(): Promise<void> {
     `per_page ${String(cappedPayload.meta?.per_page)}`,
   );
 
+  /* A parameter the contract does not list changes nothing. */
+  const unlisted = await fetch(
+    `${baseUrl}/api/projects/proj_ekuri/participants?rows=10000&per_page=1`,
+  );
+  const unlistedPayload = (await unlisted.json()) as Envelope;
+  record(
+    "a query parameter outside the contract is ignored",
+    unlistedPayload.meta?.total === 2090,
+    `total ${String(unlistedPayload.meta?.total)}`,
+  );
+
+  /* The roster size is a developer control, not a contract parameter. */
+  await fetch(`${baseUrl}/api/dev/roster-size`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ projectId: "proj_ekuri", rows: 10_000 }),
+  });
+  const scaled = await fetch(
+    `${baseUrl}/api/projects/proj_ekuri/participants?page=1&per_page=1`,
+  );
+  const scaledPayload = (await scaled.json()) as Envelope;
+  record(
+    "the roster size is settable from /api/dev for profiling",
+    scaledPayload.meta?.total === 10_000,
+    `total ${String(scaledPayload.meta?.total)}`,
+  );
+  await fetch(`${baseUrl}/api/dev/roster-size`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ projectId: "proj_ekuri", rows: null }),
+  });
+
+  /* The platform readiness probe. */
+  const health = await fetch(`${baseUrl}/healthz`);
+  record("the readiness probe answers", health.ok, `status ${health.status}`);
+
   /* Idempotency behaves as the bank's conventions require. */
   const key = "gate-idempotency-probe";
   const body = { projectId: "proj_ekuri", category: "not-received", body: "No payment arrived." };
@@ -353,6 +393,30 @@ export async function f1(): Promise<void> {
     `status ${conflict.status} ${String(conflictPayload.error?.code)}`,
   );
 
+  /* A batch differs below its top level, which is where a fingerprint taken
+     over top-level keys alone would silently accept a different payload. */
+  const batchKey = "gate-idempotency-batch";
+  const batchHeaders = {
+    "content-type": "application/json",
+    "Idempotency-Key": batchKey,
+  };
+  await fetch(`${baseUrl}/api/field/enrolments`, {
+    method: "POST",
+    headers: batchHeaders,
+    body: JSON.stringify({ items: [{ clientUuid: "uuid-one", name: "Adaeze Okonkwo" }] }),
+  });
+  const batchConflict = await fetch(`${baseUrl}/api/field/enrolments`, {
+    method: "POST",
+    headers: batchHeaders,
+    body: JSON.stringify({ items: [{ clientUuid: "uuid-two", name: "Ebong Asuquo" }] }),
+  });
+  const batchPayload = (await batchConflict.json()) as Envelope;
+  record(
+    "a batch that differs below the top level is refused",
+    batchConflict.status === 409 && batchPayload.error?.code === "DUPLICATE_REQUEST",
+    `status ${batchConflict.status} ${String(batchPayload.error?.code)}`,
+  );
+
   /* The inbound hook verifies before it acts. */
   const hookBody = JSON.stringify({ event_id: "evt_gate_1", data: {} });
   const timestamp = String(Math.floor(Date.now() / 1000));
@@ -371,29 +435,74 @@ export async function f1(): Promise<void> {
     unsigned.status === 403,
     `status ${unsigned.status}`,
   );
-  const secret = process.env.FORGE_WEBHOOK_SECRET ?? "";
-  if (secret) {
-    const signature = createHmac("sha256", secret)
-      .update(`${timestamp}.${hookBody}`)
-      .digest("hex");
-    const signed = await fetch(`${baseUrl}/hooks/forge`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-forge-event": "transfer.successful",
-        "x-forge-timestamp": timestamp,
-        "x-forge-signature": `sha256=${signature}`,
-      },
-      body: hookBody,
-    });
-    record("the inbound hook accepts a verified body", signed.status === 200, `status ${signed.status}`);
-  } else {
-    record(
-      "the inbound hook accepts a verified body",
-      true,
-      "FORGE_WEBHOOK_SECRET is unset, so only the refusal path is asserted",
-    );
-  }
+  /* A signature of the right length but not hex, which is what reaches the
+     comparison and is where a careless implementation throws. */
+  const malformed = await fetch(`${baseUrl}/hooks/forge`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forge-event": "transfer.successful",
+      "x-forge-timestamp": timestamp,
+      "x-forge-signature": `sha256=${"z".repeat(64)}`,
+    },
+    body: hookBody,
+  });
+  record(
+    "the inbound hook refuses a malformed signature without failing",
+    malformed.status === 403,
+    `status ${malformed.status}`,
+  );
+
+  const secret =
+    process.env.FORGE_WEBHOOK_SECRET ?? "gate-forge-secret-not-a-real-credential";
+  const sign = (body: string) =>
+    createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
+
+  const signed = await fetch(`${baseUrl}/hooks/forge`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forge-event": "transfer.successful",
+      "x-forge-timestamp": timestamp,
+      "x-forge-signature": `sha256=${sign(hookBody)}`,
+    },
+    body: hookBody,
+  });
+  record("the inbound hook accepts a verified body", signed.status === 200, `status ${signed.status}`);
+
+  const replayed = await fetch(`${baseUrl}/hooks/forge`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forge-event": "transfer.successful",
+      "x-forge-timestamp": timestamp,
+      "x-forge-signature": `sha256=${sign(hookBody)}`,
+    },
+    body: hookBody,
+  });
+  const replayedPayload = (await replayed.json()) as { message?: string };
+  record(
+    "the inbound hook de-duplicates on event id",
+    replayed.status === 200 && /already handled/i.test(replayedPayload.message ?? ""),
+    String(replayedPayload.message),
+  );
+
+  const badJson = "not json";
+  const malformedBody = await fetch(`${baseUrl}/hooks/forge`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forge-event": "transfer.successful",
+      "x-forge-timestamp": timestamp,
+      "x-forge-signature": `sha256=${sign(badJson)}`,
+    },
+    body: badJson,
+  });
+  record(
+    "the inbound hook refuses a signed body that is not JSON",
+    malformedBody.status === 400,
+    `status ${malformedBody.status}`,
+  );
 
   /* The stream emits every event type, and a forced code fails it. */
   await fetch(`${baseUrl}/api/dev/stream-config`, {
@@ -443,14 +552,21 @@ export async function f1(): Promise<void> {
     JSON.stringify(config.data ?? {}),
   );
 
-  await force(baseUrl, "BANK_UNAVAILABLE");
-  const failingStream = await fetch(`${baseUrl}/api/runs/run_2026q4/stream`);
-  const failingText = await failingStream.text();
   record(
-    "a forced code fails the stream itself",
-    failingText.includes("stream.error") && failingText.includes("BANK_UNAVAILABLE"),
-    failingText.slice(0, 80),
+    "the stream emits no event the contract does not enumerate",
+    [...seen].every((event) => STREAM_EVENTS.includes(event)),
+    [...seen].filter((event) => !STREAM_EVENTS.includes(event)).join(", "),
   );
+
+  await force(baseUrl, "BANK_UNAVAILABLE");
+  let dropped = false;
+  try {
+    const failingStream = await fetch(`${baseUrl}/api/runs/run_2026q4/stream`);
+    await failingStream.text();
+  } catch {
+    dropped = true;
+  }
+  record("a forced code drops the stream", dropped, dropped ? "" : "the stream completed");
   await force(baseUrl, null);
 
   /* One module owns the base URL, so integration is one change. */
@@ -462,8 +578,9 @@ export async function f1(): Promise<void> {
   );
   grepAbsent(
     "no caller uses try/catch for an expected error",
-    /\bcatch\s*\(/,
-    ["app/**/*.tsx", "components/**/*.tsx"],
+    /\bcatch\s*[({]/,
+    ["app/**/*.tsx", "components/**/*.tsx", "lib/**/*.ts"],
+    ["lib/api/client.ts", "lib/api/client.test.ts", "lib/mock/**"],
   );
   grepAbsent(
     "no NEXT_PUBLIC_ variable carries a key, secret or token",

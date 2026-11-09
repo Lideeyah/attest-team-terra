@@ -15,7 +15,7 @@ import type {
   Session,
 } from "@/lib/api/contract";
 import { ERROR_COPY } from "@/lib/mock/errors";
-import { readForced } from "@/lib/mock/forced";
+import { readForced, rosterSizeFor } from "@/lib/mock/forced";
 import {
   AGENTS,
   AMOUNT_PER_HOUSEHOLD,
@@ -28,6 +28,7 @@ import {
   SIGNALS,
   TARIFF,
   accountGraph,
+  chargeFor,
   addAmounts,
   attestationsFor,
   geography,
@@ -148,8 +149,25 @@ const idempotency = new Map<
   { bodyFingerprint: string; envelope: Envelope<unknown> }
 >();
 
+/* The whole body, canonically ordered. An array replacer would be applied at
+   every depth and would erase everything below the top level, which is where
+   a batch of enrolments differs. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonical);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value as Record<string, unknown>)
+        .sort()
+        .map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
+    );
+  }
+  return value;
+}
+
 function fingerprint(body: Record<string, unknown>): string {
-  return JSON.stringify(body, Object.keys(body).sort());
+  return JSON.stringify(canonical(body));
 }
 
 export type Replay = { envelope: Envelope<unknown>; replayed: boolean };
@@ -196,8 +214,7 @@ function registerRows(): RegisterRow[] {
 
 function rosterFor(projectId: string, url: URL): Participant[] {
   const project = projectById(projectId);
-  const requested = Number(url.searchParams.get("rows") ?? 0);
-  const total = requested > 0 ? requested : (project?.enrolled ?? 0);
+  const total = rosterSizeFor(projectId, project?.enrolled ?? 0);
   let rows = participants(projectId, total);
 
   const status = url.searchParams.get("status");
@@ -234,8 +251,12 @@ function arithmeticFor(runId: string): Arithmetic {
   const project = projectById(run.projectId);
   const percentage = project?.commitment.percentage ?? 60;
   const required = multiplyAmount(run.declaredGross, percentage / 100);
+  /* One household in eleven banks elsewhere, so the run carries that many
+     interbank charges. The charge is matched to the amount by the schedule,
+     never to a remembered band. */
   const interbankCount = Math.round(run.rosterSize / 11);
-  const estimatedCharges = multiplyAmount(TARIFF.rows[1].total, interbankCount);
+  const charge = chargeFor(AMOUNT_PER_HOUSEHOLD, "interbank");
+  const estimatedCharges = multiplyAmount(charge.total, interbankCount);
   const totalNeeded = addAmounts(required, estimatedCharges);
   return {
     commitmentPct: percentage,
@@ -631,8 +652,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       if (!run) {
         return notFound();
       }
-      const requested = Number(url.searchParams.get("rows") ?? 0);
-      const count = requested > 0 ? requested : run.rosterSize;
+      const count = rosterSizeFor(run.projectId, run.rosterSize);
       const rows = runTransfers(run.id, run.projectId, count);
       const { page, meta } = paginate(rows, url, 50);
       return success(page, meta);

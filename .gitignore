@@ -64,5 +64,5 @@ kubeconfig.*
 # developer tooling, copied in by scripts/sync-dev-tools.mjs
 /app/dev
 /app/api/dev
-/app/api/[[...path]]
+/app/api/\[\[...path\]\]
 /app/hooks

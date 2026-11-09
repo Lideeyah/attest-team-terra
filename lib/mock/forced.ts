@@ -68,3 +68,24 @@ export function setStreamConfig(next: Partial<StreamConfig>): StreamConfig {
 export function streamConfig(): StreamConfig {
   return { ...stream };
 }
+
+/* The roster size the mock serves for a project. It exists so a screen can be
+   profiled at ten thousand rows without a query parameter the contract does
+   not have. It is set from /api/dev, which no production build carries. */
+const rosterSizes = new Map<string, number>();
+
+export function setRosterSize(projectId: string, rows: number | null): void {
+  if (rows === null) {
+    rosterSizes.delete(projectId);
+    return;
+  }
+  rosterSizes.set(projectId, rows);
+}
+
+export function rosterSizeFor(projectId: string, fallback: number): number {
+  return rosterSizes.get(projectId) ?? fallback;
+}
+
+export function rosterSizes_(): Record<string, number> {
+  return Object.fromEntries(rosterSizes);
+}

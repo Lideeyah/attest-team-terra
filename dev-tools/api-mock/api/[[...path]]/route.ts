@@ -75,21 +75,21 @@ function stream(request: Request, runId: string): Response {
       };
 
       const emit = () => {
-        /* A code forced from /dev/states fails the stream itself, so the live
-           run screen's disconnected state is reachable by clicking. */
-        const forced = readForced(`/api/runs/${runId}/stream`);
-        if (forced) {
-          send("stream.error", { code: forced });
-          stop();
+        /* A code forced from /dev/states drops the connection, so the live
+           run screen's reconnecting state is reachable by clicking. The
+           contract enumerates six events and this is not one of them, so the
+           failure is the transport's rather than a seventh event type. */
+        if (readForced(`/api/runs/${runId}/stream`)) {
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+          controller.error(new Error("stream dropped"));
           return;
         }
 
         if (index >= transfers.length) {
-          send("run.complete", {
-            runId,
-            settled: transfers.length,
-            at: new Date().toISOString(),
-          });
+          send("run.complete", { id: runId, state: "complete" });
           stop();
           return;
         }
@@ -105,26 +105,17 @@ function stream(request: Request, runId: string): Response {
 
         send("transfer.queued", { id: transfer.id, state: "queued" });
         send("transfer.in_flight", { id: transfer.id, state: "in_flight" });
+        /* Each event carries the transfer id and its new state and nothing
+           else, as the contract says. The run screen patches its own table
+           and reads the failure class from /api/runs/:id/transfers. */
         if (outcome === "transfer.failed") {
-          send("transfer.failed", {
-            id: transfer.id,
-            state: "failed",
-            failureClass: transfer.failureClass ?? "ACCOUNT_NOT_FOUND",
-          });
+          send("transfer.failed", { id: transfer.id, state: "failed" });
         } else {
-          send("transfer.settled", {
-            id: transfer.id,
-            state: "settled",
-            sessionId: transfer.sessionId,
-          });
+          send("transfer.settled", { id: transfer.id, state: "settled" });
           if (outcome === "transfer.reversed") {
             /* The sandbox settles and then reverses about a minute later. The
                settlement stands and the reversal is a correction. */
-            send("transfer.reversed", {
-              id: transfer.id,
-              state: "reversed",
-              reason: "TRANSFER_REVERSED",
-            });
+            send("transfer.reversed", { id: transfer.id, state: "reversed" });
           }
         }
         index += 1;

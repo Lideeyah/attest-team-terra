@@ -265,3 +265,45 @@ with their own verbs and seeded identifiers, all 47 codes forced with their
 status checked against backend 3, both idempotency behaviours asserted, the
 hook's refusal asserted, and a live build asserted to carry no mock and no
 developer tooling.
+
+**Second verification pass.** The same verifier re-checked F-1 against its own
+list. It confirmed twenty-three findings fixed by probe rather than by reading,
+and returned six that did not hold. All six are now fixed:
+
+- **`.gitignore` did not ignore the mock server.** `/app/api/[[...path]]` is a
+  glob character class, so it matched nothing and the generated copy was
+  committed in the F-1 commit. Escaped, untracked, and the gate now runs
+  `git check-ignore` over all four generated trees rather than two.
+- **The idempotency fingerprint erased everything below the top level.** The
+  second argument to `JSON.stringify` is a replacer applied at every depth, so
+  a batch of enrolments fingerprinted as `{"items":[{}]}` and a second batch
+  carrying different households replayed the first instead of being refused.
+  The body is canonically ordered and hashed whole, and the gate now asserts a
+  batch that differs below the top level.
+- **`?rows=` was still honoured by the mock**, so an F-5 screen could have been
+  built on a parameter the contract does not list. It is gone; the roster size
+  for profiling is set from `/api/dev/roster-size`, which no production build
+  carries, and the gate asserts both that the unlisted parameter is ignored and
+  that the developer control works.
+- **`/arithmetic` still hard-coded the tariff band** while `chargeFor()` sat
+  beside it unused. It reads the schedule now.
+- **The inbound hook returned 500 on two attacker-reachable inputs**: a
+  right-length non-hex signature, which `Buffer.from` truncated into a
+  different-length buffer and threw inside `timingSafeEqual`, and a signed body
+  that was not JSON. Both are refusals now, which matters because a crash turns
+  one malformed delivery into five retries.
+- **The gate recorded a pass for an assertion it did not make.** With no
+  webhook secret set it green-lit the hook's accepting path. The gate's server
+  now carries a secret of its own and the accepting, de-duplicating, malformed-
+  signature and malformed-body paths are each asserted.
+
+**One further change the verifier raised.** The stream was emitting a seventh
+event type, `stream.error`, and carrying `failureClass`, `sessionId` and
+`reason` on its events. The contract enumerates six events, each carrying the
+transfer id and the new state and nothing else. The stream now honours that
+literally: a forced code drops the connection rather than inventing an event,
+and the live run screen will read the failure class from
+`GET /api/runs/:id/transfers` rather than from the stream. The gate asserts no
+event outside the six appears.
+
+**Gate.** `npm run gate -- F-1`: 39 assertions, 39 passed.

@@ -451,5 +451,15 @@ export function liveBuildExcludesMock(): void {
       ? String((error as { stdout?: Buffer }).stdout ?? "")
       : String(error);
     record("a live build carries no mock server and no developer tooling", false, output.split("\n").slice(-5).join(" | "));
+  } finally {
+    /* A live build removes the mock and the developer routes and rewrites the
+       generated route types. Both are restored, so the tree a later run type
+       checks is the development tree again. */
+    execFileSync("node", ["scripts/sync-dev-tools.mjs"], {
+      cwd: ROOT,
+      stdio: "pipe",
+      env: { ...process.env, ATTEST_DEV_TOOLS: "1", ATTEST_API_MODE: "mock" },
+    });
+    execFileSync("npx", ["next", "typegen"], { cwd: ROOT, stdio: "pipe" });
   }
 }
