@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { PRIMITIVE_CLASS } from "@/lib/motion";
+import { FRAME_MS, PRIMITIVE_CLASS } from "@/lib/motion";
 import { stampRotation } from "@/lib/record";
 
 export type StampState = "sealed" | "flagged" | "blocked" | "review";
@@ -17,11 +17,22 @@ type StampProps = {
   recordId: string;
   /** Play the two-beat impact. Omit for a stamp that was already set. */
   animate?: boolean;
+  /** Whole frames of delay, so several stamps land one after another. */
+  delayFrames?: number;
 };
 
-export function Stamp({ state, label, recordId, animate = false }: StampProps) {
+export function Stamp({
+  state,
+  label,
+  recordId,
+  animate = false,
+  delayFrames = 0,
+}: StampProps) {
   const style = {
     "--stamp-rotate": `${stampRotation(recordId)}deg`,
+    ...(delayFrames === 0
+      ? {}
+      : { "--stagger": `${Math.round(delayFrames * FRAME_MS)}ms` }),
   } as CSSProperties;
   return (
     <span

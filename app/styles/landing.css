@@ -3,16 +3,16 @@
    property that triggers layout. */
 
 .landing {
-  /* Six movements, each pinned for the length of its own scroll. */
   --movement-scroll: 100vh;
 }
 
 .movement {
   position: relative;
-  /* A movement is a little over one screen of scroll. The composition holds
-     for the difference between the section and the pinned block, which is
-     long enough to read and short enough that nothing sits frozen. */
-  height: calc(var(--movement-scroll) * 1.2);
+  /* A movement is one screen of composition plus the scroll it plays across.
+     The pin is the difference between the two, and the composition plays over
+     the whole of it, so there is no part of a movement that is not doing
+     something. */
+  height: calc(var(--movement-scroll) * 1.6);
 }
 
 .movement-pinned {
@@ -62,21 +62,6 @@
   align-items: start;
 }
 
-@media (max-width: 1080px) {
-  .seal-layout {
-    grid-template-columns: 1fr;
-    gap: var(--stack-lg);
-  }
-}
-
-/* At phone width the ledger shows the rows that fit rather than a composition
-   taller than the screen. */
-@media (max-width: 720px) {
-  .ledger-row[data-overflow="true"] {
-    display: none;
-  }
-}
-
 .register-row {
   display: grid;
   grid-template-columns: 1fr auto auto auto;
@@ -98,8 +83,10 @@
 }
 
 @media (max-width: 1080px) {
-  .landing-foot {
+  .landing-foot,
+  .seal-layout {
     grid-template-columns: 1fr;
+    gap: var(--stack-lg);
   }
 }
 
@@ -108,33 +95,15 @@
     grid-template-columns: 1fr;
   }
 
+  /* The rows keep their shape at phone width: the household on one side, the
+     figure and its time on the other. The composition shows the rows that
+     fit rather than reflowing into something that is not a ledger. */
   .ledger-row,
   .ledger-row-stamped,
-  .seal-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--section-tight);
-  align-items: start;
-}
-
-@media (max-width: 1080px) {
-  .seal-layout {
-    grid-template-columns: 1fr;
-    gap: var(--stack-lg);
-  }
-}
-
-/* At phone width the ledger shows the rows that fit rather than a composition
-   taller than the screen. */
-@media (max-width: 720px) {
-  .ledger-row[data-overflow="true"] {
-    display: none;
-  }
-}
-
-.register-row {
+  .register-row {
     grid-template-columns: 1fr auto;
-    row-gap: calc(var(--stack) / 2);
+    column-gap: var(--stack);
+    row-gap: calc(var(--stack) / 3);
   }
 }
 

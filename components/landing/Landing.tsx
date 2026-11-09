@@ -48,6 +48,10 @@ const HERO_SENTENCE = "The money is promised, sometimes paid, and never provable
    is the one the reader watched being built. */
 const FOLLOWED = LEDGER_ROWS.slice(0, 4);
 
+/* At phone width the ledger shows fewer rows, and the rows it follows are the
+   same ones through the stamps and the seal. */
+const NARROW_ROWS = 4;
+
 function stagger(frames: number): CSSProperties {
   return { "--stagger": `${Math.round(frames * FRAME_MS)}ms` } as CSSProperties;
 }
@@ -135,6 +139,10 @@ function Figures() {
 function FiguresBody({ progress }: { progress: MotionValue<number> }) {
   const started = useCrossed(progress, 0.42);
   const reduced = useReducedMotion();
+  /* The figures are not on screen until the count begins, so the reader is
+     never shown the number before watching it arrive. The markup carries the
+     real figures, so a reader without JavaScript sees them. */
+  const opacity = useReveal(progress, [0.34, 0.44], [0, 1]);
 
   /* Before the tally runs the figures read zero, because the count is the
      point of the movement. A reader without JavaScript sees the real numbers,
@@ -147,7 +155,11 @@ function FiguresBody({ progress }: { progress: MotionValue<number> }) {
       <h2 className="h2-display h2-display-ink" style={{ maxWidth: "20ch" }}>
         One programme enrolled twenty-one thousand households
       </h2>
-      <div className="figure-row" data-counting={started || reduced ? "true" : "false"}>
+      <motion.div
+        className="figure-row"
+        style={{ opacity }}
+        data-counting={started || reduced ? "true" : "false"}
+      >
         <TallyFigure
           started={started}
           delayFrames={0}
@@ -172,7 +184,7 @@ function FiguresBody({ progress }: { progress: MotionValue<number> }) {
           format={percent}
           denominator={`${formatCount(EVIDENCE.paid)} of ${formatCount(EVIDENCE.enrolled)}`}
         />
-      </div>
+      </motion.div>
       <p className="prose-muted">
         The rest were promised the same share. Nobody can say from the outside
         whether they received it, because the money moved in cash and cash
@@ -190,9 +202,9 @@ function LedgerRow({
   at,
   arriving,
   frames,
-  stamped,
+  stamp,
+  stampDelayFrames,
   recordId,
-  overflow,
 }: {
   name: string;
   community: string;
@@ -202,37 +214,39 @@ function LedgerRow({
       is simply there. */
   arriving?: boolean;
   frames?: number;
-  stamped?: boolean;
+  /** "landing" plays the stamp; "set" shows one that has already been made;
+      "waiting" holds its place. */
+  stamp?: "waiting" | "landing" | "set";
+  stampDelayFrames?: number;
   recordId?: string;
-  overflow?: boolean;
 }) {
   return (
     <div
       className={[
         "ledger-row",
-        stamped === undefined ? null : "ledger-row-stamped",
+        stamp === undefined ? null : "ledger-row-stamped",
         arriving ? PRIMITIVE_CLASS.recordArrive : null,
       ]
         .filter(Boolean)
         .join(" ")}
       style={arriving ? stagger(frames ?? 0) : undefined}
-      data-overflow={overflow ? "true" : undefined}
     >
       <span className="record-cell">
         {name} · {community}
       </span>
       <span className="record-cell numeric">{formatNaira(amount)}</span>
       <span className="record-cell">{formatTimeOfDay(at)}</span>
-      {stamped === undefined ? null : (
+      {stamp === undefined ? null : (
         <span style={{ minWidth: "9ch" }}>
-          {stamped ? (
+          {stamp === "waiting" ? null : (
             <Stamp
               state="sealed"
               label="Settled"
               recordId={recordId ?? "trf"}
-              animate
+              animate={stamp === "landing"}
+              delayFrames={stamp === "landing" ? (stampDelayFrames ?? 0) : 0}
             />
-          ) : null}
+          )}
         </span>
       )}
     </div>
@@ -249,7 +263,7 @@ function Ledger() {
 
 function LedgerBody({ progress }: { progress: MotionValue<number> }) {
   const narrow = useNarrow();
-  const rows = narrow ? LEDGER_ROWS.slice(0, 4) : LEDGER_ROWS;
+  const rows = narrow ? LEDGER_ROWS.slice(0, NARROW_ROWS) : LEDGER_ROWS;
   const arrived = useArrivedCount(progress, rows.length, [0.12, 0.78]);
 
   return (
@@ -291,8 +305,7 @@ function Stamps() {
 function StampsBody({ progress }: { progress: MotionValue<number> }) {
   const first = useCrossed(progress, 0.34);
   const rest = useCrossed(progress, 0.52);
-  const narrow = useNarrow();
-  const rows = narrow ? FOLLOWED.slice(0, 3) : FOLLOWED;
+  const rows = FOLLOWED;
 
   return (
     <div className="stack-lg">
@@ -308,7 +321,16 @@ function StampsBody({ progress }: { progress: MotionValue<number> }) {
             community={row.community}
             amount={row.amount}
             at={row.queuedAt}
-            stamped={index === 0 ? first : rest}
+            stamp={
+              index === 0
+                ? first
+                  ? "landing"
+                  : "waiting"
+                : rest
+                  ? "landing"
+                  : "waiting"
+            }
+            stampDelayFrames={index === 0 ? 0 : (index - 1) * 2}
             recordId={row.id}
           />
         ))}
@@ -329,10 +351,11 @@ function Seal() {
 }
 
 function SealBody({ progress }: { progress: MotionValue<number> }) {
-  const drawing = useCrossed(progress, 0.3);
-  const sealed = useCrossed(progress, 0.56);
-  const narrow = useNarrow();
-  const above = narrow ? FOLLOWED.slice(0, 2) : FOLLOWED;
+  /* The rule draws once the composition is in front of the reader rather than
+     while it is still entering, and the contrast step follows it. */
+  const drawing = useCrossed(progress, 0.5);
+  const sealed = useCrossed(progress, 0.66);
+  const above = FOLLOWED;
 
   return (
     <div className="stack-lg">
@@ -350,7 +373,7 @@ function SealBody({ progress }: { progress: MotionValue<number> }) {
                 community={row.community}
                 amount={row.amount}
                 at={row.queuedAt}
-                stamped={false}
+                stamp="set"
                 recordId={row.id}
               />
             ))}
@@ -362,7 +385,12 @@ function SealBody({ progress }: { progress: MotionValue<number> }) {
           </p>
         </div>
       </div>
-      <Rule weight="heavy" animated={drawing} key={drawing ? "drawn" : "undrawn"} />
+      <Rule
+        weight="heavy"
+        animated={drawing}
+        undrawn={!drawing}
+        key={drawing ? "drawn" : "undrawn"}
+      />
       <div className="seal-layout">
         <p className="prose-muted">
           Once the rule is drawn, no transfer can be added to this period and no

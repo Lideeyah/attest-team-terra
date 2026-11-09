@@ -82,6 +82,7 @@ export async function f2(): Promise<void> {
   await stillsReadable();
 
   await primitivesPlayed();
+  await compositionHolds();
   await pageHeight();
   await fitsThePhone();
 
@@ -284,12 +285,12 @@ async function pageHeight(): Promise<void> {
   const screens =
     ((await page.evaluate("document.body.scrollHeight")) as number) / 900;
   await browser.close();
-  /* Six movements that each hold while they play cannot fit in six screens of
-     scroll. Eight is the ceiling: beyond that a composition sits frozen while
-     the reader scrolls past it. */
+  /* Six movements that each play while they are on screen cannot fit in six
+     screens of scroll: a scroll-linked composition needs scroll to happen in.
+     Ten is the ceiling, and every screen of it is a composition playing. */
   record(
-    "the composition is under eight screens of scroll",
-    screens <= 8,
+    "the composition is under ten screens of scroll",
+    screens <= 10,
     `${screens.toFixed(1)} screens`,
   );
 }
@@ -310,9 +311,7 @@ async function fitsThePhone(): Promise<void> {
     const sectionHeight = (await page.evaluate(
       `document.querySelector('[data-movement="${movement}"]').offsetHeight`,
     )) as number;
-    /* The middle of the pin, which is where the composition is held: the
-       sticky block holds for the difference between the section and the
-       screen, and after that the section scrolls away like anything else. */
+    /* The middle of the pin, which is where the composition is held. */
     await page.evaluate(
       `window.scrollTo(0, ${Math.round(top + Math.max(0, (sectionHeight - 844) / 2))})`,
     );
@@ -335,4 +334,165 @@ async function fitsThePhone(): Promise<void> {
     tooTall.length === 0,
     tooTall.join(", "),
   );
+}
+
+
+/** The composition is one object: the rows that arrive are the rows that are
+    stamped and the rows that are sealed, the stamps land one after another,
+    the rule is not drawn before it draws, and no figure is shown before it is
+    counted.
+
+    Each check opens its own page, because a threshold that has been crossed
+    stays crossed — which is the point of the motion system and would
+    otherwise make a "before" measurement impossible. */
+async function compositionHolds(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+
+  const open = async (width: number) => {
+    const context = await browser.newContext({
+      reducedMotion: "no-preference",
+      viewport: { width, height: width === 390 ? 844 : 900 },
+    });
+    const page = await context.newPage();
+    await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+    const geometry = async (movement: string) => {
+      const box = (await page.evaluate(
+        `JSON.stringify((function () {
+          var section = document.querySelector('[data-movement="${movement}"]');
+          return { top: section.offsetTop, height: section.offsetHeight };
+        })())`,
+      )) as string;
+      return JSON.parse(box) as { top: number; height: number };
+    };
+    return { context, page, geometry };
+  };
+
+  for (const width of [390, 1280]) {
+    const viewport = width === 390 ? 844 : 900;
+
+    /* A figure is not legible before its count begins. */
+    {
+      const { context, page, geometry } = await open(width);
+      const figures = await geometry("figures");
+      await page.evaluate(`window.scrollTo(0, ${Math.round(figures.top + 8)})`);
+      await page.waitForTimeout(250);
+      const opacity = (await page.evaluate(
+        `getComputedStyle(document.querySelector('[data-movement="figures"] .figure-row')).opacity`,
+      )) as string;
+      record(
+        `a figure is not shown before it is counted at ${width}px`,
+        Number(opacity) < 0.2,
+        `opacity ${opacity}`,
+      );
+      await context.close();
+    }
+
+    /* The seal rule is not drawn before it draws, and it draws on screen. */
+    {
+      const { context, page, geometry } = await open(width);
+      const seal = await geometry("seal");
+      await page.evaluate(`window.scrollTo(0, ${Math.round(seal.top + 8)})`);
+      await page.waitForTimeout(300);
+      const before = JSON.parse(
+        (await page.evaluate(
+          `JSON.stringify((function () {
+            var box = document.querySelector('[data-movement="seal"] hr.rule-heavy').getBoundingClientRect();
+            return { width: Math.round(box.width), top: Math.round(box.top) };
+          })())`,
+        )) as string,
+      ) as { width: number; top: number };
+      record(
+        `the seal rule is undrawn before it draws at ${width}px`,
+        before.width <= 2,
+        `width ${before.width}`,
+      );
+
+      await page.evaluate(
+        `window.scrollTo(0, ${Math.round(seal.top + (seal.height - viewport) * 0.9)})`,
+      );
+      await page.waitForTimeout(600);
+      const after = JSON.parse(
+        (await page.evaluate(
+          `JSON.stringify((function () {
+            var box = document.querySelector('[data-movement="seal"] hr.rule-heavy').getBoundingClientRect();
+            return { width: Math.round(box.width), top: Math.round(box.top) };
+          })())`,
+        )) as string,
+      ) as { width: number; top: number };
+      record(
+        `the seal rule draws where the reader can see it at ${width}px`,
+        after.width > 100 && after.top > 0 && after.top < viewport,
+        `width ${after.width}, top ${after.top}`,
+      );
+      await context.close();
+    }
+
+    /* The rows that arrive are the rows that are stamped and sealed, and the
+       stamps land one after another. */
+    {
+      const { context, page, geometry } = await open(width);
+      const ledger = await geometry("ledger");
+      await page.evaluate(
+        `window.scrollTo(0, ${Math.round(ledger.top + (ledger.height - viewport) * 0.95)})`,
+      );
+      await page.waitForTimeout(400);
+      const ledgerRows = (await page.evaluate(
+        `document.querySelectorAll('[data-movement="ledger"] .ledger-row').length`,
+      )) as number;
+
+      const stamp = await geometry("stamp");
+      await page.evaluate(
+        `window.scrollTo(0, ${Math.round(stamp.top + (stamp.height - viewport) * 0.85)})`,
+      );
+      await page.waitForTimeout(700);
+      const stampRows = (await page.evaluate(
+        `document.querySelectorAll('[data-movement="stamp"] .ledger-row').length`,
+      )) as number;
+      const delays = JSON.parse(
+        (await page.evaluate(
+          `JSON.stringify(Array.from(document.querySelectorAll('[data-movement="stamp"] .stamp')).map(function (node) { return getComputedStyle(node).animationDelay; }))`,
+        )) as string,
+      ) as string[];
+
+      const seal = await geometry("seal");
+      await page.evaluate(
+        `window.scrollTo(0, ${Math.round(seal.top + (seal.height - viewport) * 0.9)})`,
+      );
+      await page.waitForTimeout(500);
+      const sealRows = (await page.evaluate(
+        `document.querySelectorAll('[data-movement="seal"] .ledger-row').length`,
+      )) as number;
+      const sealStamps = (await page.evaluate(
+        `document.querySelectorAll('[data-movement="seal"] .stamp').length`,
+      )) as number;
+
+      record(
+        `the rows that arrive are the rows that are stamped and sealed at ${width}px`,
+        stampRows === sealRows && sealStamps === sealRows && ledgerRows >= sealRows,
+        `ledger ${ledgerRows}, stamped ${stampRows}, sealed ${sealRows} with ${sealStamps} stamps`,
+      );
+      record(
+        `the stamps land one after another at ${width}px`,
+        delays.length >= 3 && new Set(delays).size >= 3,
+        delays.join(" | "),
+      );
+
+      if (width === 390) {
+        const columns = (await page.evaluate(
+          `getComputedStyle(document.querySelector('[data-movement="stamp"] .ledger-row')).gridTemplateColumns`,
+        )) as string;
+        const parts = columns.split(" ").map((part) => Number.parseFloat(part));
+        record(
+          "a ledger row keeps one wide column and its figures at 390px",
+          parts.length >= 2 && parts[0] > parts[1],
+          columns,
+        );
+      }
+      await context.close();
+    }
+  }
+
+  await browser.close();
 }

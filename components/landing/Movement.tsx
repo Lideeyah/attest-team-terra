@@ -31,17 +31,15 @@ type MovementProps = {
 export function Movement({ name, children, still = false }: MovementProps) {
   const ref = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
+  /* Progress is measured across the pin, not across the whole travel: zero
+     when the composition reaches the top of the screen and one when it
+     releases. Everything a movement does therefore happens while the reader is
+     looking at it, and nothing plays below the fold or sits frozen afterwards. */
   const { scrollYProgress } = useScroll({
     target: ref,
-    offset: ["start end", "end start"],
+    offset: ["start start", "end end"],
   });
-  /* The movement's own progress: zero as it arrives, one as it leaves. The
-     composition plays across most of the travel rather than finishing early
-     and sitting frozen while the pin runs out. */
-  /* The composition plays across the middle of the travel. The last movement
-     never leaves the top of the screen, because the page ends beneath it, so
-     the mapping resolves before a section would have to exit. */
-  const progress = useTransform(scrollYProgress, [0.15, 0.68], [0, 1], {
+  const progress = useTransform(scrollYProgress, [0.04, 0.92], [0, 1], {
     clamp: true,
   });
 

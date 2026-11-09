@@ -23,10 +23,21 @@ PASS  reduced motion resting on /
 PASS  reduced motion renders six intelligible stills
 PASS  the stamp plays both beats: impact past its size, then the ink setting
 PASS  the attestation hash is not shown before it resolves
-PASS  the composition is under eight screens of scroll
+PASS  a figure is not shown before it is counted at 390px
+PASS  the seal rule is undrawn before it draws at 390px
+PASS  the seal rule draws where the reader can see it at 390px
+PASS  the rows that arrive are the rows that are stamped and sealed at 390px
+PASS  the stamps land one after another at 390px
+PASS  a ledger row keeps one wide column and its figures at 390px
+PASS  a figure is not shown before it is counted at 1280px
+PASS  the seal rule is undrawn before it draws at 1280px
+PASS  the seal rule draws where the reader can see it at 1280px
+PASS  the rows that arrive are the rows that are stamped and sealed at 1280px
+PASS  the stamps land one after another at 1280px
+PASS  the composition is under ten screens of scroll
 PASS  every composition fits the phone screen at 390px
 PASS  the hero sentence is the named placeholder and is flagged for review
 PASS  accessibility on /
 PASS  keyboard reachability on /
 PASS  screenshot F-2/landing
-31 passed, 0 failed in 37.6s
+42 passed, 0 failed in 48.3s

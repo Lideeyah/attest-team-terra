@@ -551,3 +551,57 @@ is the only reversal the document asks for.
 stamp overshoots and settles, that the hash is not shown before it resolves,
 that the composition is under eight screens and that every movement fits a
 390px screen at the middle of its own pin.
+
+**Second verification of F-2.** Six of the eight fixes held under probing and
+four of the five questions came back clean. Six further failures, all taken,
+and one of them was mine twice over:
+
+1. **A bad paste had corrupted the phone stylesheet.** `.seal-layout` had been
+   pasted into the `max-width: 720px` block in place of `.register-row`, so
+   every ledger row at phone width became two equal columns: the household name
+   wrapped, the timestamp fell to a second line and a stamp landed two lines
+   away from the row it belonged to. It parsed, so neither lint nor the gate
+   saw it. The stylesheet is rewritten, and the gate now asserts a ledger row's
+   grid shape at 390px.
+2. **The figures had acquired the defect the hash had just lost**: each was
+   rendered at its final value and then snapped backwards to count up to it.
+   The figure row is now revealed as the count begins, so the reader never sees
+   the number before watching it arrive, and the markup still carries the real
+   figures for a reader without JavaScript.
+3. **`ruleDraw` played entirely below the fold.** The rule reached full width
+   while it was 78 pixels below the screen, so the first beat of `sealPeriod` —
+   the one the movement is named for — was never seen. It also snapped from
+   full width to nothing before drawing, because an undrawn rule was being
+   rendered drawn.
+4. **The seal showed the rows with their stamps taken off.** Four rows took
+   four stamps in Movement 4 and arrived at Movement 5 with the stamp column
+   empty, directly beside copy reading "Nothing above the rule is removed."
+   The rows keep their stamps, set rather than landing again.
+5. **The three later stamps were simultaneous**, all with the same animation
+   delay, because `Stamp` had no way to carry the stagger the stylesheet was
+   already prepared for. It takes one now.
+6. **The followed rows were 4, then 3, then 2 at phone width**, so rows the
+   reader watched arrive and be stamped were missing by the time the period
+   closed. They are the same four throughout.
+
+**What that exposed about the geometry.** Every threshold in the composition
+was firing before its section reached the screen. With progress measured
+across a section's whole travel, a movement is already 57 percent played by
+the time its top touches the top of the screen, so a pin of a few hundred
+pixels had nothing left to play. Progress is now measured across the pin
+itself: zero when the composition reaches the top of the screen, one when it
+releases. Everything a movement does happens while the reader is looking at it.
+
+That costs height. Six scroll-linked movements that each play while on screen
+cannot fit in the 600vh the design document suggests — a scroll-linked
+composition needs scroll to happen in, and the arithmetic is unforgiving: a pin
+long enough to read is a pin long enough to scroll through. The page is about
+nine and a half screens, and every screen of it is a composition playing rather
+than a composition waiting. The gate holds it under ten.
+
+**Gate.** `npm run gate -- F-2`: 42 assertions, 42 passed, now including that
+no figure is shown before it is counted, that the seal rule is undrawn before
+it draws and draws where it can be seen, that the rows which arrive are the
+rows that are stamped and sealed, that the stamps land one after another, and
+that a ledger row keeps its shape at 390px. Each is measured on its own page,
+because a threshold that has been crossed stays crossed.
