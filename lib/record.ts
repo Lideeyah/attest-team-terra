@@ -31,10 +31,13 @@ export function truncateHash(hash: string, head = 10, tail = 6): string {
    formatting works on the string's own parts. */
 
 /** ₦23,050.00. Figures are shown in full, never rounded. */
+function groupDigits(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 export function formatNaira(amount: string): string {
   const [major = "0", minor = "00"] = amount.split(".");
-  const grouped = Number(major).toLocaleString("en-NG");
-  return `₦${grouped}.${minor.padEnd(2, "0").slice(0, 2)}`;
+  return `₦${groupDigits(major)}.${minor.padEnd(2, "0").slice(0, 2)}`;
 }
 
 /** A compact figure for display at figure scale: ₦48.2m. The full amount is

@@ -13,6 +13,8 @@ PASS  error codes carry the bank's own status codes
 PASS  per_page is capped at one hundred
 PASS  a query parameter outside the contract is ignored
 PASS  the roster size is settable from /api/dev for profiling
+PASS  moving the shares recomputes a run's counts
+PASS  a period's paid count is the transfers that cleared
 PASS  the readiness probe answers
 PASS  the same key and body replays the original response
 PASS  the same key with a different body is refused
@@ -38,4 +40,4 @@ PASS  /dev/kitchen-sink absent from the production build
 PASS  /api/dev/force absent from the production build
 PASS  /api/dev/stream-config absent from the production build
 PASS  a live build carries no mock server and no developer tooling
-40 passed, 0 failed in 24.9s
+42 passed, 0 failed in 27.1s

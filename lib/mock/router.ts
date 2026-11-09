@@ -663,17 +663,45 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/projects/:id/funding",
     handler: ({ segments }) => {
-      const run = RUNS.find((candidate) => candidate.projectId === segments[2]) ?? RUNS[1];
+      const project = projectById(segments[2]);
+      const period = project?.periods.find((candidate) => candidate.state === "open");
+      /* The open period's run is what the account is funding. Picking the
+         first run of the project would report a historical figure. */
+      const openRun = RUNS.find(
+        (candidate) =>
+          candidate.projectId === segments[2] &&
+          candidate.period === period?.period &&
+          candidate.state !== "draft",
+      );
+      const inbound = openRun
+        ? [
+            {
+              reference: `FND-${openRun.period}-001`,
+              amount: multiplyAmount(openRun.fundingAmount, 0.64),
+              receivedAt: "2026-11-02T10:14:00Z",
+            },
+            {
+              reference: `FND-${openRun.period}-002`,
+              amount: subtractAmounts(
+                openRun.fundingAmount,
+                multiplyAmount(openRun.fundingAmount, 0.64),
+              ),
+              receivedAt: "2026-11-07T09:02:00Z",
+            },
+          ]
+        : [];
+      const spent = period
+        ? addAmounts(period.amountToHouseholds, period.chargesBorne)
+        : "0.00";
       return success({
         accountNumber: "0123987001",
         accountName: "EKURI INITIATIVE LIMITED DISBURSEMENT",
         bank: "Access Bank",
-        balance: "1802187.50",
-        inbound: [
-          { reference: "FND-2026Q4-001", amount: "20000000.00", receivedAt: "2026-11-02T10:14:00Z" },
-          { reference: "FND-2026Q4-002", amount: "11400000.00", receivedAt: "2026-11-07T09:02:00Z" },
-        ],
-        outbound: run.fundingAmount,
+        inbound,
+        funded: openRun?.fundingAmount ?? "0.00",
+        outbound: period?.amountToHouseholds ?? "0.00",
+        charges: period?.chargesBorne ?? "0.00",
+        balance: subtractAmounts(openRun?.fundingAmount ?? "0.00", spent),
       });
     },
   },

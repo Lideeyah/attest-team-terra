@@ -357,6 +357,62 @@ export async function f1(): Promise<void> {
     body: JSON.stringify({ projectId: "proj_ekuri", rows: null }),
   });
 
+  /* Moving the shares from the panel recomputes the fixture, so a run's
+     counts and a period's coverage never go stale against the transfers. */
+  await fetch(`${baseUrl}/api/dev/stream-config`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ failureShare: 0.5, reversalShare: 0.05 }),
+  });
+  const shifted = (await (
+    await fetch(`${baseUrl}/api/runs/run_2026q3`)
+  ).json()) as Envelope & { data?: { counts?: Record<string, number>; rosterSize?: number } };
+  let listedFailures = 0;
+  for (let page = 1; page <= 20; page += 1) {
+    const rows = (await (
+      await fetch(`${baseUrl}/api/runs/run_2026q3/transfers?page=${page}&per_page=100`)
+    ).json()) as Envelope & { data?: { state: string }[] };
+    listedFailures += (rows.data ?? []).filter((row) => row.state === "failed").length;
+    if ((rows.data ?? []).length < 100) {
+      break;
+    }
+  }
+  record(
+    "moving the shares recomputes a run's counts",
+    shifted.data?.counts?.failed === listedFailures,
+    `counts ${String(shifted.data?.counts?.failed)} against ${listedFailures} rows`,
+  );
+  await fetch(`${baseUrl}/api/dev/stream-config`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ failureShare: 0.12, reversalShare: 0.03 }),
+  });
+
+  /* A period's figures are the transfers behind it, to the kobo. */
+  const project = (await (
+    await fetch(`${baseUrl}/api/public/projects/proj_ekuri`)
+  ).json()) as Envelope & {
+    data?: { project?: { periods?: { period: string; paid: number; enrolled: number }[] } };
+  };
+  const closed = project.data?.project?.periods?.find((period) => period.period === "2026-Q3");
+  let paid = 0;
+  for (let page = 1; page <= 20; page += 1) {
+    const rows = (await (
+      await fetch(`${baseUrl}/api/runs/run_2026q3/transfers?page=${page}&per_page=100`)
+    ).json()) as Envelope & { data?: { state: string }[] };
+    paid += (rows.data ?? []).filter(
+      (row) => row.state === "settled" || row.state === "unconfirmed",
+    ).length;
+    if ((rows.data ?? []).length < 100) {
+      break;
+    }
+  }
+  record(
+    "a period's paid count is the transfers that cleared",
+    closed?.paid === paid,
+    `period ${String(closed?.paid)} against ${paid} rows`,
+  );
+
   /* The platform readiness probe. */
   const health = await fetch(`${baseUrl}/healthz`);
   record("the readiness probe answers", health.ok, `status ${health.status}`);

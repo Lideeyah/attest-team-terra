@@ -1,4 +1,4 @@
-import { fixtureShares } from "@/lib/mock/forced";
+import { fixtureShares, onSharesChanged } from "@/lib/mock/forced";
 import type {
   AccountGraph,
   Agent,
@@ -65,6 +65,20 @@ const DELTA_COMMUNITIES = [
 ];
 
 export const AMOUNT_PER_HOUSEHOLD: Amount = "23050.00";
+
+/** What one household is paid, which differs by project because the
+    commitment and the issuance behind it differ. */
+const AMOUNT_BY_PROJECT: Record<string, Amount> = {
+  proj_ekuri: "23050.00",
+  proj_hadejia: "19400.00",
+  proj_delta: "21400.00",
+};
+
+/* One project in the register simply worked: every transfer cleared and the
+   commitment was met. Without it there is no comparator for the others. */
+const SHARES_BY_PROJECT: Record<string, { failureShare: number; reversalShare: number }> = {
+  proj_hadejia: { failureShare: 0, reversalShare: 0 },
+};
 
 function naira(value: number): Amount {
   return value.toFixed(2);
@@ -164,6 +178,7 @@ function periodStub(
     chargesBorne: "0.00",
     required: "0.00",
     shortfall: "0.00",
+    surplus: "0.00",
     closedAt,
     attestationId,
     corrected,
@@ -341,24 +356,19 @@ function triggerAccount(index: number): string | null {
 
 /** The amount a household is paid, carrying a trigger suffix where the seed
     deliberately exercises one. Amounts ending .00 never trigger. */
-export function amountForIndex(index: number): string {
+export function amountForIndex(projectId: string, index: number): string {
+  const base = AMOUNT_BY_PROJECT[projectId] ?? AMOUNT_PER_HOUSEHOLD;
+  const major = base.split(".")[0];
   const suffix = index % 1009;
-  if (suffix === 11) {
-    return "23050.01"; /* INSUFFICIENT_FUNDS */
-  }
-  if (suffix === 13) {
-    return "23050.02"; /* TIMEOUT, then failed and reversed */
-  }
-  if (suffix === 17) {
-    return "23050.03"; /* pending, then successful */
-  }
-  if (suffix === 19) {
-    return "23050.04"; /* successful, then reversed about a minute later */
-  }
-  if (suffix === 23) {
-    return "23050.05"; /* first webhook delivery withheld */
-  }
-  return AMOUNT_PER_HOUSEHOLD;
+  const TRIGGERS: Record<number, string> = {
+    11: "01" /* INSUFFICIENT_FUNDS */,
+    13: "02" /* TIMEOUT, then failed and reversed */,
+    17: "03" /* pending, then successful */,
+    19: "04" /* successful, then reversed about a minute later */,
+    23: "05" /* first webhook delivery withheld */,
+  };
+  const trigger = TRIGGERS[suffix];
+  return trigger ? `${major}.${trigger}` : base;
 }
 
 const FLAG_LABELS = [
@@ -529,6 +539,32 @@ const CONFIRMATION_RATE: Record<string, number> = {
   proj_delta: 34,
 };
 
+/* When each run executed. A transfer's timestamps hang off this. */
+const RUN_EXECUTION: Record<string, string> = {
+  run_2026q1: "2026-03-30T09:02:00Z",
+  run_2026q2: "2026-07-12T11:20:00Z",
+  run_2026q3: "2026-09-29T10:14:02Z",
+  run_2026q4: "2026-11-09T13:20:00Z",
+  run_hadejia_q2: "2026-06-30T10:00:00Z",
+  run_hadejia_q3: "2026-09-30T09:30:00Z",
+  run_delta_q3: "2026-09-30T14:10:00Z",
+};
+
+/* The NIP session identifier the bank returns is thirty digits: an
+   institution prefix, the settlement date and time, and a serial. */
+function sessionPrefix(iso: string): string {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const day = `${String(date.getUTCFullYear()).slice(2)}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}`;
+  const time = `${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
+  return `000014${day}${time}`;
+}
+
+function runSerial(runId: string): string {
+  const serial = runId.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0) % 1000;
+  return String(serial).padStart(3, "0");
+}
+
 export function transferIdFor(runId: string, index: number): string {
   return `trf_${runId.slice(-6)}_${String(index + 1).padStart(5, "0")}`;
 }
@@ -538,17 +574,33 @@ export function transferIdFor(runId: string, index: number): string {
     the table behind it and carries the class the retry control acts on. The
     shares come from the configured fixture, so the panel changes all three at
     once rather than only the stream. */
+/* A run still executing has rows that have not reached an outcome. These are
+   where the open run's queue begins, so the live screen has something in
+   flight before the stream says anything. */
+const PENDING_FROM: Record<string, { inFlightFrom: number; queuedFrom: number }> = {
+  run_2026q4: { inFlightFrom: 1642, queuedFrom: 1678 },
+};
+
 export function transferStateAt(
   runId: string,
   index: number,
+  projectId: string,
   shares: { failureShare: number; reversalShare: number },
 ): TransferState {
+  const pending = PENDING_FROM[runId];
+  if (pending && index >= pending.queuedFrom) {
+    return "queued";
+  }
+  if (pending && index >= pending.inFlightFrom) {
+    return "in_flight";
+  }
+  const applied = SHARES_BY_PROJECT[projectId] ?? shares;
   const seed = index * 97 + runId.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0);
   const roll = mulberry32(seed)();
-  if (roll < shares.failureShare) {
+  if (roll < applied.failureShare) {
     return "failed";
   }
-  if (roll < shares.failureShare + shares.reversalShare) {
+  if (roll < applied.failureShare + applied.reversalShare) {
     return "reversed";
   }
   /* A settled transfer the participant has not acknowledged is its own state,
@@ -559,14 +611,17 @@ export function transferStateAt(
 export function transferAt(runId: string, index: number, projectId: string): Transfer {
   const participant = participantAt(projectId, index);
   const interbank = index % 11 === 0;
-  const state = transferStateAt(runId, index, fixtureShares());
+  const state = transferStateAt(runId, index, projectId, fixtureShares());
   const failureClass =
     state === "failed"
       ? FAILURE_CLASSES[index % FAILURE_CLASSES.length]
       : null;
-  const amount = amountForIndex(index);
+  const amount = amountForIndex(projectId, index);
   const charge = chargeFor(amount, interbank ? "interbank" : "intrabank");
-  const queuedAt = new Date(Date.UTC(2026, 10, 9, 13, 20, 0) + index * 2300).toISOString();
+  /* A transfer is queued when its own run executed, so a period's transfers
+     never settle after the period that attests to them closed. */
+  const executedAt = RUN_EXECUTION[runId] ?? "2026-11-09T13:20:00Z";
+  const queuedAt = new Date(Date.parse(executedAt) + index * 2300).toISOString();
 
   return {
     id: transferIdFor(runId, index),
@@ -581,9 +636,11 @@ export function transferAt(runId: string, index: number, projectId: string): Tra
     total_debit: addAmounts(amount, charge.total),
     state,
     failureClass,
+    /* The NIP session identifier is the bank's unique reference for one
+       settlement, so it is unique across runs as well as within one. */
     sessionId:
       state === "settled" || state === "unconfirmed" || state === "reversed"
-        ? `0000142611091422${String(index).padStart(6, "0")}`
+        ? `${sessionPrefix(queuedAt)}${runSerial(runId)}${String(index).padStart(9, "0")}`
         : null,
     queuedAt,
     settledAt:
@@ -667,9 +724,9 @@ export const RUNS: Run[] = [
   run("run_2026q3", "proj_ekuri", "2026-Q3", "complete", 1904, "73300000.00", "37400000.00", "2026-09-28T08:00:00Z", "2026-09-29T10:14:02Z"),
   run("run_2026q4", "proj_ekuri", "2026-Q4", "executing", 2090, "80333333.33", "40500000.00", "2026-11-09T12:40:00Z", "2026-11-09T13:20:00Z"),
   run("run_draft", "proj_ekuri", "2026-Q4", "draft", 0, "0.00", "0.00", "2026-11-09T15:02:00Z", null),
-  run("run_hadejia_q2", "proj_hadejia", "2026-Q2", "complete", 720, "25396363.64", "13968000.00", "2026-06-28T08:00:00Z", "2026-06-30T10:00:00Z"),
-  run("run_hadejia_q3", "proj_hadejia", "2026-Q3", "complete", 846, "29840000.00", "16412400.00", "2026-09-28T08:00:00Z", "2026-09-30T09:30:00Z"),
-  run("run_delta_q3", "proj_delta", "2026-Q3", "complete", 1402, "44600000.00", "26200000.00", "2026-09-29T08:00:00Z", "2026-09-30T14:10:00Z"),
+  run("run_hadejia_q2", "proj_hadejia", "2026-Q2", "complete", 720, "25396363.64", "14050000.00", "2026-06-28T08:00:00Z", "2026-06-30T10:00:00Z"),
+  run("run_hadejia_q3", "proj_hadejia", "2026-Q3", "complete", 846, "29840727.27", "16500000.00", "2026-09-28T08:00:00Z", "2026-09-30T09:30:00Z"),
+  run("run_delta_q3", "proj_delta", "2026-Q3", "complete", 1402, "44600000.00", "25700000.00", "2026-09-29T08:00:00Z", "2026-09-30T14:10:00Z"),
 ];
 
 /* Coverage is computed from transfers that cleared, never typed. The fixture
@@ -714,6 +771,7 @@ function computeCoverage(): void {
         project.commitment.percentage / 100,
       );
       period.shortfall = subtractAmounts(period.required, paidOut);
+      period.surplus = subtractAmounts(paidOut, period.required);
       period.confirmationRate =
         households === 0 ? 0 : Number((confirmed / households).toFixed(2));
     }
@@ -721,6 +779,19 @@ function computeCoverage(): void {
     const open = project.periods.find((period) => period.state === "open");
     const latest = open ?? project.periods.at(-1);
     project.confirmationRate = latest?.confirmationRate ?? 0;
+
+    /* A dispute is open until it is resolved one way or the other. These are
+       the figures the public register publishes, so they are counted. */
+    const disputes = DISPUTES.filter((dispute) => dispute.projectId === project.id);
+    project.openDisputes = disputes.filter(
+      (dispute) => dispute.state !== "substantiated" && dispute.state !== "unsubstantiated",
+    ).length;
+    project.substantiatedDisputes = disputes.filter(
+      (dispute) => dispute.state === "substantiated",
+    ).length;
+    project.signalCount = SIGNALS.filter(
+      (signal) => signal.projectId === project.id,
+    ).length;
     project.enrolled = latest?.enrolled ?? project.enrolled;
     project.paid = latest?.paid ?? project.paid;
     project.lastClosedPeriod =
@@ -728,7 +799,7 @@ function computeCoverage(): void {
   }
 }
 
-computeCoverage();
+
 
 /* ---- Attestations --------------------------------------------------------- */
 
@@ -759,7 +830,7 @@ export function attestationFor(
     chargesBorne: period.chargesBorne,
     required: period.required,
     shortfall: period.shortfall,
-    confirmationRate: project?.confirmationRate ?? 0,
+    confirmationRate: period.confirmationRate,
     hash: hashFor(`${projectId}-${period.period}`),
     previousHash: previous,
     merkleRoot: hashFor(`merkle-${projectId}-${period.period}`),
@@ -861,7 +932,7 @@ export const DISPUTES: Dispute[] = [
     state: "substantiated",
     resolutionBasis:
       "Onward transfer out of the household wallet within four minutes of settlement, into an account also receiving from 397 other wallets. Case 0231 refers.",
-    transferId: transferIdFor("run_2026q3", 119),
+    transferId: transferIdFor("run_delta_q3", 119),
     raisedAt: "2026-10-05T07:21:00Z",
     updatedAt: "2026-10-22T14:08:00Z",
     responses: [],
@@ -1112,47 +1183,51 @@ export const EXCEPTIONS: VerificationException[] = [
   },
 ];
 
-export const RECONCILIATIONS: Reconciliation[] = [
-  {
-    projectId: "proj_ekuri",
-    projectName: "Ekuri Community Forest Carbon Project",
-    period: "2026-Q3",
-    inbound: "35200000.00",
-    outbound: "32431350.00",
-    charges: "3225.00",
-    balance: "2765425.00",
-    state: "reconciled",
-    delta: "0.00",
-    candidateCauses: [],
-  },
-  {
-    projectId: "proj_delta",
-    projectName: "Akassa Mangrove Carbon Project",
-    period: "2026-Q3",
-    inbound: "28013200.00",
-    outbound: "27991200.00",
-    charges: "14056.25",
-    balance: "7943.75",
-    state: "mismatch",
-    delta: "14056.25",
-    candidateCauses: [
-      "Charges borne by the project were funded from a second account.",
-      "Two reversals settled after the reconciliation window closed.",
-    ],
-  },
-  {
-    projectId: "proj_ekuri",
-    projectName: "Ekuri Community Forest Carbon Project",
-    period: "2026-Q4",
-    inbound: "31400000.00",
-    outbound: "29596200.00",
-    charges: "1612.50",
-    balance: "1802187.50",
-    state: "period-open",
-    delta: "0.00",
-    candidateCauses: [],
-  },
-];
+export const RECONCILIATIONS: Reconciliation[] = [];
+
+/* Inbound funding against what households received against the charges borne.
+   A mismatch is what the arithmetic produces, never a figure somebody typed. */
+function computeReconciliation(): void {
+  RECONCILIATIONS.length = 0;
+  for (const project of PROJECTS) {
+    for (const period of project.periods) {
+      const periodRun = RUNS.find(
+        (candidate) =>
+          candidate.projectId === project.id &&
+          candidate.period === period.period &&
+          candidate.state !== "draft",
+      );
+      if (!periodRun) {
+        continue;
+      }
+      const inbound = periodRun.fundingAmount;
+      const outbound = period.amountToHouseholds;
+      const charges = period.chargesBorne;
+      const spent = addAmounts(outbound, charges);
+      const balance = subtractAmounts(inbound, spent);
+      const overspend = subtractAmounts(spent, inbound);
+      const open = period.state === "open";
+      RECONCILIATIONS.push({
+        projectId: project.id,
+        projectName: project.name,
+        period: period.period,
+        inbound,
+        outbound,
+        charges,
+        balance,
+        state: open ? "period-open" : overspend === "0.00" ? "reconciled" : "mismatch",
+        delta: overspend,
+        candidateCauses:
+          overspend === "0.00"
+            ? []
+            : [
+                "Transfers settled against a second funding account that has not been reported here.",
+                "Charges were borne outside the funding transferred for this period.",
+              ],
+      });
+    }
+  }
+}
 
 /* ---- Geography, coarse buckets only --------------------------------------- */
 
@@ -1173,3 +1248,23 @@ export function geography(projectId: string): GeographyBucket[] {
     households: 40 + Math.floor(random() * 180),
   }));
 }
+
+
+/* The fixture's figures are a function of its transfers, so they are computed
+   once at load and again whenever the configured shares move. Nothing in the
+   fixture holds a figure that the transfers behind it do not support. */
+function recomputeFixture(): void {
+  for (const existing of RUNS) {
+    if (existing.rosterSize === 0) {
+      continue;
+    }
+    const { counts, failures } = tally(existing.id, existing.projectId, existing.rosterSize);
+    existing.counts = counts;
+    existing.failures = failures;
+  }
+  computeCoverage();
+  computeReconciliation();
+}
+
+recomputeFixture();
+onSharesChanged(recomputeFixture);

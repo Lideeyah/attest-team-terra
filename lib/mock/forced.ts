@@ -60,8 +60,21 @@ const stream: StreamConfig = {
   transfers: 500,
 };
 
+/* The fixture's own figures are drawn from these shares, so anything that
+   caches a tally has to be told when they move. A listener keeps that
+   dependency pointing one way: the fixture registers, this module calls. */
+let sharesListener: (() => void) | null = null;
+
+export function onSharesChanged(listener: () => void): void {
+  sharesListener = listener;
+}
+
 export function setStreamConfig(next: Partial<StreamConfig>): StreamConfig {
+  const before = `${stream.failureShare}:${stream.reversalShare}`;
   Object.assign(stream, next);
+  if (`${stream.failureShare}:${stream.reversalShare}` !== before) {
+    sharesListener?.();
+  }
   return { ...stream };
 }
 

@@ -283,9 +283,11 @@ export const api = {
       accountNumber: string;
       accountName: string;
       bank: string;
-      balance: string;
       inbound: { reference: string; amount: string; receivedAt: string }[];
+      funded: string;
       outbound: string;
+      charges: string;
+      balance: string;
     }>(`/api/projects/${projectId}/funding`),
   reconciliation: (projectId: string) =>
     request<Reconciliation[]>(`/api/projects/${projectId}/reconciliation`),

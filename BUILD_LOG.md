@@ -363,3 +363,68 @@ being dropped deliberately, which is the mechanism rather than a defect, and
 it is what makes the live run screen's reconnecting state reachable.
 
 **Gate.** `npm run gate -- F-1`: 40 assertions, 40 passed. `F-0`: 31 of 31.
+
+**Fourth verification pass.** The computation itself held: every period figure
+reconciled with its transfers to the kobo, across all three projects, verified
+by paging 9,714 rows rather than by reading. Nine things around it did not, and
+all nine are fixed:
+
+1. **Moving the shares from the panel left every computed figure stale**, which
+   was the previous finding reappearing through the control the phase requires.
+   The fixture now recomputes when the shares move: `setStreamConfig` notifies a
+   listener the seed registers, and the runs, the periods and the reconciliation
+   are all re-tallied. The gate asserts it at a changed share rather than only
+   at the default.
+2. **An attestation carried the project's confirmation rate rather than the
+   period's**, so a closed period reported a figure computed from different
+   transfers. It reads `period.confirmationRate` now.
+3. **The one substantiated dispute pointed at another project's run.** It was
+   the dispute the whole bank-operations narrative rests on. It names a
+   transfer in its own project's run.
+4. **The dispute and signal counters were still typed**, and three of six were
+   wrong — the public register published eleven open disputes for a project
+   whose disputes endpoint returns one. They are counted from the data.
+5. **Reconciliation was still typed**, and every one of its nine figures
+   contradicted the run it reconciled, including a row asserting agreement.
+   It is produced by arithmetic: inbound funding against what households
+   received against the charges borne, and a mismatch is what the arithmetic
+   finds rather than a state somebody chose.
+6. **The funding screen had silently started reporting the first quarter's
+   figure**, because adding the earlier runs changed what `RUNS.find` returned.
+   It selects the open period's run and derives the balance.
+7. **Every project paid ₦23,050 a household** while two of them had their
+   commitments priced from different amounts, so one of them reported no
+   shortfall while 132 households went unpaid. Each project pays its own
+   amount, and a period now states a surplus as well as a shortfall, so a zero
+   shortfall is never confused with an over-payment.
+8. **There was no clean project left in the register.** Hadejia-Nguru runs at
+   zero failure and zero reversal: 846 of 846 households paid, the commitment
+   met, reconciled. It is the comparator the register and the compare view
+   exist to provide.
+9. **Every closed period's attestation claimed a close date months before its
+   transfers settled**, and session identifiers collided across runs because
+   every transfer was stamped on 9 November. A transfer is queued when its own
+   run executed, and the session identifier is thirty digits carrying the
+   settlement date and time, as the bank returns it.
+
+Two smaller items from the same pass: the open run now carries 412 queued and
+36 in-flight rows, so the live screen's queue is exercisable from the fixture
+and not only from the stream; and `formatNaira` groups the digit string
+directly rather than through `Number`, which is what its comment claimed.
+
+**The record the fixture now publishes.**
+
+```
+Ekuri    2026-Q1  closed         980 of 1,140   short ₦11.4m   reconciled
+         2026-Q2  closed late  1,382 of 1,612   short  ₦9.1m   reconciled
+         2026-Q3  closed       1,611 of 1,904   short  ₦6.8m   reconciled
+         2026-Q4  open         1,369 of 2,090   mid-run, 448 still queued
+Hadejia  2026-Q2  closed         720 of 720     commitment met, reconciled
+         2026-Q3  closed         846 of 846     commitment met, reconciled
+Akassa   2026-Q3  closed       1,205 of 1,402   short ₦5.4m    mismatch ₦90,010.86
+                                                confirmation 0.30, 3 signals
+```
+
+**Gate.** `npm run gate -- F-1`: 42 assertions, 42 passed, including that a
+run's counts follow the shares when the panel moves them and that a period's
+paid count is the transfers that cleared.

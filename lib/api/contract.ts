@@ -145,7 +145,11 @@ export type PeriodSummary = {
   amountToHouseholds: Amount;
   chargesBorne: Amount;
   required: Amount;
+  /** What the commitment required and the households did not receive. */
   shortfall: Amount;
+  /** What the households received beyond the commitment. Both are stated, so
+      a zero shortfall is never confused with an over-payment. */
+  surplus: Amount;
   closedAt: string | null;
   attestationId: string | null;
   corrected: boolean;
