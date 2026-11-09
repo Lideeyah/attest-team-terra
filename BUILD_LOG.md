@@ -207,3 +207,61 @@ events seen, and `/dev/states`, `/dev/kitchen-sink` and `/api/dev/force` each
    registry.
 2. **The stream's reversal share defaults to 3 percent.** The sandbox reverses
    on amounts ending `.04`; the share is a stand-in until the live rail decides it.
+
+**Independent verification.** A fresh verifier checked F-1 against the contract
+endpoint by endpoint and returned 29 findings. It was right about all of the
+substantive ones, including the gate itself, which probed 37 endpoints and
+accepted any status below 500 — three of its probes were passing on a 404 for
+identifiers that do not exist in the seed. What changed:
+
+- **Four endpoints were missing.** `POST /hooks/forge` and the three
+  `/api/webhooks/*` callbacks now exist. The hook verifies before it acts:
+  constant-time HMAC over `{timestamp}.{raw_body}`, a five-minute window and
+  de-duplication on `event_id`, per backend 6A.3.
+- **The mock server shipped in production builds.** It now lives in
+  `dev-tools/api-mock` and is copied in only when `ATTEST_API_MODE` is not
+  `live`. A live build's whole route tree is `/`, `/_not-found` and `/healthz`,
+  asserted by the gate.
+- **Nine error codes carried the wrong HTTP status** against the bank's table in
+  backend 3, `per_page` was capped at 500 rather than 100, and ten list
+  endpoints returned no `meta` against the 4.4 guarantee. All corrected and
+  each is now an assertion.
+- **Idempotency did neither half of what the conventions require.** The same
+  key and body now replays with `Idempotent-Replayed: true`; the same key with
+  a different body returns 409. The client's generated key was a timestamp,
+  which guaranteed two clicks were two keys; it is a UUID now, and every
+  mutation that moves money or creates a record takes its key explicitly.
+- **The client claimed "nothing was submitted" on a transport failure**, which
+  is the opposite of backend 2.4. It now says the outcome is unknown and to
+  requery, and carries a `transport` flag.
+- **MSW was dead code.** `lib/api/client.test.ts` now runs the client against
+  it under vitest, which also gave the client its first callers and caught two
+  return types that contradicted the mock.
+- **Charge fields were camelCase** where the bank names them `stamp_duty` and
+  `total_debit`, and the interbank charge was always read from band two.
+  `chargeFor()` matches the amount to its band.
+- **The stream's failure share was `index % 100`**, so a short run failed at a
+  different rate from a long one and failures all arrived first. It draws from
+  a seeded generator now, the reversal share is configurable and on the panel,
+  and a forced code fails the stream itself so the disconnected state is
+  reachable.
+- **Every dispute fixture named a transfer that could not exist**, and one
+  named a run that did not exist. `transferIdFor()` is the one place a transfer
+  id is computed, and `run_2026q1` and `run_2026q2` were added.
+- **Identifiers ignored the sandbox's synthetic pattern.** BVNs follow
+  `222000000NN` and NINs `700000000NN`, and only the last four are carried, per
+  6A.6. Seeded households also carry the 2.5 trigger accounts and amounts
+  ending `.01` to `.05`, so a failure is reachable against the sandbox itself.
+- Three non-contract query parameters and an invented endpoint inside
+  `/api/runs/:id/` are gone; the stream's controls are at `/api/dev/stream-config`.
+
+**Decision taken against one finding.** Participants are still generated from
+their index rather than held as a 500-row fixture. The roster has to virtualise
+10,000 rows in F-5 and a fixed fixture cannot supply them, so the generator
+stands and the project's `enrolled` figure is what sizes a roster.
+
+**Gate.** `npm run gate -- F-1`: 27 assertions, 27 passed. 80 endpoints probed
+with their own verbs and seeded identifiers, all 47 codes forced with their
+status checked against backend 3, both idempotency behaviours asserted, the
+hook's refusal asserted, and a live build asserted to carry no mock and no
+developer tooling.

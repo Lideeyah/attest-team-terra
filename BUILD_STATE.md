@@ -1,8 +1,8 @@
 # Build state
 
-Phase complete: F-0 — foundation, gate green, 31 of 31 assertions, committed.
-Phase complete: F-1 — mock server, typed client and /dev/states, gate green,
-15 of 15 assertions, under independent verification.
+Phase complete: F-0 — foundation. Gate green, 31 of 31. Verified and committed.
+Phase complete: F-1 — mock server, typed client and /dev/states. Gate green,
+27 of 27. Verified, fixed and committed; a re-verification is in flight.
 Next phase: F-2 — the landing page, six scroll-linked movements.
 
 Resume by pasting the orchestration prompt from
