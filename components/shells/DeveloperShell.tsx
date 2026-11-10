@@ -33,7 +33,12 @@ type DeveloperShellProps = {
   outstanding?: Record<string, { count: number; label?: string; blocking?: boolean }>;
   account?: { organisation: string; email: string };
   /** The open period and the days remaining, shown on every screen. */
-  period?: { label: string; daysToClose: number; closesOn: string };
+  period?: {
+    label: string;
+    daysToClose: number;
+    closesOn: string;
+    state?: "open" | "closed";
+  };
 };
 
 /** The developer console shell: a 240px left rail with a persistent period
@@ -50,6 +55,7 @@ export function DeveloperShell({
     label: "2026-Q4",
     daysToClose: 9,
     closesOn: "31 December 2026",
+    state: "open",
   },
 }: DeveloperShellProps) {
   const pathname = usePathname();
@@ -60,12 +66,19 @@ export function DeveloperShell({
         <div className="console-rail-head">
           <Lockup size={17} />
         </div>
-        <div className="period-indicator">
-          <p className="eyebrow">Open period</p>
+        <div className="period-indicator" data-period-indicator={period.label}>
+          <p className="eyebrow">{period.state === "closed" ? "Period" : "Open period"}</p>
           <p className="record-cell">{period.label}</p>
           <p className="record-cell">
-            {period.daysToClose} days to close · {period.closesOn}
+            {period.state === "closed"
+              ? `Closed · ${period.closesOn}`
+              : `${period.daysToClose} days to close · ${period.closesOn}`}
           </p>
+          {period.state !== "closed" && period.daysToClose <= 3 ? (
+            <p className="record-cell console-closing" data-closing="true">
+              Closing
+            </p>
+          ) : null}
         </div>
         <ul className="console-nav">
           {SECTIONS.map((section) => {

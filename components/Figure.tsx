@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useInView, useReducedMotion } from "motion/react";
 import { tallyTo } from "@/lib/motion";
+import { formatCoverage } from "@/lib/record";
 
 type FigureProps = {
   /** The eyebrow label above the figure. */
@@ -17,8 +18,15 @@ type FigureProps = {
       what renders until the count begins and after it ends, so the figure is
       never wrong — a reader without JavaScript sees the real number. */
   tally?: number;
-  /** Formats each intermediate count. Defaults to a plain thousands group. */
+  /** Formats each intermediate count. Defaults to a plain thousands group.
+      A server component cannot pass a function across the boundary, so it
+      names the formatting instead. */
   format?: (value: number) => string;
+  /** How an intermediate count is written: a plain figure, or a share of
+      `against`. */
+  formatAs?: "count" | "coverage";
+  /** The denominator a coverage share is counted against. */
+  against?: number;
 };
 
 export function Figure({
@@ -28,6 +36,8 @@ export function Figure({
   denominator,
   tally,
   format,
+  formatAs = "count",
+  against,
 }: FigureProps) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.6 });
@@ -38,11 +48,15 @@ export function Figure({
     if (tally === undefined || !inView || reduced) {
       return;
     }
-    const render = format ?? ((count: number) => count.toLocaleString("en-NG"));
+    const render =
+      format ??
+      (formatAs === "coverage" && against !== undefined
+        ? (count: number) => formatCoverage(count, against)
+        : (count: number) => count.toLocaleString("en-NG"));
     return tallyTo(tally, (count) => {
       setCounting(count === tally ? null : render(count));
     });
-  }, [inView, tally, reduced, format]);
+  }, [inView, tally, reduced, format, formatAs, against]);
 
   return (
     <div className="figure" ref={ref}>
