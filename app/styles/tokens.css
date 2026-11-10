@@ -51,7 +51,11 @@
      stack behind it. */
   --font-display: var(--font-cabinet, "Cabinet Grotesk"), var(--font-inter-tight, "Inter Tight"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-editorial: var(--font-newsreader, "Newsreader"), Georgia, "Times New Roman", serif;
-  --font-record: var(--font-courier-prime, "Courier Prime"), "Courier New", ui-monospace, monospace;
+  /* Courier Prime has no naira sign, so the stack names a monospace that does
+     before falling back to one that does not. Without it every amount in the
+     product breaks out of the record face at its first character. */
+  --font-record: var(--font-courier-prime, "Courier Prime"), Menlo, Consolas,
+    "DejaVu Sans Mono", "Courier New", ui-monospace, monospace;
 
   /* ---- Type scale ------------------------------------------------------- */
   --fs-h1: clamp(2.6rem, 5.2vw, 4.1rem);
@@ -91,6 +95,9 @@
 
   /* ---- Space and rhythm -------------------------------------------------- */
   --measure: 1340px;
+  /* The reading measure for a composition that is a block of records rather
+     than a full-width table. */
+  --measure-reading: 980px;
   --bp-wide: 1180px;
   --bp-mid: 1080px;
   --gutter: 40px;

@@ -218,9 +218,6 @@ async function primitivesPlayed(): Promise<void> {
   const stampSection = (await page.evaluate(
     `document.querySelector('[data-movement="stamp"]').offsetTop`,
   )) as number;
-  const stampHeight = (await page.evaluate(
-    `document.querySelector('[data-movement="stamp"]').offsetHeight`,
-  )) as number;
 
   /* Sample the stamp's scale as it lands. The primitive overshoots past its
      resting size and comes back; a linear shrink never goes below one. The
@@ -239,9 +236,9 @@ async function primitivesPlayed(): Promise<void> {
       window.requestAnimationFrame(tick);
     })();
   `);
-  for (let step = 1; step <= 12; step += 1) {
+  for (let step = 0; step <= 16; step += 1) {
     await page.evaluate(
-      `window.scrollTo(0, ${Math.round(stampSection + (stampHeight * step) / 16)})`,
+      `window.scrollTo(0, ${scrollForProgress(stampSection, 900, 0.1 + step * 0.05)})`,
     );
     await page.waitForTimeout(90);
   }
@@ -311,10 +308,8 @@ async function fitsThePhone(): Promise<void> {
     const sectionHeight = (await page.evaluate(
       `document.querySelector('[data-movement="${movement}"]').offsetHeight`,
     )) as number;
-    /* The middle of the pin, which is where the composition is held. */
-    await page.evaluate(
-      `window.scrollTo(0, ${Math.round(top + Math.max(0, (sectionHeight - 844) / 2))})`,
-    );
+    /* The middle of the movement, which is where its composition is centred. */
+    await page.evaluate(`window.scrollTo(0, ${Math.round(top + sectionHeight / 2 - 422)})`);
     await page.waitForTimeout(250);
     const box = (await page.evaluate(
       `JSON.stringify((function () {
@@ -336,6 +331,14 @@ async function fitsThePhone(): Promise<void> {
   );
 }
 
+
+
+/* Where to scroll to put a movement at a given point in its own progress.
+   A movement is one screen tall and its progress runs across the middle of
+   its travel, so progress p sits at its top plus a fraction of a screen. */
+function scrollForProgress(top: number, viewport: number, p: number): number {
+  return Math.round(top + viewport * (0.64 * p - 0.32));
+}
 
 /** The composition is one object: the rows that arrive are the rows that are
     stamped and the rows that are sealed, the stamps land one after another,
@@ -376,15 +379,20 @@ async function compositionHolds(): Promise<void> {
     {
       const { context, page, geometry } = await open(width);
       const figures = await geometry("figures");
-      await page.evaluate(`window.scrollTo(0, ${Math.round(figures.top + 8)})`);
+      await page.evaluate(
+        `window.scrollTo(0, ${scrollForProgress(figures.top, viewport, 0.12)})`,
+      );
       await page.waitForTimeout(250);
-      const opacity = (await page.evaluate(
-        `getComputedStyle(document.querySelector('[data-movement="figures"] .figure-row')).opacity`,
-      )) as string;
+      /* Each figure is revealed as its own count begins, so each is checked. */
+      const opacities = JSON.parse(
+        (await page.evaluate(
+          `JSON.stringify(Array.from(document.querySelectorAll('[data-movement="figures"] .figure-cell')).map(function (cell) { return getComputedStyle(cell).opacity; }))`,
+        )) as string,
+      ) as string[];
       record(
-        `a figure is not shown before it is counted at ${width}px`,
-        Number(opacity) < 0.2,
-        `opacity ${opacity}`,
+        `no figure is shown before it is counted at ${width}px`,
+        opacities.length === 3 && opacities.every((value) => Number(value) < 0.2),
+        opacities.join(", "),
       );
       await context.close();
     }
@@ -393,7 +401,9 @@ async function compositionHolds(): Promise<void> {
     {
       const { context, page, geometry } = await open(width);
       const seal = await geometry("seal");
-      await page.evaluate(`window.scrollTo(0, ${Math.round(seal.top + 8)})`);
+      await page.evaluate(
+        `window.scrollTo(0, ${scrollForProgress(seal.top, viewport, 0.3)})`,
+      );
       await page.waitForTimeout(300);
       const before = JSON.parse(
         (await page.evaluate(
@@ -410,7 +420,7 @@ async function compositionHolds(): Promise<void> {
       );
 
       await page.evaluate(
-        `window.scrollTo(0, ${Math.round(seal.top + (seal.height - viewport) * 0.9)})`,
+        `window.scrollTo(0, ${scrollForProgress(seal.top, viewport, 0.8)})`,
       );
       await page.waitForTimeout(600);
       const after = JSON.parse(
@@ -435,7 +445,7 @@ async function compositionHolds(): Promise<void> {
       const { context, page, geometry } = await open(width);
       const ledger = await geometry("ledger");
       await page.evaluate(
-        `window.scrollTo(0, ${Math.round(ledger.top + (ledger.height - viewport) * 0.95)})`,
+        `window.scrollTo(0, ${scrollForProgress(ledger.top, viewport, 0.98)})`,
       );
       await page.waitForTimeout(400);
       const ledgerRows = (await page.evaluate(
@@ -444,9 +454,9 @@ async function compositionHolds(): Promise<void> {
 
       const stamp = await geometry("stamp");
       await page.evaluate(
-        `window.scrollTo(0, ${Math.round(stamp.top + (stamp.height - viewport) * 0.85)})`,
+        `window.scrollTo(0, ${scrollForProgress(stamp.top, viewport, 0.75)})`,
       );
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(900);
       const stampRows = (await page.evaluate(
         `document.querySelectorAll('[data-movement="stamp"] .ledger-row').length`,
       )) as number;
@@ -458,7 +468,7 @@ async function compositionHolds(): Promise<void> {
 
       const seal = await geometry("seal");
       await page.evaluate(
-        `window.scrollTo(0, ${Math.round(seal.top + (seal.height - viewport) * 0.9)})`,
+        `window.scrollTo(0, ${scrollForProgress(seal.top, viewport, 0.85)})`,
       );
       await page.waitForTimeout(500);
       const sealRows = (await page.evaluate(

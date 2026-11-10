@@ -82,49 +82,47 @@ function Stillness() {
 }
 
 function TallyFigure({
-  started,
+  progress,
+  mark,
   label,
   value,
   format,
   denominator,
-  delayFrames,
 }: {
-  started: boolean;
+  progress: MotionValue<number>;
+  /** Where in the movement this figure begins to count. */
+  mark: number;
   label: string;
   value: number;
   format: (input: number) => string;
   denominator: string;
-  delayFrames: number;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const reduced = useReducedMotion();
-  const played = useRef(false);
+  const started = useCrossed(progress, mark);
+  /* Each figure appears as its own count begins. A figure that is legible
+     before it counts has told the reader the answer. */
+  const opacity = useReveal(progress, [mark - 0.07, mark - 0.005], [0, 1]);
 
   useEffect(() => {
-    if (!started || played.current || reduced) {
+    if (!started || reduced) {
       return;
     }
-    played.current = true;
-    const timer = window.setTimeout(
-      () =>
-        tallyTo(value, (count) => {
-          if (ref.current) {
-            ref.current.textContent = format(count);
-          }
-        }),
-      delayFrames * FRAME_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [started, value, format, reduced, delayFrames]);
+    return tallyTo(value, (count) => {
+      if (ref.current) {
+        ref.current.textContent = format(count);
+      }
+    });
+  }, [started, value, format, reduced]);
 
   return (
-    <div className="figure-cell">
+    <motion.div className="figure-cell" style={{ opacity }}>
       <p className="eyebrow">{label}</p>
       <p className="figure-value">
         <span ref={ref}>{format(value)}</span>
       </p>
       <p className="figure-denominator">{denominator}</p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -137,13 +135,6 @@ function Figures() {
 }
 
 function FiguresBody({ progress }: { progress: MotionValue<number> }) {
-  const started = useCrossed(progress, 0.42);
-  const reduced = useReducedMotion();
-  /* The figures are not on screen until the count begins, so the reader is
-     never shown the number before watching it arrive. The markup carries the
-     real figures, so a reader without JavaScript sees them. */
-  const opacity = useReveal(progress, [0.34, 0.44], [0, 1]);
-
   /* Before the tally runs the figures read zero, because the count is the
      point of the movement. A reader without JavaScript sees the real numbers,
      which is why the markup carries them. */
@@ -155,36 +146,32 @@ function FiguresBody({ progress }: { progress: MotionValue<number> }) {
       <h2 className="h2-display h2-display-ink" style={{ maxWidth: "20ch" }}>
         One programme enrolled twenty-one thousand households
       </h2>
-      <motion.div
-        className="figure-row"
-        style={{ opacity }}
-        data-counting={started || reduced ? "true" : "false"}
-      >
+      <div className="figure-row">
         <TallyFigure
-          started={started}
-          delayFrames={0}
+          progress={progress}
+          mark={0.3}
           label="Households enrolled"
           value={EVIDENCE.enrolled}
           format={format}
           denominator="Enrolled in the benefit-sharing register"
         />
         <TallyFigure
-          started={started}
-          delayFrames={6}
+          progress={progress}
+          mark={0.44}
           label="Households recorded as paid"
           value={EVIDENCE.paid}
           format={format}
           denominator={`of ${formatCount(EVIDENCE.enrolled)} enrolled`}
         />
         <TallyFigure
-          started={started}
-          delayFrames={12}
+          progress={progress}
+          mark={0.58}
           label="Coverage"
           value={EVIDENCE.coveragePercent}
           format={percent}
           denominator={`${formatCount(EVIDENCE.paid)} of ${formatCount(EVIDENCE.enrolled)}`}
         />
-      </motion.div>
+      </div>
       <p className="prose-muted">
         The rest were promised the same share. Nobody can say from the outside
         whether they received it, because the money moved in cash and cash
@@ -415,7 +402,7 @@ function PublicRecord() {
 function PublicRecordBody({ progress }: { progress: MotionValue<number> }) {
   const reduced = useReducedMotion();
   const arrived = useCrossed(progress, 0.26, { once: false });
-  const opacity = useReveal(progress, [0.2, 0.34], [0, 1]);
+  const opacity = useReveal(progress, [0.14, 0.25], [0, 1]);
   const rowOpacity = useReveal(progress, [0.42, 0.6], [0, 1]);
   const rowY = useReveal(progress, [0.42, 0.6], [12, 0]);
 

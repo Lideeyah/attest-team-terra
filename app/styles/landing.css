@@ -6,21 +6,30 @@
   --movement-scroll: 100vh;
 }
 
+/* The movements tile the page: one screen each, each composition centred in
+   its own screen. There is never a gap between two of them, because the next
+   composition is directly behind the one leaving rather than a screen below
+   it. The composition plays across the middle of its travel, while it is in
+   front of the reader. */
 .movement {
   position: relative;
-  /* A movement is one screen of composition plus the scroll it plays across.
-     The pin is the difference between the two, and the composition plays over
-     the whole of it, so there is no part of a movement that is not doing
-     something. */
-  height: calc(var(--movement-scroll) * 1.6);
+  height: var(--movement-scroll);
+}
+
+/* A movement's composition reads as a block, not as a table stretched to the
+   full measure with its figures a screen away from their households. */
+.movement .measure {
+  max-width: var(--measure-reading);
+  margin-inline: 0;
 }
 
 .movement-pinned {
   position: sticky;
   top: 0;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
+  overflow: hidden;
 }
 
 .movement-still {
@@ -114,7 +123,14 @@
     height: auto;
   }
 
-  .movement-pinned {
+  /* A movement's composition reads as a block, not as a table stretched to the
+   full measure with its figures a screen away from their households. */
+.movement .measure {
+  max-width: var(--measure-reading);
+  margin-inline: 0;
+}
+
+.movement-pinned {
     position: static;
     min-height: 0;
     padding-block: var(--section);

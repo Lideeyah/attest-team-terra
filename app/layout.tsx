@@ -27,6 +27,12 @@ const courierPrime = Courier_Prime({
   weight: ["400", "700"],
   display: "swap",
   variable: "--font-courier-prime",
+  /* Courier Prime has no naira sign, and next/font's own metric-adjusted
+     fallback is a proportional face, so every amount would break out of the
+     record face at its first character. These fallbacks are monospaced and
+     carry the glyph. */
+  adjustFontFallback: false,
+  fallback: ["Menlo", "Consolas", "DejaVu Sans Mono", "Courier New", "monospace"],
 });
 
 /* The declared fallback for the display face, loaded so that a missing

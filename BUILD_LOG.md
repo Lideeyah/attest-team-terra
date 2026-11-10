@@ -605,3 +605,45 @@ it draws and draws where it can be seen, that the rows which arrive are the
 rows that are stamped and sealed, that the stamps land one after another, and
 that a ledger row keeps its shape at 390px. Each is measured on its own page,
 because a threshold that has been crossed stays crossed.
+
+**Third verification of F-2, and Lydia's own reading of the page.** The
+verifier confirmed all six previous fixes by measurement and returned two
+failures. Lydia, looking at the running page, independently reported the same
+thing in different words: it read as cluttered and hard to follow.
+
+1. **The second and third figures were still shown at full opacity before they
+   counted.** One opacity reveal covered all three cells while the tallies
+   started 250ms and 500ms apart, so two of the three were legible at their
+   final value and then snapped back to zero. Each figure now has its own
+   reveal keyed to its own count, and the gate checks all three cells rather
+   than the row.
+2. **The geometry left a near-blank screen between every pair of movements.**
+   Measured at 1280x800: 634 pixels of empty paper between the figures and the
+   ledger, 401 between the ledger and the stamps, 523 between the stamps and
+   the seal — about 4,000 pixels of the page. Each composition was centred in
+   its own full-screen sticky block, so their centres sat a full screen apart
+   and the transit between them showed neither.
+
+**The movements tile the page now.** One screen each, each composition centred
+in its own screen, progress running across the middle of its travel. There is
+no gap between two of them because the next composition is directly behind the
+one leaving. The page is 6.6 screens, which is close to the 600vh the design
+document asks for, and nothing fires off screen. The pin is gone; what replaces
+it is a composition that is always in front of the reader.
+
+**Two execution defects visible in the captures, both fixed.**
+
+- **The naira sign was falling out of the record face on every figure.**
+  Courier Prime has no glyph for it, and `next/font`'s own metric-adjusted
+  fallback is a proportional face, so every amount in the product broke
+  typeface at its first character. The record face now falls back to a
+  monospace that carries the glyph, and the adjusted fallback is off.
+- **The compositions were stretched across the full 1,340px measure**, so a
+  household and its amount sat at opposite ends of the screen. A movement's
+  composition reads at a 980px measure.
+
+**Lydia's direction, given the captures:** the design system stands as the
+foundation document specifies and the work is to fix execution. The build
+continues through F-3, F-4 and F-5.
+
+**Gate.** `npm run gate -- F-2`: 42 assertions, 42 passed.
