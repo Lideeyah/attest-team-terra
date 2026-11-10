@@ -1,4 +1,5 @@
-// SQL migrations are authoritative for expression indexes, role grants, PostGIS and triggers.
+// SQL owns generated projections, PostGIS, audit triggers and permissions.
+// Write domain records through the repository; generated fields are read projections.
 
 generator client {
   provider = "prisma-client-js"
@@ -6,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
 }
 
 model Project {
@@ -14,6 +14,12 @@ model Project {
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   boundary Unsupported("geometry(Polygon,4326)")?
+  organisationId String? @default(dbgenerated()) @map("organisation_id")
+  registryId String? @default(dbgenerated()) @map("registry_id")
+  name String? @default(dbgenerated()) @map("name")
+  country String? @default(dbgenerated()) @map("country")
+  methodology String? @default(dbgenerated()) @map("methodology")
+  status String? @default(dbgenerated()) @map("status")
   @@map("projects")
 }
 
@@ -21,6 +27,14 @@ model Commitment {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  percentage Decimal? @default(dbgenerated()) @map("percentage") @db.Decimal(7,4)
+  basis String? @default(dbgenerated()) @map("basis")
+  cadence String? @default(dbgenerated()) @map("cadence")
+  beneficiaryDefinition String? @default(dbgenerated()) @map("beneficiary_definition")
+  sourceQuote String? @default(dbgenerated()) @map("source_quote")
+  sourcePage Int? @default(dbgenerated()) @map("source_page")
+  accepted Boolean? @default(dbgenerated()) @map("accepted")
   @@map("commitments")
 }
 
@@ -29,6 +43,19 @@ model Participant {
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   location Unsupported("geometry(Point,4326)")?
+  projectId String? @default(dbgenerated()) @map("project_id")
+  agentId String? @default(dbgenerated()) @map("agent_id")
+  name String? @default(dbgenerated()) @map("name")
+  phone String? @default(dbgenerated()) @map("phone")
+  identityHash String? @default(dbgenerated()) @map("identity_hash")
+  identityLastFour String? @default(dbgenerated()) @map("identity_last_four")
+  accountNumber String? @default(dbgenerated()) @map("account_number")
+  bankCode String? @default(dbgenerated()) @map("bank_code")
+  kycLevel Int? @default(dbgenerated()) @map("kyc_level")
+  resolvedAccountName String? @default(dbgenerated()) @map("resolved_account_name")
+  nameMatch String? @default(dbgenerated()) @map("name_match")
+  status String? @default(dbgenerated()) @map("status")
+  flags String[] @default(dbgenerated()) @map("flags")
   @@map("participants")
 }
 
@@ -36,6 +63,9 @@ model Roster {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  period String? @default(dbgenerated()) @map("period")
+  participantIds String[] @default(dbgenerated()) @map("participant_ids")
   @@map("rosters")
 }
 
@@ -43,6 +73,14 @@ model DisbursementRun {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  rosterId String? @default(dbgenerated()) @map("roster_id")
+  commitmentId String? @default(dbgenerated()) @map("commitment_id")
+  period String? @default(dbgenerated()) @map("period")
+  state String? @default(dbgenerated()) @map("state")
+  declaredGross Decimal? @default(dbgenerated()) @map("declared_gross") @db.Decimal(18,2)
+  declaredNet Decimal? @default(dbgenerated()) @map("declared_net") @db.Decimal(18,2)
+  funded Decimal? @default(dbgenerated()) @map("funded") @db.Decimal(18,2)
   @@map("runs")
 }
 
@@ -50,6 +88,18 @@ model Transfer {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  runId String? @default(dbgenerated()) @map("run_id")
+  participantId String? @default(dbgenerated()) @map("participant_id")
+  reference String? @default(dbgenerated()) @map("reference")
+  amount Decimal? @default(dbgenerated()) @map("amount") @db.Decimal(18,2)
+  fee Decimal? @default(dbgenerated()) @map("fee") @db.Decimal(18,2)
+  vat Decimal? @default(dbgenerated()) @map("vat") @db.Decimal(18,2)
+  stampDuty Decimal? @default(dbgenerated()) @map("stamp_duty") @db.Decimal(18,2)
+  totalDebit Decimal? @default(dbgenerated()) @map("total_debit") @db.Decimal(18,2)
+  sessionId String? @default(dbgenerated()) @map("session_id")
+  state String? @default(dbgenerated()) @map("state")
+  failureClass String? @default(dbgenerated()) @map("failure_class")
   @@map("transfers")
 }
 
@@ -57,6 +107,9 @@ model Confirmation {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  transferId String? @default(dbgenerated()) @map("transfer_id")
+  participantId String? @default(dbgenerated()) @map("participant_id")
   @@map("confirmations")
 }
 
@@ -64,6 +117,14 @@ model Attestation {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  runId String? @default(dbgenerated()) @map("run_id")
+  period String? @default(dbgenerated()) @map("period")
+  hash String? @default(dbgenerated()) @map("hash")
+  signature String? @default(dbgenerated()) @map("signature")
+  document Json? @default(dbgenerated()) @map("document")
+  amountMoved Decimal? @default(dbgenerated()) @map("amount_moved") @db.Decimal(18,2)
+  chargesBorne Decimal? @default(dbgenerated()) @map("charges_borne") @db.Decimal(18,2)
   @@map("attestations")
 }
 
@@ -71,6 +132,11 @@ model Dispute {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  transferId String? @default(dbgenerated()) @map("transfer_id")
+  category String? @default(dbgenerated()) @map("category")
+  status String? @default(dbgenerated()) @map("status")
+  resolutionBasis String? @default(dbgenerated()) @map("resolution_basis")
   @@map("disputes")
 }
 
@@ -78,6 +144,9 @@ model Signal {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  class String? @default(dbgenerated()) @map("class")
+  participantIds String[] @default(dbgenerated()) @map("participant_ids")
   @@map("signals")
 }
 
@@ -85,6 +154,10 @@ model Agent {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  projectId String? @default(dbgenerated()) @map("project_id")
+  name String? @default(dbgenerated()) @map("name")
+  status String? @default(dbgenerated()) @map("status")
+  deviceKey String? @default(dbgenerated()) @map("device_key")
   @@map("agents")
 }
 
@@ -92,5 +165,9 @@ model AuditEntry {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  principal String? @default(dbgenerated()) @map("principal")
+  action String? @default(dbgenerated()) @map("action")
+  beforeData Json? @default(dbgenerated()) @map("before_data")
+  afterData Json? @default(dbgenerated()) @map("after_data")
   @@map("audit")
 }

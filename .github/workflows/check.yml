@@ -21,6 +21,8 @@ jobs:
         with: {node-version: 24, cache: npm}
       - run: npm ci
       - run: npm run build
+      - run: npm run validate:schema
+      - run: npm run build:production
       - run: node dist/scripts/migrate.js
       - run: npm test
       - run: npm audit --audit-level=high

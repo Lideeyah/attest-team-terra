@@ -18,7 +18,7 @@ export function authConfig(db: Store): AuthConfig {
       if(user.role==='agent'&&(await db.get('agents',user.id))?.status!=='active')return null;
       return {id:user.id,email:user.email,authVersion:user.authVersion??0};
     }})],
-    callbacks:{jwt:async({token,user})=>{if(user){token.sub=user.id;token.authVersion=(user as any).authVersion??0;}return token;},session:async({session,token})=>{
+    callbacks:{jwt:async({token,user})=>{if(user){token.sub=user.id;token.authVersion=(user as {authVersion?:number}).authVersion??0;}return token;},session:async({session,token})=>{
       if(token.sub){const u=await db.get('users',token.sub);if(u?.verified&&!u.suspended&&(u.authVersion??0)===(token.authVersion??0))Object.assign(session.user,{id:u.id,role:u.role,organisationId:u.organisationId,projectId:u.projectId});}
       return session;
     }},

@@ -1,3 +1,4 @@
+import type {Money} from './contracts.js';
 import { createHash, createHmac, randomUUID, timingSafeEqual, generateKeyPairSync, sign, verify, createPrivateKey, createPublicKey } from 'node:crypto';
 
 export class Fault extends Error {
@@ -7,19 +8,19 @@ export const ensure: (test: unknown, code: string, status?: number) => asserts t
 export const id = () => randomUUID();
 export const now = () => new Date().toISOString();
 export const hash = (s: string | Buffer) => createHash('sha256').update(s).digest('hex');
-export const canonical = (v: any): string => {
+export const canonical = (v: unknown): string => {
   if (v === null || typeof v !== 'object') return JSON.stringify(v);
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
-  return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}';
+  return '{' + Object.keys(v).sort().filter(k => (v as Record<string,unknown>)[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonical((v as Record<string,unknown>)[k])).join(',') + '}';
 };
 export function cents(s: unknown): bigint {
   ensure(typeof s === 'string' && /^\d{1,12}\.\d{2}$/.test(s), 'INVALID_REQUEST');
   return BigInt(s.replace('.', ''));
 }
-export const money = (n: bigint): string => `${n < 0n ? '-' : ''}${(n < 0n ? -n : n) / 100n}.${((n < 0n ? -n : n) % 100n).toString().padStart(2, '0')}`;
-export function bankMoney(value: unknown): string {
+export const money = (n: bigint): Money => `${n < 0n ? '-' : ''}${(n < 0n ? -n : n) / 100n}.${((n < 0n ? -n : n) % 100n).toString().padStart(2, '0')}` as Money;
+export function bankMoney(value: unknown): Money {
   const text=String(value);ensure(/^\d{1,12}(?:\.\d{1,2})?$/.test(text),'INVALID_BANK_RESPONSE',502);
-  const [whole,fraction='']=text.split('.');return whole+'.'+fraction.padEnd(2,'0');
+  const [whole,fraction='']=text.split('.');return (whole+'.'+fraction.padEnd(2,'0')) as Money;
 }
 export const maskPhone = (s: string) => s ? '*'.repeat(Math.max(0, s.length - 4)) + s.slice(-4) : '';
 export const identityHash = (s: string) => {
@@ -35,9 +36,9 @@ export const nameMatch = (a: string, b: string) => {
 };
 export type Role = 'developer_admin' | 'developer_operator' | 'agent' | 'verifier' | 'bank_ops' | 'platform_admin';
 export interface Principal { id: string; role: Role; organisationId: string; projectId?: string; deviceKey?: string; }
-export interface Row { id: string; projectId?: string; organisationId?: string; createdAt: string; [key: string]: any; }
-export const row = (data: Record<string, any>): Row => ({ id: id(), createdAt: now(), ...data });
-export function merkle(leaves: any[]) {
+export interface Row { id: string; projectId?: string; organisationId?: string; createdAt: string; [key: string]: unknown; }
+export const row = <T extends Record<string,unknown>>(data: T): Row & T => ({ id: id(), createdAt: now(), ...data });
+export function merkle(leaves: unknown[]) {
   const levels: string[][] = [leaves.map(l => hash(canonical(l)))];
   if (!leaves.length) levels[0] = [hash('[]')];
   while (levels.at(-1)!.length > 1) {
@@ -52,7 +53,7 @@ export function merkle(leaves: any[]) {
     return proof;
   } };
 }
-export function verifyProof(leaf: any, proof: any[], root: string) {
+export function verifyProof(leaf: unknown, proof: {side:string;hash:string}[], root: string) {
   if (!Array.isArray(proof) || proof.length > 64) return false;
   let h = hash(canonical(leaf));
   for (const p of proof) {
@@ -65,14 +66,15 @@ export class Signer {
   private key;
   public publicKey: string;
   constructor() {
-    if (process.env.SIGNING_KEY_BASE64) this.key = createPrivateKey(Buffer.from(process.env.SIGNING_KEY_BASE64, 'base64'));
+    if (process.env.SIGNING_KEY_BASE64) this.key = createPrivateKey({key:Buffer.from(process.env.SIGNING_KEY_BASE64, 'base64'),format:'der',type:'pkcs8'});
     else { ensure(process.env.NODE_ENV !== 'production', 'SIGNING_KEY_REQUIRED', 503); this.key = generateKeyPairSync('ed25519').privateKey; }
+    ensure(this.key.asymmetricKeyType==='ed25519','SIGNING_KEY_REQUIRED',503);
     this.publicKey = createPublicKey(this.key).export({ type: 'spki', format: 'pem' }).toString();
   }
   sign(h: string) { return sign(null, Buffer.from(h), this.key).toString('base64'); }
   verify(h: string, signature: string) { try { return verify(null, Buffer.from(h), this.publicKey, Buffer.from(signature, 'base64')); } catch { return false; } }
 }
-export function verifyAttestationRecord(a: Row) {
+export function verifyAttestationRecord(a: {document:unknown;hash:string;signature:string;publicKey:string}) {
   try {return hash(canonical(a.document))===a.hash && verify(null,Buffer.from(a.hash),a.publicKey,Buffer.from(a.signature,'base64'));}catch{return false;}
 }
 export function verifyWebhook(raw: string, timestamp: string, signature: string, secret: string, clock = Date.now()) {

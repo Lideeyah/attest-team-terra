@@ -106,7 +106,7 @@ spec:
       containers:
         - name: worker
           image: ghcr.io/REPLACE/attest:v1
-          command: [node, dist/src/worker.js]
+          command: [node, dist/production/worker.mjs]
           envFrom:
             - secretRef: {name: huawei-gateway}
             - secretRef: {name: attest-runtime}

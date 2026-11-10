@@ -5,6 +5,9 @@ dist/
 coverage/
 .local-tools/
 .tools/
+.local-state/
+*.reseed.json
+output/
 tmp/
 .env
 .env.*

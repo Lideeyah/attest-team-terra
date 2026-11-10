@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { MemoryStore } from '../src/store.js';
 import { Service } from '../src/service.js';
+import type {NameResult} from '../src/bank.js';
 import { MockBank, Providers, estimateCharges } from '../src/providers.js';
 import { canonical, hash, money, cents, merkle, verifyProof, row, id, now, verifyWebhook, nameMatch } from '../src/core.js';
 process.env.IDENTITY_PEPPER='test-pepper-at-least-thirty-two-characters-long';
@@ -31,13 +32,13 @@ test('an enrolment notice is required before a transfer can be created',async()=
 test('tariff uses provider schedule and refuses an unknown live shape',()=>{assert.equal(estimateCharges({bands:[{max:'50000.00',fee:'25.00'}],vatBps:750,stampThreshold:'10000.00',stampDuty:'0.00'},'25000.00','000013'),2688n);assert.throws(()=>estimateCharges({},'25000.00','000013'));});
 test('mock enquiry references expire, are single-use, and bind to destination and rail',async()=>{
  let clock=Date.now();const bank=new MockBank(()=>clock);const input={account_number:'8000000001',destination_bank_code:'000014'};
- const enquiry=await bank.call('POST','/transfers/intrabank/name-enquiry',input);
+ const enquiry=await bank.call<NameResult>('POST','/transfers/intrabank/name-enquiry',input);
  const payment={source_account:'0123456790',destination_account:input.account_number,destination_bank_code:input.destination_bank_code,amount:'10.00',reference:'ATT-SINGLE',name_enquiry_ref:enquiry.name_enquiry_ref};
  await assert.rejects(bank.call('POST','/transfers/interbank',payment),{code:'NAME_ENQUIRY_MISMATCH'});
  await assert.rejects(bank.call('POST','/transfers/intrabank',{...payment,destination_account:'8000000002'}),{code:'NAME_ENQUIRY_MISMATCH'});
  await bank.call('POST','/transfers/intrabank',payment);
  await assert.rejects(bank.call('POST','/transfers/intrabank',{...payment,reference:'ATT-SINGLE-2'}),{code:'NAME_ENQUIRY_EXPIRED'});
- const expired=await bank.call('POST','/transfers/intrabank/name-enquiry',input);clock+=600001;
+ const expired=await bank.call<NameResult>('POST','/transfers/intrabank/name-enquiry',input);clock+=600001;
  await assert.rejects(bank.call('POST','/transfers/intrabank',{...payment,name_enquiry_ref:expired.name_enquiry_ref}),{code:'NAME_ENQUIRY_EXPIRED'});
 });
 test('global identity dedupe, outside boundary flag, and identity minimization',async()=>{
@@ -51,5 +52,5 @@ test('clean signal population has no findings, concentration and dormancy do',as
 test('verifier alerts are computed and delivered through a durable job without repeated firing',async()=>{
  const{s,db,run,project}=await fixture(2);await s.execute(run.id);const transfers=await db.list('transfers');await db.put('transfers',{...transfers[0],state:'failed'});await db.put('runs',{...(await s.required('runs',run.id)),closesAt:new Date(Date.now()-1).toISOString()});await s.close(run.id);
  await db.put('alerts',row({kind:'rule',projectId:project.id,userId:'verifier',condition:'coverage_below',threshold:75}));await s.evaluateAlerts(project.id);await s.evaluateAlerts(project.id);
- const events=(await db.list('alerts')).filter(a=>a.kind==='event');assert.equal(events.length,1);assert.equal(events[0].evidence.coverage,50);assert.equal((await db.list('jobs')).filter(j=>j.type==='verifier-alert').length,1);
+ const events=(await db.list('alerts')).filter(a=>a.kind==='event');assert.equal(events.length,1);assert.equal((events[0].evidence as {coverage:number}).coverage,50);assert.equal((await db.list('jobs')).filter(j=>j.type==='verifier-alert').length,1);
 });

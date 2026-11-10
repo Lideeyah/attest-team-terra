@@ -2,6 +2,11 @@
 node_modules
 .local-tools
 .tools
+.local-state
+*.reseed.json
+output
+dist
+**/dist
 .npm-cache
 tmp
 uploads

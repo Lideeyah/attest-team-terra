@@ -13,6 +13,7 @@ test('invite can be redeemed once and agent login works',async()=>{
  const {publicKey}=generateKeyPairSync('ed25519');const deviceKey=publicKey.export({type:'spki',format:'pem'}).toString();
  try{const request={method:'POST' as const,url:'/api/invites/'+inviteCode+'/redeem',payload:{identity:{email,password:'test-password-12345'},deviceKey}};
  const results=await Promise.all([app.inject({...request,headers:{'idempotency-key':id()}}),app.inject({...request,headers:{'idempotency-key':id()}})]);assert.deepEqual(results.map(r=>r.statusCode).sort(),[200,410]);
+ const agent=await db.get('agents',hash(email));assert.equal(agent?.status,'pending_verification');await db.put('agents',{...agent!,status:'active',verification:{match:true}});
  const login=await app.inject({method:'POST',url:'/api/auth/signin',headers:{'idempotency-key':id()},payload:{email,password:'test-password-12345'}});assert.equal(login.statusCode,200,login.body);assert(login.json().data.token);
  }finally{await app.close();}
 });
