@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Hoima landscape project area (demonstration)</name>
+    <Placemark>
+      <name>Project boundary</name>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>
+        31.3012,1.4188,0 31.3621,1.4410,0 31.4203,1.4267,0 31.4488,1.3902,0
+        31.4391,1.3444,0 31.3977,1.3120,0 31.3388,1.3077,0 31.2904,1.3351,0
+        31.2762,1.3822,0 31.3012,1.4188,0
+      </coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>
+  </Document>
+</kml>

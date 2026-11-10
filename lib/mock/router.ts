@@ -1657,10 +1657,10 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
            held on the device. */
         boundary: {
           name: "Hoima landscape project area (demonstration)",
-          north: 5.95,
-          south: 5.55,
-          east: 8.65,
-          west: 8.25,
+          north: 1.45,
+          south: 1.3,
+          east: 31.45,
+          west: 31.27,
         },
         flagThreshold: 0.05,
       }),

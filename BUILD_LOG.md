@@ -1512,6 +1512,27 @@ the tokens because a receipt ships with no stylesheet — and failed the
 contrast rule the moment a gate looked; it is in step now. Gates re-run
 green: F-3 49, F-4 86, F-9 66.
 
+## The demo recording
+
+`npm run demo` re-seeds, records and converts: one continuous 4:30 take at
+1920x1080, `demo/attest-demo.mp4`, the raw webm beside it, and
+`demo/demo-index.md` carrying the timestamp each beat actually starts at.
+Everything moves through `demo/lib/human.ts` — seeded randomness, an
+injected cursor with a press state, Bezier travel with overshoot, hover
+before click, typing with one deliberate correction, weighted scrolling,
+read pauses — so it reads as a person and re-renders identically. The
+recorder asserts the demonstration project and both trigger identities
+exist before the first frame, and a missing selector stops the take and
+names the beat.
+
+Three deviations from the automation note, each because the front end is
+the mock: beat 1 shows /app/funding (no carbon-registry screen exists in
+this lane; the MRV and certificate endpoints are in the client awaiting the
+backend); beat 11 shows the correction record superseding a period (the
+refused-update test is a backend test with no front-end surface); and the
+annual-report side of beat 13 is page 32 of the published PDF pre-rendered
+to an image, because headless Chromium carries no PDF viewer.
+
 ## F-9 — Platform admin, and the sweeps
 
 **Built.** The platform's own surface: what is waiting on it, project

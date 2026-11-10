@@ -67,3 +67,4 @@ kubeconfig.*
 /app/api/dev
 /app/api/\[\[...path\]\]
 /app/hooks
+.next-demo/
