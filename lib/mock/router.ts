@@ -539,6 +539,15 @@ const PREFLIGHT_EXCLUSIONS: { participantId: string; reason: ErrorCode; detail: 
   },
 ];
 
+/* What the field endpoint has accepted, by the client UUID the device
+   minted. The real backend holds this in a table with a unique index; here it
+   is a map, and it is what makes the batch idempotent rather than merely
+   described as idempotent. */
+const enrolled = new Map<
+  string,
+  { clientUuid: string; accepted: boolean; code: ErrorCode | null; enrolmentId: string | null }
+>();
+
 const exclusionsByRun = new Map<string, Set<string>>();
 
 function confirmExclusion(runId: string, participantId: string): void {
@@ -1328,21 +1337,40 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       const items = Array.isArray(body.items) ? body.items : [];
       return success(
         items.map((item, index) => {
+          /* Idempotent on the client UUID: a batch resent because the
+             connection died mid-request must not enrol the same household
+             twice, and the device cannot know whether the first attempt
+             arrived. The answer to a UUID already accepted is the answer it
+             was given the first time. */
           const record = item as {
             clientUuid?: string;
-            identity?: { number?: string };
+            identity?: { lastFour?: string };
           };
           /* An account the bank does not resolve, in the style of section
              2.5's trigger values: the number itself decides, so a partial
              failure is reachable by enrolling with one. */
-          const number = String(record.identity?.number ?? "");
-          const failed = number.endsWith("4") || index % 9 === 4;
-          return {
-            clientUuid: record.clientUuid ?? `uuid_${index}`,
+          const uuid = String(record.clientUuid ?? `uuid_${index}`);
+          const already = enrolled.get(uuid);
+          if (already) {
+            return already;
+          }
+          /* An account the bank does not resolve, in the style of section
+             2.5's trigger values: the last four decide, so a partial failure
+             is reachable by enrolling with one. */
+          const lastFour = String(record.identity?.lastFour ?? "");
+          const failed = lastFour.endsWith("4") || index % 9 === 4;
+          const answer = {
+            clientUuid: uuid,
             accepted: !failed,
             code: failed ? ("NAME_MISMATCH" as const) : null,
-            enrolmentId: failed ? null : `enr_${String(index + 1).padStart(6, "0")}`,
+            enrolmentId: failed
+              ? null
+              : `enr_${String(enrolled.size + 1).padStart(6, "0")}`,
           };
+          if (!failed) {
+            enrolled.set(uuid, answer);
+          }
+          return answer;
         }),
         null,
         "Batch processed with per-item results",

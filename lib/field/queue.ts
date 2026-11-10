@@ -30,7 +30,12 @@ export type QueuedEnrolment = {
   agentId: string;
   projectId: string;
   consentAt: string;
-  identity: { type: "BVN" | "NIN"; number: string; lastFour: string };
+  /* The number itself is never written to the device. What is queued is a
+     hash of it and its last four digits, which is what the identity service
+     needs to check it and what the console shows afterwards. A phone carried
+     between villages is not a place to keep eleven digits of somebody's
+     bank verification number. */
+  identity: { type: "BVN" | "NIN"; hash: string; lastFour: string };
   details: {
     givenName: string;
     familyName: string;
@@ -121,6 +126,25 @@ export async function readQueue(): Promise<QueuedEnrolment[]> {
   return [...rows].sort((left, right) => left.capturedAt.localeCompare(right.capturedAt));
 }
 
+/* An enrolment marked "syncing" when the app was force-quit is not syncing:
+   nothing is in flight, because the process that was sending it is gone. Left
+   as it is, it stays in the queue, is skipped by every later drain, and the
+   count keeps promising it will go — which is worse than losing it. On open,
+   anything stranded goes back to queued and syncs with the rest. */
+export async function recoverStranded(): Promise<number> {
+  const rows = await readQueue();
+  const stranded = rows.filter((row) => row.state === "syncing");
+  for (const row of stranded) {
+    await withStore(STORE, "readwrite", (store) =>
+      store.put({ ...row, state: "queued" as const }),
+    );
+  }
+  if (stranded.length > 0) {
+    announce();
+  }
+  return stranded.length;
+}
+
 export async function updateEnrolment(
   clientUuid: string,
   change: Partial<QueuedEnrolment>,
@@ -182,6 +206,13 @@ export async function deviceId(): Promise<string> {
     new TextEncoder().encode(exported.k ?? ""),
   );
   return hex(digest).slice(0, 12);
+}
+
+/** The identity number as the queue carries it: hashed with the device key,
+    so the same number gives the same hash on this phone and nothing on the
+    device can be read back into a number. */
+export async function hashIdentity(number: string): Promise<string> {
+  return signCapture(["identity", number]);
 }
 
 export async function signCapture(parts: string[]): Promise<string> {

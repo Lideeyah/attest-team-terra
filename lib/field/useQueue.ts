@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { onQueueChanged, readQueue, type QueuedEnrolment } from "@/lib/field/queue";
+import {
+  onQueueChanged,
+  readQueue,
+  recoverStranded,
+  type QueuedEnrolment,
+} from "@/lib/field/queue";
 
 /* One subscription to the queue, so the tab bar's pending count and the queue
    screen read the same store and cannot disagree. */
@@ -33,7 +38,9 @@ export function useQueue(): {
   useEffect(() => {
     let live = true;
     const read = () => {
-      void readQueue()
+      void recoverStranded()
+        .catch(() => 0)
+        .then(() => readQueue())
         .then((rows) => {
           if (!live) {
             return;

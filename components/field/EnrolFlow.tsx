@@ -15,6 +15,7 @@ import {
 } from "@/lib/field/capture";
 import { tryCompress } from "@/lib/field/storage";
 import {
+  hashIdentity,
   newClientUuid,
   queueEnrolment,
   signCapture,
@@ -184,6 +185,13 @@ export function EnrolFlow({
   }
 
   async function submit(): Promise<void> {
+    /* Submit is reachable only from the review step, which is reachable only
+       through consent. The check is here as well so that no later change to
+       the flow can make an enrolment without one. */
+    if (consentAt === null) {
+      setStep("consent");
+      return;
+    }
     const flags = flagsFor({
       boundary: where,
       photograph,
@@ -205,10 +213,14 @@ export function EnrolFlow({
       capturedAt,
       agentId,
       projectId,
-      consentAt: consentAt ?? capturedAt,
+      /* Consent is the gate, and submit is unreachable without it; this is
+         the value rather than a fallback, so nothing can fabricate one. */
+      consentAt,
       identity: {
         type: identityType,
-        number: identity.trim(),
+        /* Hashed with the device key before it is written: the queue carries
+           what the service needs to check the number, not the number. */
+        hash: await hashIdentity(identity.trim()),
         lastFour: identity.trim().slice(-4),
       },
       details: {
@@ -262,11 +274,9 @@ export function EnrolFlow({
 
   return (
     <div className="field-screen stack" data-step={step}>
-      {step === "submitted" ? null : (
-        <p className="eyebrow">
-          Step {position} of {STEPS.length - 1}
-        </p>
-      )}
+      <p className="eyebrow">
+        Step {position} of {STEPS.length}
+      </p>
 
       {step === "consent" ? (
         <>
@@ -541,6 +551,13 @@ export function EnrolFlow({
                   value={boundaryReason}
                   onChange={(event) => setBoundaryReason(event.target.value)}
                 />
+                <p className="field-note">
+                  {STEP_COPY.location.reasonRule}
+                  {boundaryReason.trim().length > 0 &&
+                  boundaryReason.trim().length < 12
+                    ? " A few more words."
+                    : ""}
+                </p>
               </div>
             </>
           ) : null}
@@ -616,7 +633,7 @@ export function EnrolFlow({
         </>
       ) : null}
 
-      {step === "submitted" ? (
+      {step === "submitted" && queued ? (
         <>
           <h1 className="h3-display">{STEP_COPY.submit.title}</h1>
           <Rule />

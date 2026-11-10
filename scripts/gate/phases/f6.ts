@@ -8,7 +8,8 @@ import {
   typecheck,
 } from "../assert";
 import { server } from "../server";
-import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /* Written from F-6's exit checklist, before the field app existed.
@@ -61,6 +62,13 @@ export async function f6(): Promise<void> {
      one. */
   await unboundPhoneCanOnlyAskToBeBound();
   await aCachedSessionSaysSo();
+
+  /* What the phase's independent verification found. */
+  await theWorkerCachesTheApplication();
+  await anItemStrandedMidSyncIsRecovered();
+  await theQueueLogReadsAsTimes();
+  await theDeviceDoesNotKeepTheNumber();
+  await theBatchIsIdempotentOnTheClientUuid();
 
   /* The phone it runs on. */
   await javascriptOnFirstLoad();
@@ -468,7 +476,10 @@ async function javascriptOnFirstLoad(): Promise<void> {
   const scripts = async (path: string): Promise<Map<string, number>> => {
     const context = await browser.newContext({ viewport: PHONE });
     const page = await context.newPage();
-    await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+    /* First load is what the phone downloads to render the screen, not what
+       it fetches afterwards: the tab bar prefetches the other three screens
+       once this one is up, and counting those measures the second load. */
+    await page.goto(`${baseUrl}${path}`, { waitUntil: "load" });
     const rows = JSON.parse(
       (await page.evaluate(
         `JSON.stringify(performance.getEntriesByType("resource").filter(function (entry) {
@@ -506,6 +517,40 @@ async function javascriptOnFirstLoad(): Promise<void> {
     kb(own) <= OWN_CODE_BUDGET && own > 0,
     `${kb(own).toFixed(1)}KB of its own over a ${kb(floor).toFixed(1)}KB framework floor, ${kb(total).toFixed(1)}KB in all`,
   );
+  /* The byte comparison tells you what /field loads that /get-started does
+     not, which is not the same thing as the field app's own weight: the
+     moment this surface imports something the other also imports, the import
+     becomes free and the budget stops binding. The two decisions that budget
+     exists to protect are structural, so they are asserted structurally. */
+  const forbidden = [
+    ["the animation library", /from "motion\/react"/],
+    ["the typed client", /from "@\/lib\/api\/client"/],
+    ["the full surface", /from "@\/components\/Surface".*\bSurface\b/],
+  ] as const;
+  const sources = execFileSync(
+    "git",
+    ["ls-files", "--", "app/(field)", "components/field", "lib/field"],
+    { cwd: ROOT, stdio: "pipe" },
+  )
+    .toString()
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  const breaches: string[] = [];
+  for (const file of sources) {
+    const text = readFileSync(join(ROOT, file), "utf8");
+    for (const [what, pattern] of forbidden) {
+      if (pattern.test(text)) {
+        breaches.push(`${file} imports ${what}`);
+      }
+    }
+  }
+  record(
+    "the field app imports neither the animation library nor the typed client",
+    breaches.length === 0,
+    breaches.join(" | "),
+  );
+
   record(
     "first load is measured against the 150KB the phase asks for",
     /* Recorded whichever way it comes out: the figure is the figure, and the
@@ -552,6 +597,177 @@ async function aCachedSessionSaysSo(): Promise<void> {
     "a screen working from the cached session says so, with when it stops being good",
     outcome.cached > 0 && /stays good until/i.test(outcome.body),
     outcome.body.slice(0, 140),
+  );
+}
+
+/* The app's JavaScript does not live under /field, so a worker that caches
+   only /field caches four documents and no application: the app then works
+   offline exactly as long as the browser's own HTTP cache happens to hold the
+   chunks, which on a cheap phone is not long. */
+async function theWorkerCachesTheApplication(): Promise<void> {
+  const outcome = await withPhone(async (page, baseUrl, context) => {
+    await openOnce(page, baseUrl);
+    const cached = JSON.parse(
+      (await page.evaluate(
+        `caches.open("attest-field-v2").then(function (cache) { return cache.keys(); }).then(function (keys) {
+          return JSON.stringify(keys.map(function (request) { return new URL(request.url).pathname; }));
+        })`,
+      )) as string,
+    ) as string[];
+
+    /* The browser's own cache cleared, which is what eviction looks like. */
+    const session = await context.newCDPSession(page);
+    await session.send("Network.clearBrowserCache");
+    await context.setOffline(true);
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => undefined);
+    await page.waitForTimeout(2500);
+
+    return {
+      scripts: cached.filter((path) => path.startsWith("/_next/")).length,
+      /* The app is alive when its own controls are there, not when the shell
+         has painted. */
+      alive: await page.locator('.field-tab[href="/field/enrol"]').count(),
+      captured: await page.locator("[data-captured]").count(),
+    };
+  });
+
+  record(
+    "the worker caches the application, not only its pages",
+    outcome.scripts > 0,
+    `${outcome.scripts} build assets cached`,
+  );
+  record(
+    "the app still runs offline once the browser's own cache is gone",
+    outcome.alive > 0 && outcome.captured > 0,
+    `${outcome.alive} tab bars, ${outcome.captured} figures`,
+  );
+}
+
+/* An enrolment marked syncing when the app was force-quit is not syncing, and
+   every later drain skipped it while the count kept promising it would go. */
+async function anItemStrandedMidSyncIsRecovered(): Promise<void> {
+  const outcome = await withPhone(async (page, baseUrl, context) => {
+    await openOnce(page, baseUrl);
+    await context.setOffline(true);
+    const uuid = await capture(page, baseUrl);
+
+    /* Strand it, exactly as a force-quit mid-request would. */
+    await page.evaluate(
+      `new Promise(function (resolve) {
+        var open = indexedDB.open("attest-field", 1);
+        open.onsuccess = function () {
+          var database = open.result;
+          var store = database.transaction("enrolments", "readwrite").objectStore("enrolments");
+          var read = store.get(${JSON.stringify(uuid)});
+          read.onsuccess = function () {
+            var row = read.result;
+            row.state = "syncing";
+            store.put(row);
+            resolve(true);
+          };
+        };
+      })`,
+    );
+
+    await context.setOffline(false);
+    await page.reload({ waitUntil: "networkidle" });
+    await page.locator('.field-tab[href="/field/queue"]').click();
+    await page.waitForTimeout(1200);
+    await page.locator("[data-sync]").click();
+    await page.waitForTimeout(2500);
+    return {
+      left: await page.locator(`[data-queued="${uuid}"]`).count(),
+      body: (await page.locator("body").innerText()).replace(/\s+/g, " "),
+    };
+  });
+
+  record(
+    "an enrolment stranded mid-sync is recovered and sent rather than left forever",
+    outcome.left === 0,
+    `${outcome.left} still queued · ${outcome.body.slice(0, 100)}`,
+  );
+}
+
+/* The queue's log is the Console component, and every line in it read
+   NaN:NaN:NaN because the time was formatted twice. */
+async function theQueueLogReadsAsTimes(): Promise<void> {
+  const outcome = await withPhone(async (page, baseUrl, context) => {
+    await openOnce(page, baseUrl);
+    await context.setOffline(true);
+    await capture(page, baseUrl);
+    await page.locator('.field-tab[href="/field/queue"]').click();
+    await page.waitForTimeout(1000);
+    const times = JSON.parse(
+      (await page.evaluate(
+        `JSON.stringify(Array.from(document.querySelectorAll(".console-time")).map(function (node) { return (node.textContent || "").trim(); }))`,
+      )) as string,
+    ) as string[];
+    return times;
+  });
+  record(
+    "every line in the queue's log reads as a time",
+    outcome.length > 0 && outcome.every((time) => /^\d{2}:\d{2}(:\d{2})?$/.test(time)),
+    outcome.slice(0, 3).join(", "),
+  );
+}
+
+/* The identity step tells the agent the number is not kept. It has to be
+   true on the device, which is where a phone passed between hands is read. */
+async function theDeviceDoesNotKeepTheNumber(): Promise<void> {
+  const outcome = await withPhone(async (page, baseUrl, context) => {
+    await openOnce(page, baseUrl);
+    await context.setOffline(true);
+    const number = "22200000041";
+    await capture(page, baseUrl, { identity: number });
+    const stored = (await page.evaluate(
+      `new Promise(function (resolve) {
+        var open = indexedDB.open("attest-field", 1);
+        open.onsuccess = function () {
+          var store = open.result.transaction("enrolments", "readonly").objectStore("enrolments");
+          var all = store.getAll();
+          all.onsuccess = function () { resolve(JSON.stringify(all.result)); };
+        };
+      })`,
+    )) as string;
+    return { stored, number };
+  });
+  record(
+    "the identity number itself is not written to the device",
+    !outcome.stored.includes(outcome.number) && outcome.stored.includes("lastFour"),
+    outcome.stored.slice(0, 160),
+  );
+}
+
+/* The batch is idempotent on the client UUID, which is what makes a resend
+   after a dead connection safe. Asserted against the server, because the
+   device cannot know whether the first attempt arrived. */
+async function theBatchIsIdempotentOnTheClientUuid(): Promise<void> {
+  const { baseUrl } = await server();
+  const item = {
+    clientUuid: "gate-f6-idempotent",
+    capturedAt: "2026-11-10T09:00:00Z",
+    identity: { type: "BVN", hash: "0".repeat(64), lastFour: "0041" },
+  };
+  const send = async () => {
+    const response = await fetch(`${baseUrl}/api/field/enrolments`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: [item] }),
+    });
+    const payload = (await response.json()) as {
+      data?: { clientUuid: string; enrolmentId: string | null }[];
+    };
+    return payload.data?.[0];
+  };
+  const first = await send();
+  const second = await send();
+  record(
+    "the same client UUID enrols a household once, however many times it is sent",
+    first !== undefined &&
+      second !== undefined &&
+      first.enrolmentId !== null &&
+      first.enrolmentId === second.enrolmentId,
+    `${first?.enrolmentId} then ${second?.enrolmentId}`,
   );
 }
 

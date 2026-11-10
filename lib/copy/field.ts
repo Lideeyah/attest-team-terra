@@ -29,7 +29,7 @@ export const STEP_COPY = {
   identity: {
     title: "Identity",
     lede: "Eleven digits, from the household's own document.",
-    note: "Only the last four digits are kept on this phone.",
+    note: "The number is checked and not kept: this phone holds its last four digits and a hash of it, and nothing that can be read back into the number.",
   },
   details: {
     title: "Details",
@@ -51,6 +51,8 @@ export const STEP_COPY = {
     outside:
       "This location is outside the project's boundary. The enrolment can still be made and is flagged for review, and a reason is required.",
     reason: "Why this household is being enrolled from outside the boundary",
+    reasonRule:
+      "A sentence, not a word: it is read by whoever reviews the enrolment, and they were not standing where you are.",
   },
   review: {
     title: "Review",
@@ -85,6 +87,8 @@ export const ME_COPY = {
   none: "No enrolments yet. Your first one appears here as soon as it is captured.",
   aboveThreshold:
     "Your flag rate is above the project's threshold. A flag is a fact about an enrolment — a location outside the boundary, a name that did not match — and it is shown to you here before anybody else raises it.",
+  arithmetic: (flagged: number, enrolments: number, allowed: number, percent: number) =>
+    `${flagged} of your ${enrolments} enrolments carry a flag. The project's threshold is ${percent}%, which on ${enrolments} enrolments is ${allowed}. A flag is a fact about an enrolment — a location outside the boundary, a name that did not match — and several of yours are the same kind, which is usually one thing to fix rather than many.`,
   syncNote:
     "Sync delay is the time between capturing an enrolment and this phone sending it. A long delay is usually a long day out of signal.",
 } as const;

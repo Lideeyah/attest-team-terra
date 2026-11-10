@@ -20,7 +20,12 @@ export function Today({
 }) {
   const { queue } = useQueue();
   const online = useOnline();
-  const remaining = Math.max(0, target - captured - queue.length);
+  /* What the agent captured today is what they captured, whether or not it
+     has reached the server: the figure the server knows plus what is still on
+     this phone. Reading the server's figure alone tells an agent who has been
+     out of signal all morning that they have done nothing. */
+  const capturedToday = captured + queue.length;
+  const remaining = Math.max(0, target - capturedToday);
 
   return (
     <div className="field-screen stack">
@@ -31,13 +36,13 @@ export function Today({
       <dl className="field-figures">
         <div className="field-figure">
           <dt className="eyebrow">Captured today</dt>
-          <dd className="field-figure-value" data-captured={captured}>
-            {formatCount(captured)}{" "}
+          <dd className="field-figure-value" data-captured={capturedToday}>
+            {formatCount(capturedToday)}{" "}
             <span className="field-denominator">of {formatCount(target)}</span>
           </dd>
         </div>
         <div className="field-figure">
-          <dt className="eyebrow">Waiting on this phone</dt>
+          <dt className="eyebrow">Of those, waiting on this phone</dt>
           <dd className="field-figure-value" data-pending={queue.length}>
             {formatCount(queue.length)}
           </dd>

@@ -1225,3 +1225,68 @@ published resolution are all searched for on every screen.
 4. **An alert's threshold is the reader's own figure.** The screen says so:
    Attest does not have a number it thinks is right, because having one would
    be a rating with extra steps.
+
+### F-6 — what the verification found, and what was done about it
+
+Fourteen findings, three of them severe, all addressed. The gate goes from 37
+assertions to 44.
+
+**The offline claim was false in the place it mattered.** The service worker
+returned early for anything not under `/field`, and the app's JavaScript lives
+at `/_next/static` — so it cached four documents and no application. The app
+worked offline exactly as long as the browser's own HTTP cache happened to
+hold the chunks, which on the cheap phone this is built for is not long: clear
+that cache and the screen reads "Opening" for ever. The worker now caches the
+build assets the shell's own documents name, serves a hashed asset from the
+cache first, and the gate clears the browser cache, goes offline and asserts
+that the app is still alive.
+
+**An install that dropped one request activated anyway**, holding half a
+shell, and nothing retried or said so. `addAll` is all-or-nothing now and the
+install fails rather than succeeding partially: the old worker stays in charge
+and the browser tries again.
+
+**An enrolment stranded mid-sync was stranded for ever.** A force-quit during
+a drain left the item marked "syncing", every later drain skipped it, and the
+pending count went on promising it would go — worse than losing it. The queue
+recovers anything stranded when the app opens, and the gate strands one
+deliberately and asserts it sends.
+
+**The identity step told the agent something untrue.** It said only the last
+four digits are kept on the phone, and the queue held the full eleven-digit
+verification number until the item synced — which, offline, is the whole point
+of the queue. The device now writes a hash of the number and its last four,
+the copy says exactly that, and the gate reads IndexedDB and asserts the
+number is not in it.
+
+**The batch's idempotency was asserted and nowhere implemented.** The mock
+accepted the same client UUID twice and issued two enrolment identifiers. It
+remembers what it accepted now, and the gate posts the same UUID twice.
+
+Also fixed: every timestamp in the queue's log read `NaN:NaN:NaN`, because the
+time was formatted once by the panel and again by the Console; the "syncing
+with progress" and "conflict requiring resolution" states did not exist; the
+submitted step rendered for anybody who typed its URL; an unopened enrolment
+read offline showed the Today screen under its own address, and now says what
+it is; `/field/me` stated that a flag rate was above the threshold without
+naming the threshold or the arithmetic; "captured today" under-reported by the
+size of the queue, so an agent out of signal all morning was told they had
+done nothing; the boundary reason's minimum was invisible behind a dead
+button; and the step counter read "of 6" for seven steps.
+
+**On the 150KB measurement, the verification was right twice.** First load was
+being measured at `networkidle`, which included the tab bar's prefetch of the
+other three screens — 17.7KB that arrive after the screen is up. Measured at
+`load`, first load is **157.0KB**, of which 138.9KB is the framework and
+**18.2KB is the field app's own code**. Still over the budget, and the overage
+is the framework. Second, the byte comparison that computes "own code" does
+not bind: the moment this surface imports something another route also
+imports, the import becomes free. The two decisions that budget exists to
+protect — no animation library, no typed client — are structural, so they are
+now asserted structurally, by searching the surface's own source.
+
+**Recorded rather than fixed:** the field app is rendered at desktop width as
+a phone-width column rather than refused outright. The phase says "never
+rendered on desktop"; a hard refusal would make the app unreviewable by the
+people who have to review it, and the column is the compromise. **Lydia's
+call.**

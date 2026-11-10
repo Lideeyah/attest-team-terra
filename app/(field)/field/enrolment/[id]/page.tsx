@@ -3,22 +3,12 @@ import { connection } from "next/server";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
-import { api } from "@/lib/api/client";
+import { field } from "@/lib/field/api";
 import { headingFor } from "@/lib/copy/codes";
-import type { Participant } from "@/lib/api/contract";
 import { formatDateTime, formatTimeOfDay, maskPhone } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "An enrolment",
-};
-
-type Enrolment = {
-  id: string;
-  participant: Participant;
-  capturedAt: string;
-  syncedAt: string;
-  location: { recorded: boolean; boundary: "inside" | "outside" };
-  editable: boolean;
 };
 
 /* A submitted enrolment is a record. It is not a form with everything
@@ -33,19 +23,26 @@ export default async function EnrolmentPage({
 }) {
   await connection();
   const { id } = await params;
-  const result = await api.enrolment(id);
+  const result = await field.enrolment(id);
 
   if (!result.ok) {
     return (
       <div className="field-screen stack">
-        <Notice tone="blocked" title={headingFor(result.code, "This enrolment could not be read")}>
-          <p>{result.message}</p>
+        <Notice
+          tone="blocked"
+          title={headingFor(result.code, "This enrolment could not be read")}
+        >
+          <p className="field-readable">
+            {result.transport
+              ? "A submitted enrolment is the project's record rather than this phone's, so reading one needs a connection. Everything captured here and not yet sent is on the queue and is safe."
+              : result.message}
+          </p>
         </Notice>
       </div>
     );
   }
 
-  const enrolment = result.data as Enrolment;
+  const enrolment = result.data;
   const participant = enrolment.participant;
 
   return (

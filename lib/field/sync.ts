@@ -106,7 +106,14 @@ function toPayload(item: QueuedEnrolment) {
     agentId: item.agentId,
     projectId: item.projectId,
     consentAt: item.consentAt,
-    identity: { type: item.identity.type, number: item.identity.number },
+    /* The server is sent the hash and the last four, and runs the identity
+       check against them. The number itself was on the device for as long as
+       the agent was typing it and no longer. */
+    identity: {
+      type: item.identity.type,
+      hash: item.identity.hash,
+      lastFour: item.identity.lastFour,
+    },
     details: item.details,
     photograph: item.photograph,
     location: item.location,

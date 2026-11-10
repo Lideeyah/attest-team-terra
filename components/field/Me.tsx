@@ -12,6 +12,8 @@ import type { Agent } from "@/lib/api/contract";
    that the agent is never surprised by them. */
 export function Me({ agent, threshold }: { agent: Agent; threshold: number }) {
   const above = agent.flagRate > threshold;
+  const flagged = Math.round(agent.flagRate * agent.enrolments);
+  const allowed = Math.round(threshold * agent.enrolments);
 
   return (
     <div className="field-screen stack">
@@ -31,11 +33,11 @@ export function Me({ agent, threshold }: { agent: Agent; threshold: number }) {
               <dd className="field-figure-value">{formatCount(agent.enrolments)}</dd>
             </div>
             <div className="field-figure">
-              <dt className="eyebrow">Flag rate</dt>
+              <dt className="eyebrow">Enrolments carrying a flag</dt>
               <dd className="field-figure-value" data-flag-rate={agent.flagRate}>
-                {flagRate(agent.flagRate)}{" "}
+                {formatCount(flagged)}{" "}
                 <span className="field-denominator">
-                  of {formatCount(agent.enrolments)}
+                  of {formatCount(agent.enrolments)} · {flagRate(agent.flagRate)}
                 </span>
               </dd>
             </div>
@@ -47,9 +49,19 @@ export function Me({ agent, threshold }: { agent: Agent; threshold: number }) {
             </div>
           </dl>
           {above ? (
-            <p className="field-readable" data-me="above-threshold">
-              {ME_COPY.aboveThreshold}
-            </p>
+            <>
+              <p className="field-readable" data-me="above-threshold">
+                {ME_COPY.aboveThreshold}
+              </p>
+              <p className="field-note" data-me-arithmetic>
+                {ME_COPY.arithmetic(
+                  flagged,
+                  agent.enrolments,
+                  allowed,
+                  Math.round(threshold * 100),
+                )}
+              </p>
+            </>
           ) : null}
           <p className="field-note">{ME_COPY.syncNote}</p>
         </>

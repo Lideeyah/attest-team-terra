@@ -1,4 +1,4 @@
-import type { Agent, ErrorCode } from "@/lib/api/contract";
+import type { Agent, ErrorCode, Participant } from "@/lib/api/contract";
 
 /* The field app's own client, carrying the four calls it makes and nothing
    else.
@@ -71,8 +71,18 @@ export type FieldMe = {
   flagThreshold: number;
 };
 
+export type FieldEnrolment = {
+  id: string;
+  participant: Participant;
+  capturedAt: string;
+  syncedAt: string;
+  location: { recorded: boolean; boundary: "inside" | "outside" };
+  editable: boolean;
+};
+
 export const field = {
   me: () => call<FieldMe>("/api/field/me"),
+  enrolment: (id: string) => call<FieldEnrolment>(`/api/field/enrolments/${id}`),
   checkIdentity: (body: { type: "BVN" | "NIN"; number: string }) =>
     call<{ checked: boolean; lastFour: string }>("/api/field/identity-check", {
       method: "POST",
