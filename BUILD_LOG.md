@@ -1463,8 +1463,16 @@ the fourth format on /verifier/export, rendered in full when generated, and
 every attestation on /app/attestations links its PDF. It turns the
 attestation from a novel artefact into a filing somebody already owes.
 
-The demo asset — a real published annual report to lay beside the record
-Attest emits — is a download, not code, and waits on you.
+The demo asset is in `demo/trees-for-global-benefits-annual-report-2024.pdf`:
+Trees for Global Benefits (Uganda, ECOTRUST), the flagship Plan Vivo project,
+its 2024 annual report as published on Plan Vivo's own project documents
+page. Section 6.1, report page 27, is the demo's exhibit: it opens by citing
+the sixty percent requirement word for word, and then accounts for USD
+2,740,091.71 of farmer payments as a hand-made table of lump transfer dates
+and amounts — no per-household coverage, no confirmation from any recipient,
+no way for a reader to check a single figure. That page beside Attest's
+benefit-sharing export for the same obligation is the whole pitch on one
+screen.
 
 F-4 re-ran green at 86 of 86 (the confirmation-marker change), F-9 at 66 of
 66. The disbursement rail, attestation engine, Merkle path, field app,
