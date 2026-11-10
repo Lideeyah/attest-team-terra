@@ -1,0 +1,14 @@
+.git
+node_modules
+.local-tools
+.tools
+.npm-cache
+tmp
+uploads
+*.pdf
+*.docx
+.env*
+team*.yml
+team*.yaml
+*.pem
+*.key

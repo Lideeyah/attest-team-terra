@@ -1,0 +1,96 @@
+// SQL migrations are authoritative for expression indexes, role grants, PostGIS and triggers.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model Project {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  boundary Unsupported("geometry(Polygon,4326)")?
+  @@map("projects")
+}
+
+model Commitment {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("commitments")
+}
+
+model Participant {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  location Unsupported("geometry(Point,4326)")?
+  @@map("participants")
+}
+
+model Roster {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("rosters")
+}
+
+model DisbursementRun {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("runs")
+}
+
+model Transfer {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("transfers")
+}
+
+model Confirmation {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("confirmations")
+}
+
+model Attestation {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("attestations")
+}
+
+model Dispute {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("disputes")
+}
+
+model Signal {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("signals")
+}
+
+model Agent {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("agents")
+}
+
+model AuditEntry {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("audit")
+}

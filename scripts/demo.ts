@@ -1,0 +1,24 @@
+import { writeFile, mkdir } from 'node:fs/promises';
+import { MemoryStore } from '../src/store.js';
+import { Service } from '../src/service.js';
+import { row, id, now, canonical, verifyProof } from '../src/core.js';
+import { MockBank, Providers } from '../src/providers.js';
+import { attestationPdf } from '../src/pdf.js';
+// Explicit offline demonstration: no network calls, no deployment, no real household data.
+process.env.IDENTITY_PEPPER='offline-demo-pepper-at-least-thirty-two-characters';
+process.env.BANK_PROVIDER='mock';process.env.REGISTRY_PROVIDER='mock';process.env.MESSAGING_PROVIDER='mock';process.env.ANCHOR_PROVIDER='mock';
+const db=new MemoryStore(),bank=new MockBank(),s=new Service(db,new Providers(db,bank));
+const principal={id:'synthetic-operator',role:'developer_admin' as const,organisationId:'synthetic-organisation'};
+const project=await s.createProject(principal,'SYNTHETIC-DEMO');
+await db.put('commitments',row({projectId:project.id,percentage:60,basis:'gross',cadence:'quarterly',accepted:true,source_quote:'60% of gross revenue goes to enrolled households.',page:1}));
+for(let i=1;i<=500;i++)await db.put('participants',row({id:id(),projectId:project.id,identityHash:'synthetic-'+i,name:'Synthetic Household '+i,phone:'+234800'+String(i).padStart(7,'0'),status:'active',flags:[],accountNumber:'8'+String(i).padStart(9,'0'),bankCode:'000014',noticeAttempted:true,noticeStatus:'sent',kycLevel:2,nameMatch:'match',capturedAt:now(),point:[7.5,5.5],agentId:'synthetic-agent-'+i}));
+const run=await s.createRun(principal,project.id,{period:'offline-demo',declaredGross:'500000.00',fundingAmount:'300000.00',sourceAccount:'0123456790',closesAt:new Date(Date.now()+86400_000).toISOString()});
+await s.preflight(run);await s.execute(run.id);await s.requery(run.id);
+await db.put('runs',{...(await s.required('runs',run.id)),closesAt:new Date(Date.now()-1).toISOString()});
+const a=await s.close(run.id);if(!a)throw Error('No attestation');
+await s.processJob(row({type:'anchor',data:{attestationId:a.id}}));
+const transfers=await db.list('transfers');const disclosure=await s.disclosure(a,transfers[0].id);
+const report={mode:'offline synthetic demonstration; not real bank settlement',bulkSubmissions:bank.bulkCalls,attestation:s.publicAttestation(a),anchor:await db.get('anchors',a.id),chain:await s.chain(project.id),disclosure,proofValid:verifyProof(disclosure.leaf,disclosure.proof,disclosure.root)};
+await mkdir('output',{recursive:true});await writeFile('output/offline-demo.json',JSON.stringify(report,null,2));
+await writeFile('output/offline-attestation.pdf',await attestationPdf(a));
+console.log(JSON.stringify({mode:report.mode,bulkSubmissions:bank.bulkCalls,figures:a.document,chainValid:report.chain.valid,proofValid:report.proofValid,report:'output/offline-demo.json'},null,2));

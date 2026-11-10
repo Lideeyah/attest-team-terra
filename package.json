@@ -1,0 +1,41 @@
+{
+  "name": "attest-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc && node scripts/check-secrets.mjs",
+    "start": "node dist/src/main.js",
+    "worker": "tsx src/worker.ts",
+    "migrate": "tsx scripts/migrate.ts",
+    "seed": "tsx scripts/seed.ts",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auth/core": "^0.41.3",
+    "@fastify/multipart": "^9.3.0",
+    "@hashgraph/sdk": "^2.81.0",
+    "fastify": "^5.6.2",
+    "h3-js": "^4.3.0",
+    "nodemailer": "10.4.0",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@auth/core": {
+      "nodemailer": "$nodemailer"
+    },
+    "@grpc/grpc-js": "1.14.7",
+    "protobufjs@7.5.4": "7.6.6",
+    "protobufjs@8.0.0": "8.8.1"
+  }
+}
