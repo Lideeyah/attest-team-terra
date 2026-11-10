@@ -1,0 +1,182 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { Button } from "@/components/Button";
+import { Notice } from "@/components/Notice";
+import { Rule } from "@/components/Rule";
+import { api } from "@/lib/api/client";
+
+export const metadata: Metadata = {
+  title: "Report a problem — Attest",
+  description:
+    "Tell Attest that a payment did not arrive, arrived short, or that a household was left off the register. No account needed.",
+};
+
+/* Three plain-language categories. The words are the household's, not the
+   product's: somebody reading this has not been paid and is not here to learn
+   a vocabulary. */
+const CATEGORIES = [
+  {
+    value: "not-received",
+    title: "I was told I would be paid and nothing arrived",
+    body: "The payment notice came by SMS, or the notice board listed the household, and no money reached the account.",
+  },
+  {
+    value: "wrong-amount",
+    title: "Money arrived, but less than I was told",
+    body: "Something was paid and the amount does not match what the notice said.",
+  },
+  {
+    value: "not-enrolled",
+    title: "A household was left off the register",
+    body: "Somebody who lives and works here was not enrolled, so they were never on the list to be paid.",
+  },
+];
+
+async function fileReport(formData: FormData) {
+  "use server";
+  const category = String(formData.get("category") ?? "");
+  const projectId = String(formData.get("projectId") ?? "proj_ekuri");
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!CATEGORIES.some((option) => option.value === category)) {
+    redirect("/report?state=invalid");
+  }
+
+  const result = await api.fileDispute(
+    { projectId, category, body: body || undefined },
+    `report-${Date.now()}`,
+  );
+
+  if (!result.ok) {
+    redirect(`/report?state=error&code=${result.code}`);
+  }
+  redirect(`/report?state=submitted&id=${result.data.id}`);
+}
+
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string; code?: string; id?: string }>;
+}) {
+  const search = await searchParams;
+
+  if (search.state === "submitted") {
+    return (
+      <>
+        <PublicMasthead context="Report a problem" />
+        <div className="measure section-tight stack-lg">
+          <div className="stack">
+            <p className="eyebrow">Report filed · {search.id}</p>
+            <h1 className="h2-display">It has been recorded</h1>
+            <Rule weight="heavy" />
+          </div>
+          <Notice title="What happens now">
+            The claim is checked against the transfers recorded for that period:
+            whether one was sent, whether it settled, and what the bank&rsquo;s
+            own reference says. A reply goes to the number this was raised from
+            within five working days. The developer sees the claim and can
+            respond, and their response is logged; a dispute closes on a
+            participant confirmation or a reversal, never on the
+            developer&rsquo;s word.
+          </Notice>
+          <a className="btn-outline btn-sm" href="/report">
+            File another report
+          </a>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PublicMasthead context="Report a problem" />
+      <div className="measure section-tight stack-lg">
+        <div className="stack">
+          <p className="eyebrow">Report</p>
+          <h1 className="h2-display">Tell us a payment did not arrive</h1>
+          <p className="lede">
+            Anyone can file this. No account, no login. What you write is
+            checked against the transfers the bank recorded for that period.
+          </p>
+          <Rule weight="heavy" />
+        </div>
+
+        {search.state === "invalid" ? (
+          <Notice tone="flagged" title="Choose what happened">
+            One of the three below has to be selected so the claim can be
+            checked against the right record.
+          </Notice>
+        ) : null}
+
+        {search.state === "error" ? (
+          <Notice
+            tone={search.code === "RATE_LIMITED" ? "flagged" : "blocked"}
+            title={
+              search.code === "RATE_LIMITED"
+                ? "Too many reports from this address"
+                : search.code === "NOT_FOUND"
+                  ? "No record at this address"
+                  : "The report was not filed"
+            }
+          >
+            {search.code === "RATE_LIMITED"
+              ? "Wait sixty seconds and file it again. Nothing was lost."
+              : search.code === "NOT_FOUND"
+                ? "That project is not on the register, so there is no period to check a claim against."
+                : "Nothing was filed. Try again, and if it fails a second time the project's own office can take the claim."}
+          </Notice>
+        ) : null}
+
+        <form action={fileReport} className="stack-lg" style={{ maxWidth: "var(--measure-reading)" }}>
+          <input type="hidden" name="projectId" value="proj_ekuri" />
+          <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend className="label">What happened</legend>
+            <div className="grid-ruled">
+              {CATEGORIES.map((option) => (
+                <label className="pick" key={option.value}>
+                  <input type="radio" className="radio" name="category" value={option.value} />
+                  <span className="stack">
+                    <span className="pick-title">{option.title}</span>
+                    <span className="pick-body">{option.body}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="field">
+            <label className="label" htmlFor="report-body">
+              Anything else worth saying
+            </label>
+            <textarea
+              id="report-body"
+              name="body"
+              className="textarea"
+              placeholder="When you were told you would be paid, and what happened"
+            />
+            <p className="field-note">Optional</p>
+          </div>
+
+          <div className="field">
+            <label className="label" htmlFor="report-voice">
+              Or record it instead of writing it
+            </label>
+            <input
+              id="report-voice"
+              name="voiceNote"
+              type="file"
+              accept="audio/*"
+              className="input"
+            />
+            <p className="field-note">Optional · a voice note in any language</p>
+          </div>
+
+          <div className="row">
+            <Button type="submit">File the report</Button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}

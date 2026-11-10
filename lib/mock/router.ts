@@ -15,7 +15,7 @@ import type {
   Session,
 } from "@/lib/api/contract";
 import { ERROR_COPY } from "@/lib/mock/errors";
-import { readForced, rosterSizeFor } from "@/lib/mock/forced";
+import { readForced, registerSizeFor, rosterSizeFor } from "@/lib/mock/forced";
 import {
   AGENTS,
   AMOUNT_PER_HOUSEHOLD,
@@ -196,7 +196,7 @@ const REGISTRY_RECORD: RegistryRecord = {
 };
 
 function registerRows(): RegisterRow[] {
-  return PROJECTS.map((project) => ({
+  const seeded = PROJECTS.map((project) => ({
     id: project.id,
     name: project.name,
     developerName: project.developerName,
@@ -210,6 +210,29 @@ function registerRows(): RegisterRow[] {
     openDisputes: project.openDisputes,
     status: project.status,
   }));
+
+  const total = registerSizeFor(seeded.length);
+  if (total <= seeded.length) {
+    return seeded;
+  }
+
+  /* Padding projects, so the index can be profiled at the size the register
+     will reach. Each is derived from a seeded one, so every figure on it is
+     still a figure the fixture supports. */
+  return Array.from({ length: total }, (_, index) => {
+    if (index < seeded.length) {
+      return seeded[index];
+    }
+    const base = seeded[index % seeded.length];
+    const participant = participantAt(base.id, index);
+    return {
+      ...base,
+      id: `${base.id}_${index}`,
+      name: `${participant.community} Community Carbon Project`,
+      developerName: `${participant.community} Community Trust`,
+      registryId: `GS-${11_000 + index}`,
+    };
+  });
 }
 
 function rosterFor(projectId: string, url: URL): Participant[] {

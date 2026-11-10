@@ -156,6 +156,21 @@ const DELTA_COMMITMENT: Commitment = {
   correctionReason: null,
 };
 
+const CALABAR_COMMITMENT: Commitment = {
+  percentage: 65,
+  basis: "net",
+  cadence: "quarterly",
+  beneficiary:
+    "Households in the nine communities bordering the Oban Hills block of Cross River National Park",
+  sourceQuote:
+    "Sixty-five percent of net revenue from issued credits shall be distributed quarterly to households in the nine communities bordering the Oban Hills block.",
+  page: 38,
+  confidence: 0.9,
+  corrected: false,
+  originalPercentage: null,
+  correctionReason: null,
+};
+
 /* ---- Periods -------------------------------------------------------------- */
 
 /* A period carries only what is declared: which period it is, whether it is
@@ -268,6 +283,31 @@ export const PROJECTS: Project[] = [
     periods: [
       periodStub("2026-Q3", "closed", "2026-10-02T11:18:07Z", "att_delta_2026q3"),
     ],
+  },
+  {
+    id: "proj_oban",
+    developerId: "dev_oban",
+    developerName: "Oban Hills Community Trust",
+    name: "Oban Hills Community Forest Project",
+    registry: "Gold Standard",
+    registryId: "GS-11460",
+    country: "Nigeria",
+    state: "Cross River",
+    localGovernment: "Akamkpa",
+    methodology: "Gold Standard AR-ACM0003, avoided deforestation",
+    status: "onboarding",
+    commitment: CALABAR_COMMITMENT,
+    enrolled: 0,
+    paid: 0,
+    openDisputes: 0,
+    substantiatedDisputes: 0,
+    signalCount: 0,
+    confirmationRate: 0,
+    lastClosedPeriod: null,
+    /* Onboarded, nothing closed. Its figures are explicit zeros, because a
+       project that has paid nobody is a fact the register publishes rather
+       than an absence it hides. */
+    periods: [periodStub("2026-Q4", "open", null, null)],
   },
 ];
 

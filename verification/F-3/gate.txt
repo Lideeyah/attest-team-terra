@@ -1,0 +1,43 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /register
+PASS  route renders /register/proj_ekuri
+PASS  route renders /developers/dev_ekuri
+PASS  route renders /attestation/att_ekuri_2026q3
+PASS  route renders /verify
+PASS  route renders /report
+PASS  route renders /receipt/rct_ngozi_eyo_2026q4
+PASS  state RATE_LIMITED on /register
+PASS  state NOT_FOUND on /register/proj_ekuri
+PASS  state ANCHOR_PENDING on /attestation/att_ekuri_2026q3
+PASS  state CHAIN_DISCONTINUITY on /attestation/att_ekuri_2026q3
+PASS  state TOKEN_EXPIRED on /receipt/rct_ngozi_eyo_2026q4
+PASS  state ALREADY_CONFIRMED on /receipt/rct_ngozi_eyo_2026q4
+PASS  state DISPUTE_ALREADY_OPEN on /receipt/rct_ngozi_eyo_2026q4
+PASS  filing a report reaches each of its states
+PASS  a project with no closed period shows its commitment and explicit zeros
+PASS  coverage is always shown with its denominator
+PASS  single-transfer verification handles each outcome distinctly
+PASS  bundle under 50KB on /receipt/rct_ngozi_eyo_2026q4
+PASS  the receipt requests no web font and uses the system stack
+PASS  the geography endpoint returns coarse buckets, never a household
+PASS  no success colour on the register
+PASS  the project page states no verdict about the project
+PASS  the register states 500 projects and renders a page of them
+PASS  no public surface renders a household coordinate
+PASS  accessibility on /register
+PASS  keyboard reachability on /register
+PASS  accessibility on /register/proj_ekuri
+PASS  keyboard reachability on /register/proj_ekuri
+PASS  accessibility on /verify
+PASS  keyboard reachability on /verify
+PASS  accessibility on /receipt/rct_ngozi_eyo_2026q4
+PASS  keyboard reachability on /receipt/rct_ngozi_eyo_2026q4
+PASS  screenshot F-3/register
+PASS  screenshot F-3/register-proj_ekuri
+PASS  screenshot F-3/developers-dev_ekuri
+PASS  screenshot F-3/attestation-att_ekuri_2026q3
+PASS  screenshot F-3/verify
+PASS  screenshot F-3/report
+PASS  screenshot F-3/receipt-rct_ngozi_eyo_2026q4
+42 passed, 0 failed in 59.3s

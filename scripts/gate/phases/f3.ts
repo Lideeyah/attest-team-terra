@@ -1,11 +1,11 @@
 import {
   a11y,
+  forceCode,
   bundleUnder,
   elementAbsent,
   grepAbsent,
   record,
   routeRenders,
-  rowsRender,
   screenshot,
   stateRenders,
   textAbsent,
@@ -36,8 +36,6 @@ const STATES: { path: string; code: string; expect: RegExp }[] = [
   { path: "/receipt/rct_ngozi_eyo_2026q4", code: "TOKEN_EXPIRED", expect: /expired/i },
   { path: "/receipt/rct_ngozi_eyo_2026q4", code: "ALREADY_CONFIRMED", expect: /already confirmed/i },
   { path: "/receipt/rct_ngozi_eyo_2026q4", code: "DISPUTE_ALREADY_OPEN", expect: /already open/i },
-  { path: "/report", code: "RATE_LIMITED", expect: /too many requests|rate/i },
-  { path: "/report", code: "NOT_FOUND", expect: /no record at this address|not found/i },
 ];
 
 export async function f3(): Promise<void> {
@@ -51,10 +49,14 @@ export async function f3(): Promise<void> {
     await stateRenders(state.path, state.code, state.expect);
   }
 
+  /* The report's own states are reached by filing one, because that is when
+     it talks to the API at all. */
+  await reportStates();
+
   /* A project with no closed period states its commitment and explicit zeros
      rather than an empty state: the denominator is the product. */
   await textOnPage(
-    "/register/proj_hadejia_new",
+    "/register/proj_oban",
     [/0 of \d/, /commitment/i],
     "a project with no closed period shows its commitment and explicit zeros",
   );
@@ -86,7 +88,8 @@ export async function f3(): Promise<void> {
     "the project page states no verdict about the project",
   );
 
-  await rowsRender("/register", 500, ".table tbody tr");
+  /* The register is profiled at the size it will reach. */
+  await registerAtScale(500);
 
   grepAbsent(
     "no public surface renders a household coordinate",
@@ -240,5 +243,79 @@ async function noHouseholdCoordinates(): Promise<void> {
     "the geography endpoint returns coarse buckets, never a household",
     buckets.length > 0 && singles === 0 && (payload.data?.resolution ?? 99) <= 8,
     `${buckets.length} buckets, ${singles} holding one household, resolution ${String(payload.data?.resolution)}`,
+  );
+}
+
+
+/** The index stays quick at the size the register will reach: the page states
+    the whole count and renders a page of it. */
+async function registerAtScale(rows: number): Promise<void> {
+  const { baseUrl } = await server();
+  await fetch(`${baseUrl}/api/dev/register-size`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ rows }),
+  });
+
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const started = Date.now();
+  await page.goto(`${baseUrl}/register`, { waitUntil: "networkidle" });
+  const elapsed = Date.now() - started;
+  const reported = Number(
+    (await page.locator("[data-row-count]").first().getAttribute("data-row-count")) ?? 0,
+  );
+  const rendered = await page.locator(".table tbody tr").count();
+  await browser.close();
+
+  await fetch(`${baseUrl}/api/dev/register-size`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ rows: null }),
+  });
+
+  record(
+    `the register states ${rows} projects and renders a page of them`,
+    reported >= rows && rendered > 0 && rendered < rows && elapsed < 4000,
+    `reported ${reported}, rendered ${rendered}, ${elapsed}ms`,
+  );
+}
+
+
+/** Filing a report reaches its states: it is submitted, or it is refused with
+    a reason the reader can act on. */
+async function reportStates(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+
+  const outcomes: { name: string; ok: boolean; text: string }[] = [];
+  for (const [name, code, expect] of [
+    ["submitted", "", /what happens now|recorded/i],
+    ["RATE_LIMITED", "RATE_LIMITED", /too many reports/i],
+    ["NOT_FOUND", "NOT_FOUND", /not on the register|no record/i],
+  ] as [string, string, RegExp][]) {
+    await forceCode(code || null, "/api/disputes");
+    const page = await browser.newPage();
+    await page.goto(`${baseUrl}/report`, { waitUntil: "networkidle" });
+    await page.locator('input[name="category"]').first().check();
+    await page.locator('button[type="submit"]').click();
+    /* The action redirects on the client, so the result is the new URL rather
+       than the end of the request that produced it. */
+    await page.waitForURL(/state=/, { timeout: 15_000 }).catch(() => undefined);
+    await page.waitForLoadState("networkidle");
+    const text = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    outcomes.push({ name, ok: expect.test(text), text: text.slice(0, 120) });
+    await page.close();
+  }
+  await forceCode(null);
+  await browser.close();
+
+  const broken = outcomes.filter((outcome) => !outcome.ok);
+  record(
+    "filing a report reaches each of its states",
+    broken.length === 0,
+    broken.map((outcome) => `${outcome.name}: ${outcome.text}`).join(" | "),
   );
 }

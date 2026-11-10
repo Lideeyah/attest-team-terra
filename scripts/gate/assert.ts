@@ -161,23 +161,35 @@ export async function routeRenders(path: string, name = `route renders ${path}`)
   });
 }
 
-/** Forces an error code through /dev/states and asserts the screen shows its
-    own state rather than a generic error. */
+/** Forces an error code through the developer endpoint the state panel drives,
+    and asserts the screen shows its own state rather than a generic error. */
+export async function forceCode(code: string | null, pathFragment?: string): Promise<void> {
+  const { baseUrl } = await server();
+  await fetch(`${baseUrl}/api/dev/force`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code, pathFragment: pathFragment ?? null }),
+  });
+}
+
 export async function stateRenders(
   path: string,
   code: string,
   expectation: string | RegExp,
 ): Promise<void> {
+  await forceCode(code);
   await withPage(async (page, baseUrl) => {
-    await page.goto(`${baseUrl}/dev/states?force=${encodeURIComponent(code)}`, {
-      waitUntil: "networkidle",
-    });
-    await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+    const response = await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
     const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
     const matcher = typeof expectation === "string" ? new RegExp(expectation, "i") : expectation;
     const ok = matcher.test(body);
-    record(`state ${code} on ${path}`, ok, ok ? "" : body.slice(0, 160));
+    record(
+      `state ${code} on ${path}`,
+      ok,
+      ok ? "" : `status ${response?.status() ?? 0} ${body.slice(0, 150)}`,
+    );
   });
+  await forceCode(null);
 }
 
 export async function screenshot(phase: string, path: string, label: string): Promise<void> {
@@ -458,8 +470,12 @@ export function liveBuildExcludesMock(): void {
       .split("\n")
       .filter((line) => /^[┌├└]/.test(line))
       .map((line) => line.replace(/^[┌├└]\s*[○ƒλ]?\s*/, "").trim());
-    const leaked = routes.filter(
-      (route) => route.startsWith("/api") || route.startsWith("/dev") || route.startsWith("/hooks"),
+    /* Whole segments: /developers is a public surface, not developer
+       tooling. */
+    const leaked = routes.filter((route) =>
+      ["/api", "/dev", "/hooks"].some(
+        (prefix) => route === prefix || route.startsWith(`${prefix}/`),
+      ),
     );
     record(
       "a live build carries no mock server and no developer tooling",

@@ -109,3 +109,16 @@ export function rosterSizeFor(projectId: string, fallback: number): number {
 export function rosterSizes_(): Record<string, number> {
   return Object.fromEntries(rosterSizes);
 }
+
+/* How many projects the register serves. The seed holds four; a screen that
+   must stay quick at five hundred is profiled by setting this from /api/dev,
+   which no production build carries. */
+let registerSize: number | null = null;
+
+export function setRegisterSize(rows: number | null): void {
+  registerSize = rows;
+}
+
+export function registerSizeFor(fallback: number): number {
+  return registerSize ?? fallback;
+}

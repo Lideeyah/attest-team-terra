@@ -58,7 +58,11 @@
      stack behind it. */
   --font-display: var(--font-cabinet, "Cabinet Grotesk"), var(--font-inter-tight, "Inter Tight"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-editorial: var(--font-newsreader, "Newsreader"), Georgia, "Times New Roman", serif;
-  --font-record: var(--font-courier-prime, "Courier Prime"), "Courier New", ui-monospace, monospace;
+  /* Courier Prime has no naira sign, so the stack names a monospace that does
+     before falling back to one that does not. Without it every amount in the
+     product breaks out of the record face at its first character. */
+  --font-record: var(--font-courier-prime, "Courier Prime"), Menlo, Consolas,
+    "DejaVu Sans Mono", "Courier New", ui-monospace, monospace;
 
   /* ---- Type scale ------------------------------------------------------- */
   --fs-h1: clamp(2.6rem, 5.2vw, 4.1rem);
@@ -98,6 +102,9 @@
 
   /* ---- Space and rhythm -------------------------------------------------- */
   --measure: 1340px;
+  /* The reading measure for a composition that is a block of records rather
+     than a full-width table. */
+  --measure-reading: 980px;
   --bp-wide: 1180px;
   --bp-mid: 1080px;
   --gutter: 40px;
@@ -227,7 +234,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Foundation</h2>
         </div>
         <p class="gate gate-passed">
-          31 passed, 0 failed in 22.3s
+          31 passed, 0 failed in 24.7s
         </p>
       </div>
       <hr class="heavy" />
@@ -258,7 +265,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Mock server, typed client and state control</h2>
         </div>
         <p class="gate gate-passed">
-          42 passed, 0 failed in 25.2s
+          42 passed, 0 failed in 31.4s
         </p>
       </div>
       <hr class="heavy" />
@@ -277,7 +284,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Landing page</h2>
         </div>
         <p class="gate gate-passed">
-          42 passed, 0 failed in 48.3s
+          45 passed, 0 failed in 60.6s
         </p>
       </div>
       <hr class="heavy" />
@@ -286,6 +293,49 @@ header.sheet { padding-block: var(--section); }
           <figure>
             <a href="F-2/landing.png"><img src="F-2/landing.png" alt="Landing" loading="lazy" /></a>
             <figcaption>Landing</figcaption>
+          </figure>
+      </div>
+    </section>
+    <section class="phase">
+      <div class="phase-head">
+        <div>
+          <p class="eyebrow">F-3</p>
+          <h2>Public register and verification</h2>
+        </div>
+        <p class="gate gate-passed">
+          42 passed, 0 failed in 59.3s
+        </p>
+      </div>
+      <hr class="heavy" />
+      <div class="grid">
+        
+          <figure>
+            <a href="F-3/attestation-att_ekuri_2026q3.png"><img src="F-3/attestation-att_ekuri_2026q3.png" alt="Attestation att_ekuri_2026q3" loading="lazy" /></a>
+            <figcaption>Attestation att_ekuri_2026q3</figcaption>
+          </figure>
+          <figure>
+            <a href="F-3/developers-dev_ekuri.png"><img src="F-3/developers-dev_ekuri.png" alt="Developers dev_ekuri" loading="lazy" /></a>
+            <figcaption>Developers dev_ekuri</figcaption>
+          </figure>
+          <figure>
+            <a href="F-3/receipt-rct_ngozi_eyo_2026q4.png"><img src="F-3/receipt-rct_ngozi_eyo_2026q4.png" alt="Receipt rct_ngozi_eyo_2026q4" loading="lazy" /></a>
+            <figcaption>Receipt rct_ngozi_eyo_2026q4</figcaption>
+          </figure>
+          <figure>
+            <a href="F-3/register-proj_ekuri.png"><img src="F-3/register-proj_ekuri.png" alt="Register proj_ekuri" loading="lazy" /></a>
+            <figcaption>Register proj_ekuri</figcaption>
+          </figure>
+          <figure>
+            <a href="F-3/register.png"><img src="F-3/register.png" alt="Register" loading="lazy" /></a>
+            <figcaption>Register</figcaption>
+          </figure>
+          <figure>
+            <a href="F-3/report.png"><img src="F-3/report.png" alt="Report" loading="lazy" /></a>
+            <figcaption>Report</figcaption>
+          </figure>
+          <figure>
+            <a href="F-3/verify.png"><img src="F-3/verify.png" alt="Verify" loading="lazy" /></a>
+            <figcaption>Verify</figcaption>
           </figure>
       </div>
     </section>
