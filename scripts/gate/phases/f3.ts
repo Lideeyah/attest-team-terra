@@ -177,7 +177,7 @@ async function verifyModes(): Promise<void> {
       headers: { "content-type": "application/json", "Idempotency-Key": "gate-disclosure" },
       body: JSON.stringify({ transferId: "trf_2026q3_00001" }),
     })
-  ).json()) as { data?: { leaf: string; proof: string[]; rootReference: string } };
+  ).json()) as { data?: Bundle };
 
   const bundle = issued.data;
   if (!bundle) {
@@ -226,10 +226,11 @@ async function verifyModes(): Promise<void> {
       headers: { "content-type": "application/json", "Idempotency-Key": "gate-disclosure-2" },
       body: JSON.stringify({ transferId: "trf_2026q2_00001" }),
     })
-  ).json()) as { data?: { leaf: string; proof: string[] } };
+  ).json()) as { data?: Bundle };
 
   const foreign = otherPeriod.data
     ? await check({
+        transfer: otherPeriod.data.transfer,
         leaf: otherPeriod.data.leaf,
         proof: otherPeriod.data.proof,
         rootReference: bundle.rootReference,
@@ -240,7 +241,78 @@ async function verifyModes(): Promise<void> {
     foreign === "LEAF_NOT_IN_ROOT",
     foreign,
   );
+
+  /* The period's published Merkle root is on the public attestation page, so
+     anybody can put it in a bundle. Folded through an empty path it is itself,
+     which is what made it verify as a payment. */
+  const record_ = (await (
+    await fetch(`${baseUrl}/api/public/attestations/${bundle.rootReference}`)
+  ).json()) as { data?: { merkleRoot: string } };
+  const publishedRoot = record_.data?.merkleRoot ?? "";
+
+  const rootAsLeaf = await check({
+    transfer: bundle.transfer,
+    leaf: publishedRoot,
+    proof: [],
+    rootReference: bundle.rootReference,
+  });
+  record(
+    "the period's own published root does not verify as a payment",
+    rootAsLeaf === "PROOF_INVALID",
+    `${rootAsLeaf}, root ${publishedRoot.slice(0, 12)}`,
+  );
+
+  /* An internal node of the tree, presented as a leaf one level up, folds to
+     the same root unless leaves and nodes are hashed in separate domains. */
+  const { hashPair } = await import("../../../lib/mock/merkle");
+  const node = hashPair(bundle.leaf, bundle.proof[0] ?? bundle.leaf);
+  const nodeAsLeaf = await check({
+    transfer: bundle.transfer,
+    leaf: node,
+    proof: bundle.proof.slice(1),
+    rootReference: bundle.rootReference,
+  });
+  record(
+    "an internal node of the tree does not verify as a leaf",
+    nodeAsLeaf === "PROOF_INVALID",
+    nodeAsLeaf,
+  );
+
+  /* A root that does not exist was not checked against anything, which is a
+     different answer from a proof that does not hold. */
+  const unknownRoot = await check({
+    transfer: bundle.transfer,
+    leaf: bundle.leaf,
+    proof: bundle.proof,
+    rootReference: "att_nothing_at_all",
+  });
+  record(
+    "a bundle naming a root that does not exist is not found rather than refuted",
+    unknownRoot === "NOT_FOUND",
+    unknownRoot,
+  );
+
+  /* A proof whose elements are not hashes is a malformed request rather than
+     a cryptographic verdict. */
+  const malformedPath = await check({
+    transfer: bundle.transfer,
+    leaf: bundle.leaf,
+    proof: [1, 2, 3],
+    rootReference: bundle.rootReference,
+  });
+  record(
+    "a proof path that is not hashes is refused as malformed",
+    malformedPath === "INVALID_REQUEST",
+    malformedPath,
+  );
 }
+
+type Bundle = {
+  transfer: { id: string; amount: string; sessionId: string | null; settledAt: string | null };
+  leaf: string;
+  proof: string[];
+  rootReference: string;
+};
 
 /** The receipt route requests no web font at all. */
 async function noWebFonts(path: string): Promise<void> {

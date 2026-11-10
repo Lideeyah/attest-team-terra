@@ -275,14 +275,17 @@ export async function f1(): Promise<void> {
 
   const broken: string[] = [];
   const missingMeta: string[] = [];
-  for (const probe of PROBES) {
+  for (const [index, probe] of PROBES.entries()) {
     const response = await fetch(`${baseUrl}${probe.path}`, {
       method: probe.method,
       headers: {
         ...(probe.body ? { "content-type": "application/json" } : {}),
         ...(probe.method === "GET"
           ? {}
-          : { "Idempotency-Key": `gate-${probe.method}-${probe.path}` }),
+          /* One key per probe, not one per path: two probes of the same
+             endpoint with different bodies are two requests, and sharing a key
+             would make the second a conflict rather than an answer. */
+          : { "Idempotency-Key": `gate-${index}-${probe.method}-${probe.path}` }),
       },
       body: probe.body ? JSON.stringify(probe.body) : undefined,
     });
