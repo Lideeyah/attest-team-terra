@@ -599,6 +599,17 @@
   stroke-width: var(--stroke-tick);
 }
 
+/* The keyboard's way into the drawing: the accounts the money moved into,
+   as a wrapping row of buttons rather than four hundred tab stops. */
+.graph-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--stack-tight);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .graph-legend {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

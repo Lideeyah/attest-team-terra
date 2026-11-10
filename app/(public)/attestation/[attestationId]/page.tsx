@@ -196,10 +196,19 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
             </Row>
             <Row label="Chain position">{record.chainPosition}</Row>
             <Row label="Anchor">
-              {record.anchor.network} · topic {record.anchor.topicId}
-              {record.anchor.sequence === null
-                ? " · sequence pending"
-                : ` · sequence ${record.anchor.sequence}`}
+              {/* The anchor's own state and sequence, named rather than left
+                  for a reader — or a test — to infer from the sentence. A
+                  check that passed on the word "anchor" appearing somewhere
+                  on the page was satisfied by the boilerplate below it. */}
+              <span
+                data-anchor-state={record.anchorState}
+                data-anchor-sequence={record.anchor.sequence ?? "pending"}
+              >
+                {record.anchor.network} · topic {record.anchor.topicId}
+                {record.anchor.sequence === null
+                  ? " · sequence pending"
+                  : ` · sequence ${record.anchor.sequence}`}
+              </span>
             </Row>
           </div>
 

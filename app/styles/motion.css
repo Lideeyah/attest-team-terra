@@ -194,7 +194,9 @@
 
 .sealed-above[data-sealed="true"] .eyebrow,
 .sealed-above[data-sealed="true"] .figure-denominator {
-  color: var(--rule-contrast);
+  /* Receded, not illegible: --rule-contrast is a rule colour, and at 1.9:1 it
+     made sealed labels decoration. The dim ink recedes and still reads. */
+  color: var(--ink-dim);
 }
 
 .sealed-above[data-sealed="true"] .stamp {

@@ -114,8 +114,18 @@ export default async function AgentsPage() {
                         : `${flagRate(agent.flagRate)} of ${formatCount(agent.enrolments)}`}
                     </span>
                     <span className="record-cell">{syncDelay(agent.averageSyncDelaySeconds)}</span>
+                    {/* The left edge carries the state in colour; this cell
+                        carries it in words, because an agent above the flag
+                        threshold reading as "Active" is the state signalled
+                        by colour alone. */}
                     <span className="record-cell">
-                      {agent.status === "invited" ? "Invited" : agent.status === "suspended" ? "Suspended" : "Active"}
+                      {agent.status === "suspended"
+                        ? "Suspended"
+                        : agent.status === "invited"
+                          ? "Invited"
+                          : agent.aboveFlagThreshold
+                            ? "Active, above the flag threshold"
+                            : "Active"}
                     </span>
                   </div>
                 </Strip>

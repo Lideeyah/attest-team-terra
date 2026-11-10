@@ -476,6 +476,25 @@ export function LiveRun({ run, first }: LiveRunProps) {
                           .join(" ")}
                         data-row-state={state}
                       >
+                        {/* The drawn mark, as every other stamp in the
+                            product carries: without it this row's state is
+                            a colour and a word in a colour, and a reader who
+                            cannot tell the colours apart has only the word.
+                            This stamp is hand-rolled rather than the Stamp
+                            component because the grid lands it centred, and
+                            it had been hand-rolled without the glyph. */}
+                        <span
+                          aria-hidden="true"
+                          className={`glyph glyph-${
+                            state === "failed"
+                              ? "blocked"
+                              : state === "reversed"
+                                ? "flagged"
+                                : state === "settled"
+                                  ? "sealed"
+                                  : "review"
+                          }`}
+                        />
                         {STATE_LABEL[state]}
                       </span>
                       {state === "in_flight" ? (

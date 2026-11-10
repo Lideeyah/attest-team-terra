@@ -16,7 +16,10 @@
   /* ---- Ink -------------------------------------------------------------- */
   --ink-primary: #181816;
   --ink-muted: #5C5A55;
-  --ink-dim: #8C887E;
+  /* Dim ink that still reads: 4.62:1 on the sunken fill, 6.24:1 on paper.
+     The previous #8C887E sat at 2.38:1 on the sunken fill, which failed WCAG
+     on every eyebrow and every figure's denominator in the product. */
+  --ink-dim: #5E5A52;
   --ink-paper: #F7F4EB; /* ink reversed out on bottle */
 
   /* ---- Bottle green, the anchor tone ------------------------------------ */

@@ -266,6 +266,38 @@ export function AccountGraph({
         ) : null}
       </div>
 
+      {/* The drawing is a drawing: a pointer finds an account in it, and a
+          keyboard cannot. Four hundred circles are not four hundred tab
+          stops, so what is keyboard-reachable is the thing the drawing is
+          about — the accounts the money moved into, and the accounts it moved
+          through — each a button that selects the same node a tap would. The
+          movement log below carries the rest as text. */}
+      <section
+        className="stack-tight"
+        aria-label="The accounts the money moved into, and through"
+      >
+        <p className="eyebrow">The accounts the money moved into, and through</p>
+        <ul className="graph-picks">
+          {order
+            .filter((node) => node.kind !== "household")
+            .map((node) => (
+              <li key={node.id}>
+                <button
+                  type="button"
+                  className="btn-quiet btn-sm"
+                  aria-pressed={selected?.id === node.id}
+                  onClick={() =>
+                    setSelected((current) => (current?.id === node.id ? null : node))
+                  }
+                  data-graph-pick={node.id}
+                >
+                  {node.label} · {formatNaira(node.amount)}
+                </button>
+              </li>
+            ))}
+        </ul>
+      </section>
+
       <dl className="graph-legend">
         <div>
           <dt className="eyebrow">Household wallets drawn</dt>

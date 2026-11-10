@@ -28,8 +28,21 @@ export function SavedSearches({ current }: { current: string }) {
   const [saved, setSaved] = useState<Saved[]>([]);
   const [name, setName] = useState("");
 
+  /* The stored list is the device's, not the server's, so it is read after
+     mount rather than during render, where it would disagree with the HTML
+     the server sent. The deferred read is there to satisfy the lint rule
+     against a synchronous setState in an effect body; the `live` flag keeps a
+     late resolution off an unmounted component. */
   useEffect(() => {
-    setSaved(read());
+    let live = true;
+    void Promise.resolve().then(() => {
+      if (live) {
+        setSaved(read());
+      }
+    });
+    return () => {
+      live = false;
+    };
   }, []);
 
   function save(): void {

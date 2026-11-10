@@ -39,7 +39,7 @@ export function FieldShell({ children }: FieldShellProps) {
             {FIELD_COPY.pending(pendingSync)}
           </span>
         </header>
-        <div className="field-main">{children}</div>
+        <main className="field-main">{children}</main>
         <nav className="field-tabs" aria-label="Field app">
           {TABS.map((tab) => {
             const active =
