@@ -1,0 +1,100 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /app
+PASS  route renders /app/roster
+PASS  route renders /app/roster/ptc_000331
+PASS  route renders /app/agents
+PASS  route renders /app/agents/agt_0001
+PASS  route renders /app/runs
+PASS  route renders /app/runs/new
+PASS  route renders /app/runs/run_2026q4
+PASS  route renders /app/runs/run_2026q1
+PASS  route renders /app/funding
+PASS  route renders /app/disputes
+PASS  route renders /app/disputes/dsp_0001
+PASS  route renders /app/attestations
+PASS  route renders /app/settings
+PASS  state FORBIDDEN on /app
+PASS  state ROSTER_EMPTY on /app/roster
+PASS  state ROSTER_EMPTY on /app/runs/new
+PASS  state PERIOD_CLOSED on /app/runs/new
+PASS  state FUNDING_NOT_RECEIVED on /app/runs/new
+PASS  state FUNDING_INSUFFICIENT on /app/runs/new
+PASS  state PREFLIGHT_EXCLUSIONS_REQUIRED on /app/runs/new
+PASS  state RECONCILIATION_MISMATCH on /app/funding
+PASS  state ANCHOR_PENDING on /app/attestations
+PASS  every state the console lists is reachable and says what it is
+PASS  home before the first enrolment says so rather than reading as zero coverage
+PASS  a suspended project says so and still shows its figures
+PASS  no delete control on /app/roster
+PASS  /app/roster offers no deletion, only a status change
+PASS  no delete control on /app/roster/ptc_000331
+PASS  /app/roster/ptc_000331 offers no deletion, only a status change
+PASS  no code path calls the participant delete endpoint
+PASS  the console offers no control that would close a dispute
+PASS  no copy offers to close a dispute on the developer's assertion
+PASS  no screen sets a dispute's resolution itself
+PASS  the roster virtualises 10000 rows
+PASS  the roster holds 60fps while scrolling 10000 rows
+PASS  run detail holds 60fps with 500 transfers arriving
+PASS  the stream says it is reconnecting rather than failing silently
+PASS  the table keeps its state across a dropped stream
+PASS  the stream resumes once the connection returns
+PASS  each failure class is rendered distinctly with its own remediation
+PASS  the commitment arithmetic shows every term of its working
+PASS  the arithmetic adds up
+PASS  a shortfall is named with its figure and the consequence stated
+PASS  a shortfall does not block the run
+PASS  the period and days to close sit at the top of the rail on every screen
+PASS  money is not abbreviated on /app
+PASS  money is not abbreviated on /app/funding
+PASS  money is not abbreviated on /app/attestations
+PASS  money is not abbreviated on /app/runs/run_2026q4
+PASS  the import format is the one the patch specifies, and the failure download appends its two columns
+PASS  accessibility on /app
+PASS  keyboard reachability on /app
+PASS  accessibility on /app/roster
+PASS  keyboard reachability on /app/roster
+PASS  accessibility on /app/runs/new
+PASS  keyboard reachability on /app/runs/new
+PASS  accessibility on /app/runs/run_2026q4
+PASS  keyboard reachability on /app/runs/run_2026q4
+PASS  accessibility on /app/settings
+PASS  keyboard reachability on /app/settings
+PASS  screenshot F-5/app
+PASS  screenshot F-5/app-roster
+PASS  screenshot F-5/app-roster-ptc_000331
+PASS  screenshot F-5/app-agents
+PASS  screenshot F-5/app-agents-agt_0001
+PASS  screenshot F-5/app-runs
+PASS  screenshot F-5/app-runs-new
+PASS  screenshot F-5/app-runs-run_2026q4
+PASS  screenshot F-5/app-runs-run_2026q1
+PASS  screenshot F-5/app-funding
+PASS  screenshot F-5/app-disputes
+PASS  screenshot F-5/app-disputes-dsp_0001
+PASS  screenshot F-5/app-attestations
+PASS  screenshot F-5/app-settings
+PASS  screenshot F-5/state-roster-filtered
+PASS  screenshot F-5/state-roster-filtered-to-nothing
+PASS  screenshot F-5/state-import-partially-failed
+PASS  screenshot F-5/state-import-in-progress
+PASS  screenshot F-5/state-participant-flagged
+PASS  screenshot F-5/state-participant-excluded
+PASS  screenshot F-5/state-participant-removed
+PASS  screenshot F-5/state-participant-duplicate-blocked
+PASS  screenshot F-5/state-participant-disputed
+PASS  screenshot F-5/state-agent-above-threshold
+PASS  screenshot F-5/state-agent-suspended
+PASS  screenshot F-5/state-agent-with-no-enrolments
+PASS  screenshot F-5/state-run-draft
+PASS  screenshot F-5/state-run-complete-clean
+PASS  screenshot F-5/state-run-complete-with-failures
+PASS  screenshot F-5/state-attestation-correction
+PASS  screenshot F-5/state-dispute-awaiting-participant
+PASS  screenshot F-5/state-dispute-escalated
+PASS  screenshot F-5/state-dispute-substantiated
+PASS  screenshot F-5/state-dispute-unsubstantiated
+PASS  screenshot F-5/state-api-key-shown-once
+PASS  screenshot F-5/state-notification-preferences
+99 passed, 0 failed in 145.0s

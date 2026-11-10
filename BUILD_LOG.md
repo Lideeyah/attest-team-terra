@@ -845,3 +845,143 @@ from, and a correction is logged with its reason while the original stays
 readable. Step five renders the project's real public register page at zero.
 
 **Gate.** `npm run gate -- F-4`: 51 assertions, 51 passed.
+
+---
+
+## F-5 — The developer console
+
+**Built.** Every screen the phase lists, inside the left-rail shell, with the
+open period and the days to close in record face at the top of the rail on all
+of them. Home carries coverage, open shortfall, enrolled, open reports and
+flagged enrolments, each with its denominator, and an action list ordered by
+what blocks the next payment; a run in flight carries the queue pulse, which is
+the only loop. The roster virtualises its rows: the window holds what the
+viewport can see and fetches the pages it reaches, so ten thousand households
+render without a frame drop, and no screen or code path offers a deletion —
+removal is a status change with a reason. Participant, agent, run, funding,
+report and attestation screens each state their own states rather than a
+generic failure. The run builder shows the commitment arithmetic in full, term
+by term, and a shortfall proceeds with the consequence stated in the copy. Run
+detail is driven by the stream: events land in a buffer, one animation frame
+merges them, and the table patches its own rows, so a dropped connection says
+it is reconnecting and loses nothing. Settings carries users and roles, the
+five notification preferences, API keys shown once, and webhook endpoints.
+
+**Gate.** `npm run gate -- F-5`: 99 assertions, 99 passed. It includes the
+roster at ten thousand rows, the live run at five hundred transfers with the
+frame budget measured over the arrival, the stream dropped and resumed with the
+table's rows counted either side, the arithmetic read back and checked as
+arithmetic rather than as seven labels, and a grep for any code path that
+reaches the participant delete endpoint.
+
+**Decisions taken.**
+
+1. **Backend section 4.3 enumerates no endpoint for the console's own
+   administration.** F-5 requires users and roles, API keys, webhook endpoints
+   and notification preferences, and nothing in the contract carries them, nor
+   the state of a roster import that F-5 requires to be partially downloadable.
+   Five shapes are named in `lib/api/contract.ts` under "Console settings and
+   roster imports" and served at `/api/projects/:id/users`, `/api/users/:id`,
+   `/api/projects/:id/api-keys`, `/api/api-keys/:id`,
+   `/api/projects/:id/webhook-endpoints`, `/api/webhook-endpoints/:id`,
+   `/api/notifications/preferences`, `/api/projects/:id/imports` and
+   `/api/imports/:id`. **The backend lane adopts or amends these**; they are the
+   only endpoints in the front end that section 4.3 does not already have.
+2. **The prompt's `TRANSFER_INVALID_ACCOUNT`, `TRANSFER_DORMANT`,
+   `TRANSFER_LIMIT_EXCEEDED`, `TRANSFER_NETWORK_TIMEOUT` and
+   `TRANSFER_INSUFFICIENT_FUNDS` are an earlier draft of five codes the
+   contract already has.** They are built as `ACCOUNT_NOT_FOUND`,
+   `ACCOUNT_DORMANT`, `LIMIT_EXCEEDED`, `TIMEOUT` and `INSUFFICIENT_FUNDS`, each
+   with its own heading and remediation, and `TIMEOUT` offers a requery rather
+   than a retry because a requery never resends.
+3. **The last administrator is refused with `FORBIDDEN` rather than a new
+   code.** The contract's forty-seven codes are not added to; the message and
+   remediation say what the constraint is.
+4. **A code forced from `/dev/states` without a path fragment no longer applies
+   to `GET /api/auth/session`.** It knocked out the session every console
+   screen is read with, so every forced state rendered as "this account is not
+   on a project". A session failure has its own screen at `/signin`; forcing a
+   code at the session itself still works by naming it as the fragment.
+5. **The console is scoped to the session's project and has no project
+   switcher.** `dev_ekuri` runs two projects and nothing in the phase asks for
+   switching between them.
+6. **Coverage's denominator is read from the roster** rather than from the
+   figure on the project, so the roster and the home screen cannot disagree,
+   and emptying the roster from `/dev/states` reaches the pre-enrolment state.
+7. **The notification events are the five recorded under spec patch 01 item
+   15**: a report raised, a run finished with transfers outstanding, funding
+   received, a period closing within seven days, and a period that does not
+   reconcile. The webhook endpoints offer the same five, so the product has one
+   list of events rather than two.
+
+**Found by the verification pass on F-3, fixed here.** The disclosure verifier
+accepted the period's own published Merkle root as a leaf with an empty proof
+path and answered "match": `foldProof` reduces an empty path to the leaf, and
+the root is printed on the public attestation page, so anybody could assemble a
+bundle from public data and be told a payment was in the period. An internal
+node of the tree could also be presented as a leaf one level up. Both are
+closed: leaves and internal nodes are now hashed in separate domains, a
+disclosure bundle carries the transfer's own facts and the verifier recomputes
+the leaf from them rather than trusting the hash it was handed, a proof whose
+length is not the tree's depth is refused, and a bundle naming a root that does
+not exist answers `NOT_FOUND` rather than `LEAF_NOT_IN_ROOT`, because nothing
+was checked against anything.
+
+**Manual review needed.** The commitment percentage, the declared gross and the
+funding amount are entered by an operator in the real product; in the mock they
+come from the fixture's run, so the builder reads rather than writes them. The
+screens are built for the write; the endpoint that takes it is
+`POST /api/projects/:id/runs`, which the contract has.
+
+---
+
+## F-4 — what the verification found
+
+F-4's independent verification ran after F-5 was built, against the production
+build. The gate passed 51 of 51 and the verifier still failed the phase, which
+is the same shape of result F-3 produced: the gate asserted what the screens
+do and not what the screens leave out. Recorded here in full, **outstanding**,
+to be fixed in an F-4 remediation pass before F-6.
+
+1. **The commitment step has no PDD upload.** The step starts from an existing
+   extraction and there is no file input on it, so `PDD_UNREADABLE` and
+   `PDD_NO_COMMITMENT` are notices for an action a reader cannot take.
+2. **Only the percentage is editable** on that step. Basis, cadence and
+   beneficiary are read-only rows, and the prompt asks for each field editable
+   with the correction logged alongside the original.
+3. **A correction and its original survive only in a query parameter.**
+   Reloading the step loses both the notice and the reason; the corrected
+   figure is in the cookie and the original is nowhere on the page.
+4. **Back navigation rewinds the saved position.** Re-submitting step one
+   writes `step: "verify"` unconditionally, and `Steps` computes "done" from
+   position rather than from the saved step, so every later step stops being a
+   link. The account step also drops its fields on a validation bounce.
+5. **States not built or not reachable:** `KYB_REJECTED`; `IDENTITY_MISMATCH`
+   (which is not a contract code — the behaviour is built under `BVN_MISMATCH`
+   and the prompt's name should be read as that); an invitation that expired,
+   was redeemed or was revoked, because `GET /api/invites/:code` answers
+   `valid` for every code; identity verification pending; the verification link
+   expired and verification complete, which have no route; validating; and the
+   unverified-email resend, which asserts a link was sent and offers no
+   control.
+6. **Step five frames the wrong project.** Nothing writes the wizard's project
+   id, so the live step always falls back to `proj_oban` — the screen whose
+   argument is "this is your page" shows somebody else's.
+7. **`REGISTRY_UNREACHABLE` promises manual entry that does not exist.**
+8. **`(auth)` has no `RouteTransition`,** so the wizards carry neither
+   `routeForward` nor `routeBack`, which the phase prompt asks for.
+9. **Titles double the brand** on eight `(auth)` pages: "— Attest" against the
+   root template's "· Attest".
+10. **`/signin` is unreachable from the public masthead at 390px.** One link
+    labelled "Register and sign in" goes to `/register` only, which fails the
+    patch's own F-2 assertion that all three are reachable from the first
+    screen.
+11. **Duplicate `<PublicFooter />`** on `/attestation/[id]` and
+    `/developers/[developerId]`.
+12. **`lib/copy/codes.ts` names 16 of 47 codes, and no F-4 surface calls
+    `headingFor`,** so four notices put a raw contract code where the heading
+    goes.
+13. **`coveragePercent` carries a decimal**; periods print raw on four
+    surfaces; `orUnknown`, `maskPhone`, `formatDateTime`, `formatPeriod`'s
+    spelled form and both print helpers are defined and never called.
+14. **`/dev/states` indexes no F-4 state at all.**
