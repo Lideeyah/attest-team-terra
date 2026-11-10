@@ -1,4 +1,5 @@
-import { typeset } from "@/lib/fonts";
+import { RouteTransition } from "@/components/RouteTransition";
+import { Surface } from "@/components/Surface";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 
 const SECTIONS = [
@@ -11,10 +12,10 @@ const SECTIONS = [
 
 export default function VerifierLayout({ children }: LayoutProps<"/">) {
   return (
-    <div className={typeset}>
+    <Surface>
     <MastheadShell surface="Verifier portal" sections={SECTIONS}>
-      {children}
+      <RouteTransition>{children}</RouteTransition>
     </MastheadShell>
-    </div>
+    </Surface>
   );
 }

@@ -1,0 +1,235 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { connection } from "next/server";
+import Link from "next/link";
+import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { Coverage } from "@/components/public/Coverage";
+import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
+import { Notice } from "@/components/Notice";
+import { Rule } from "@/components/Rule";
+import { Stamp } from "@/components/Stamp";
+import { api } from "@/lib/api/client";
+import { formatCount } from "@/lib/record";
+
+export const metadata: Metadata = {
+  title: "The register — Attest",
+  description:
+    "Every project that has closed a period, what it committed to, how many households it enrolled and how many it paid.",
+};
+
+const PER_PAGE = 25;
+
+const SORTS = [
+  { key: "name", label: "Project" },
+  { key: "coverage", label: "Coverage" },
+  { key: "enrolled", label: "Enrolled" },
+] as const;
+
+type Search = {
+  q?: string;
+  country?: string;
+  sort?: string;
+  page?: string;
+};
+
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
+  const search = await searchParams;
+  return (
+    <>
+      <PublicMasthead context="Public register" />
+      <div className="measure section-tight stack-lg">
+        <div className="stack">
+          <p className="eyebrow">Register</p>
+          <h1 className="h2-display">
+            Every project that has closed a period
+          </h1>
+          <p className="lede">
+            What each project committed to in its own project design document,
+            how many households it enrolled, and how many of them the bank
+            settled a payment to. Coverage is computed from transfers that
+            cleared, never entered by anyone.
+          </p>
+          <Rule weight="heavy" />
+        </div>
+
+        <form className="search-row" method="get" action="/register">
+          <div className="field" style={{ minWidth: "280px" }}>
+            <label className="label" htmlFor="register-search">
+              Search by project, operator or registry ID
+            </label>
+            <input
+              id="register-search"
+              className="input"
+              type="search"
+              name="q"
+              defaultValue={search.q ?? ""}
+              placeholder="Ekuri, GS-10342, Hadejia"
+            />
+          </div>
+          <button type="submit" className="btn-outline btn-sm">
+            Search
+          </button>
+          {search.q ? (
+            <Link href="/register" className="btn-quiet btn-sm">
+              Clear
+            </Link>
+          ) : null}
+        </form>
+
+        <Suspense fallback={<Loading rows={6} label="Loading the register" />}>
+          <RegisterRows search={search} />
+        </Suspense>
+      </div>
+    </>
+  );
+}
+
+async function RegisterRows({ search }: { search: Search }) {
+  /* The register is read at request time rather than baked into the build:
+     what it publishes changes when a period closes. */
+  await connection();
+  const page = Math.max(1, Number(search.page ?? 1) || 1);
+  const result = await api.register({
+    q: search.q,
+    country: search.country,
+    sort: search.sort,
+    page,
+    per_page: PER_PAGE,
+  });
+
+  if (!result.ok) {
+    return (
+      <Notice tone={result.code === "RATE_LIMITED" ? "flagged" : "blocked"} title={result.code}>
+        {result.message} {result.remediation}
+      </Notice>
+    );
+  }
+
+  const rows = result.data;
+  const meta = result.meta;
+
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        line={
+          search.q
+            ? `No project matches “${search.q}”. The register holds projects that have registered with Attest and closed at least one period.`
+            : "No project has closed a period yet. The register lists a project once its first period is sealed."
+        }
+        action={
+          search.q ? (
+            <Link href="/register" className="btn-outline btn-sm">
+              Show every project
+            </Link>
+          ) : undefined
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="stack">
+      <div className="table-scroll">
+        <table className="table" data-row-count={meta?.total ?? rows.length}>
+          <caption className="visually-hidden">
+            Projects on the Attest register
+          </caption>
+          <thead>
+            <tr>
+              {SORTS.map((sort) => (
+                <th
+                  key={sort.key}
+                  scope="col"
+                  aria-sort={search.sort === sort.key ? "descending" : undefined}
+                >
+                  <Link
+                    href={{ pathname: "/register", query: { ...search, sort: sort.key } }}
+                    className="record-cell"
+                  >
+                    {sort.label}
+                    <span aria-hidden="true" className="sort-caret">
+                      ▾
+                    </span>
+                  </Link>
+                </th>
+              ))}
+              <th scope="col">Registry</th>
+              <th scope="col" className="numeric">
+                Commitment
+              </th>
+              <th scope="col">Last closed period</th>
+              <th scope="col" className="numeric">
+                Open disputes
+              </th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <Link href={`/register/${row.id}`}>{row.name}</Link>
+                  <div className="eyebrow">{row.developerName}</div>
+                </td>
+                <td>
+                  <Coverage paid={row.paid} enrolled={row.enrolled} />
+                </td>
+                <td className="numeric">{formatCount(row.enrolled)}</td>
+                <td>
+                  {row.registry} {row.registryId}
+                </td>
+                <td className="numeric">{row.commitmentPct}% of revenue</td>
+                <td>{row.lastClosedPeriod ?? "None closed"}</td>
+                <td className="numeric">{formatCount(row.openDisputes)}</td>
+                <td>
+                  {row.status === "active" ? (
+                    <Stamp state="sealed" label="Active" recordId={row.id} />
+                  ) : row.status === "withdrawn" ? (
+                    <Stamp state="blocked" label="Withdrawn" recordId={row.id} />
+                  ) : row.status === "suspended" ? (
+                    <Stamp state="flagged" label="Suspended" recordId={row.id} />
+                  ) : (
+                    <Stamp state="review" label="Onboarding" recordId={row.id} />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {meta && meta.total_pages > 1 ? (
+        <nav className="pagination" aria-label="Register pages">
+          <span className="eyebrow">
+            Page {meta.page} of {meta.total_pages} · {formatCount(meta.total)} projects
+          </span>
+          <span className="row">
+            {meta.page > 1 ? (
+              <Link
+                href={{ pathname: "/register", query: { ...search, page: meta.page - 1 } }}
+                className="btn-outline btn-sm"
+              >
+                Previous
+              </Link>
+            ) : null}
+            {meta.page < meta.total_pages ? (
+              <Link
+                href={{ pathname: "/register", query: { ...search, page: meta.page + 1 } }}
+                className="btn-outline btn-sm"
+              >
+                Next
+              </Link>
+            ) : null}
+          </span>
+        </nav>
+      ) : (
+        <p className="eyebrow">{formatCount(meta?.total ?? rows.length)} projects</p>
+      )}
+    </div>
+  );
+}

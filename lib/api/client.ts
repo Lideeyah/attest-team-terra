@@ -45,7 +45,17 @@ export type Fail = {
 };
 export type Result<T> = Ok<T> | Fail;
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+/* In the browser a relative path reaches the same origin. On the server there
+   is no origin, so one is named: in production that is the backend's own URL,
+   and in development it is this application serving its own mock. Pointing the
+   front end at a real backend is still a change to these two values and
+   nothing else. */
+const BASE_URL =
+  typeof window === "undefined"
+    ? (process.env.ATTEST_INTERNAL_URL ??
+      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      "http://127.0.0.1:3000")
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? "");
 
 /* Reads are retried; a mutation never is, because a retry is how a household
    is paid twice. */

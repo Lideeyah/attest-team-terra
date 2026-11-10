@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { MotionProvider } from "@/components/MotionProvider";
-import { ToastProvider } from "@/components/Toast";
-import { RouteTransition } from "@/components/RouteTransition";
 import "./globals.css";
 
-/* The faces are applied per surface in each group's own layout, not here, so
-   the participant receipt can carry none. */
+/* The document carries nothing but the page. The faces, the motion provider,
+   the toast stack and the route transition are all applied per surface in
+   each group's own layout, because the participant receipt must carry none of
+   them: it is built for a cheap phone on an intermittent connection, and
+   anything attached here would be attached there. */
 
 export const metadata: Metadata = {
   title: "Attest — a settlement record for carbon project payments",
@@ -16,13 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>
-        <MotionProvider>
-          <ToastProvider>
-            <RouteTransition>{children}</RouteTransition>
-          </ToastProvider>
-        </MotionProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

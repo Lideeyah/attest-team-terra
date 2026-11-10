@@ -21,6 +21,7 @@ const TOOLING_ENV = {
   ATTEST_DEV_TOOLS: "1",
   ATTEST_API_MODE: "mock",
   NEXT_DIST_DIR: ".next-tooling",
+  ATTEST_INTERNAL_URL: `http://127.0.0.1:${3123}`,
   /* A secret for the gate's own signing, so the inbound hook's accepting path
      is asserted rather than assumed. */
   FORGE_WEBHOOK_SECRET: "gate-forge-secret-not-a-real-credential",
@@ -30,6 +31,7 @@ const LIVE_ENV = {
   ATTEST_DEV_TOOLS: "0",
   ATTEST_API_MODE: "live",
   NEXT_DIST_DIR: ".next-live",
+  ATTEST_INTERNAL_URL: `http://127.0.0.1:${3124}`,
 };
 
 async function waitForReady(baseUrl: string): Promise<void> {

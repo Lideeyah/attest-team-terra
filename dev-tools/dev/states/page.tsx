@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { typeset } from "@/lib/fonts";
+import { Surface } from "@/components/Surface";
 import { DevStates } from "./DevStates";
 
 export const metadata: Metadata = {
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 export default function DevStatesPage() {
   return (
-    <div className={typeset}>
+    <Surface>
       <DevStates />
-    </div>
+    </Surface>
   );
 }

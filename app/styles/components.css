@@ -989,3 +989,66 @@ th[aria-sort] .sort-caret {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Public surfaces ----------------------------------------------------- */
+
+.coverage-percent {
+  color: var(--ink-dim);
+}
+
+.search-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--stack);
+  flex-wrap: wrap;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--stack);
+  padding-block: var(--stack);
+}
+
+.document {
+  background: var(--surface-reading);
+  border: var(--hairline) solid var(--rule-hairline);
+  padding: var(--section-tight);
+}
+
+.definition {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--grid-rule);
+  background: var(--rule-hairline);
+  border: var(--hairline) solid var(--rule-hairline);
+}
+
+.definition-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--stack-lg);
+  background: var(--surface-reading);
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+}
+
+@media (max-width: 720px) {
+  .definition-row {
+    grid-template-columns: 1fr;
+    gap: calc(var(--stack) / 3);
+  }
+}
+
+.bucket-map {
+  background: var(--surface-sunken);
+  border: var(--hairline) solid var(--rule-hairline);
+  padding: var(--pad-panel);
+}
+
+.bucket {
+  fill: var(--ink-primary);
+  fill-opacity: 0.18;
+  stroke: var(--ink-primary);
+  stroke-width: var(--hairline);
+}

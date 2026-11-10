@@ -1,10 +1,10 @@
-import { typeset } from "@/lib/fonts";
+import { Surface } from "@/components/Surface";
 import { FieldShell } from "@/components/shells/FieldShell";
 import { Rule } from "@/components/Rule";
 
 export default function FieldShellPreview() {
   return (
-    <div className={typeset}>
+    <Surface>
     <FieldShell online={false} pendingSync={7}>
       <div className="stack-lg">
         <p className="eyebrow">Shell reference</p>
@@ -17,6 +17,6 @@ export default function FieldShellPreview() {
         </p>
       </div>
     </FieldShell>
-    </div>
+    </Surface>
   );
 }

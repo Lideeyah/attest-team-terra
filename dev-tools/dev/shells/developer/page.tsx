@@ -1,4 +1,4 @@
-import { typeset } from "@/lib/fonts";
+import { Surface } from "@/components/Surface";
 import { DeveloperShell } from "@/components/shells/DeveloperShell";
 import { Figure } from "@/components/Figure";
 import { Rule } from "@/components/Rule";
@@ -7,7 +7,7 @@ import { formatCoverage, formatCount, formatNairaCompact } from "@/lib/record";
 
 export default function DeveloperShellPreview() {
   return (
-    <div className={typeset}>
+    <Surface>
     <DeveloperShell>
       <div className="stack-lg">
         <p className="eyebrow">Shell reference</p>
@@ -41,6 +41,6 @@ export default function DeveloperShellPreview() {
         </div>
       </div>
     </DeveloperShell>
-    </div>
+    </Surface>
   );
 }

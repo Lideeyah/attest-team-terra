@@ -1,10 +1,13 @@
-import { typeset } from "@/lib/fonts";
+import { RouteTransition } from "@/components/RouteTransition";
+import { Surface } from "@/components/Surface";
 import { FieldShell } from "@/components/shells/FieldShell";
 
 export default function FieldLayout({ children }: LayoutProps<"/">) {
   return (
-    <div className={typeset}>
-      <FieldShell>{children}</FieldShell>
-    </div>
+    <Surface>
+      <FieldShell>
+        <RouteTransition>{children}</RouteTransition>
+      </FieldShell>
+    </Surface>
   );
 }
