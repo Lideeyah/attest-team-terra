@@ -166,11 +166,6 @@ export type Project = {
   localGovernment: string;
   methodology: string;
   status: ProjectStatus;
-  /** True for a seeded instance that carries a real project's published
-      commitment with synthetic payment data. The register and the project
-      page label it, and the page states that no figure on it describes the
-      real project's performance. */
-  demonstration?: boolean;
   commitment: Commitment;
   enrolled: number;
   /** The households the project undertook to enrol in this programme. The

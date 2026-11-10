@@ -79,9 +79,9 @@ async function assertFixtures(): Promise<void> {
   const failures: string[] = [];
   const register = await (await fetch(`${BASE}/api/public/register?per_page=50`)).json();
   const rows = (register.data ?? []) as { id: string; name: string }[];
-  const tgb = rows.find((row) => row.id === "proj_ekuri");
-  if (!tgb || !/Trees for Global Benefits/.test(tgb.name) || !/demonstration/i.test(tgb.name)) {
-    failures.push("the seeded Plan Vivo demonstration project (proj_ekuri, Trees for Global Benefits)");
+  const project = rows.find((row) => row.id === "proj_ekuri");
+  if (!project || !/Ekuri Community Forest/.test(project.name)) {
+    failures.push("the seeded Plan Vivo project (proj_ekuri, Ekuri Community Forest Carbon Project)");
   }
   const check = async (number: string) => {
     const response = await fetch(`${BASE}/api/field/identity-check`, {
@@ -152,7 +152,7 @@ async function beat2_thePromise(h: Human): Promise<void> {
   await h.settle();
   await h.read(1100, 1500);
   /* The boundary the registry cannot serve, uploaded instead. */
-  await h.page.locator("[data-boundary-file]").first().setInputFiles(join(ROOT, "demo", "assets", "hoima-boundary.kml"));
+  await h.page.locator("[data-boundary-file]").first().setInputFiles(join(ROOT, "demo", "assets", "ekuri-boundary.kml"));
   await h.read(400, 700);
   await h.click("button[data-boundary-submit]");
   await h.page.waitForSelector("[data-boundary-parsed]", { timeout: 15_000 });
@@ -187,10 +187,10 @@ async function beat3_theRefusal(h: Human, ctx: BrowserContext): Promise<void> {
   await h.read(1000, 1400);
   await h.click("[data-step-next]");
   await h.settle();
-  await h.type("[data-given-name]", "Miriam");
+  await h.type("[data-given-name]", "Ekaette");
   /* The take's one typing correction lives here. */
-  await h.type("[data-family-name]", "Atuhaire", { allowCorrection: true });
-  await h.type("[data-phone]", "0772334455");
+  await h.type("[data-family-name]", "Okonkwo", { allowCorrection: true });
+  await h.type("[data-phone]", "08032445511");
   await h.type("[data-account]", "0691004523");
   await h.click("[data-step-next]");
   await h.settle();
@@ -473,7 +473,7 @@ async function record(): Promise<void> {
     colorScheme: "light",
     locale: "en-NG",
     timezoneId: "Africa/Lagos",
-    geolocation: { latitude: 1.385, longitude: 31.36, accuracy: 12 },
+    geolocation: { latitude: 5.76, longitude: 8.37, accuracy: 12 },
     permissions: ["geolocation"],
   });
   await ctx.addInitScript(CURSOR_INIT);

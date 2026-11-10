@@ -7,13 +7,20 @@
 
 .console-page {
   padding: var(--section-tight) var(--gutter);
-  max-width: var(--measure);
+  /* The column uses the space beside the rail. It was capped at the public
+     measure and left flush against the rail, which read as a dead gap the
+     width of the slack — the wider the screen, the worse. Records and tables
+     carry width well; the cap that remains is only so a line never runs to
+     the bezel. */
+  max-width: 1680px;
 }
 
 /* A composition that is a block of records rather than a full-width table
    takes the reading measure. */
 .console-page.reading {
-  max-width: var(--measure-reading);
+  /* Prose-led screens keep a reading cap, wider than the old one so the
+     right side is working space rather than emptiness. */
+  max-width: 1280px;
 }
 
 /* ---- Figures across the top of the home screen -------------------------- */

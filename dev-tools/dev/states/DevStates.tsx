@@ -258,13 +258,13 @@ export function DevStates() {
             Roster: seeded
           </Button>
           <Button small variant="outline" onClick={() => void setProjectStatus("proj_ekuri", "suspended")}>
-            TGB demonstration: suspended
+            Ekuri: suspended
           </Button>
           <Button small variant="outline" onClick={() => void setProjectStatus("proj_ekuri", "withdrawn")}>
-            TGB demonstration: withdrawn
+            Ekuri: withdrawn
           </Button>
           <Button small variant="outline" onClick={() => void setProjectStatus("proj_ekuri", null)}>
-            TGB demonstration: active
+            Ekuri: active
           </Button>
         </div>
       </div>

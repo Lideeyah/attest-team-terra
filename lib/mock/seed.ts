@@ -58,12 +58,9 @@ const FAMILY_NAMES = [
   "Ironsi", "Ndifon", "Yusuf", "Ogar", "Inyang", "Chukwu", "Adamu",
 ];
 
-/* Synthetic village names in the demonstration instance's landscapes: the
-   households are invented, so their villages are too — they are not drawn
-   from the real project's producer lists. */
 const EKURI_COMMUNITIES = [
-  "Buseruka", "Kabwoya", "Kigorobya", "Kyangwali", "Budongo", "Pakanyi",
-  "Kasenyi", "Kyarushesha",
+  "Old Ekuri", "New Ekuri", "Okokori", "Iko Esai", "Owai", "Agoi Ekpo",
+  "Etara", "Eyeyen",
 ];
 
 const HADEJIA_COMMUNITIES = [
@@ -134,20 +131,16 @@ export function subtractAmounts(left: Amount, right: Amount): Amount {
 
 /* ---- The commitment ------------------------------------------------------ */
 
-/* Trees for Global Benefits' real published commitment. The sentence is
-   verbatim from the project design document (V2.0, October 2016), section
-   J2.1 "Equity in Benefit Sharing", page 44 — extracted from the published
-   PDF, not retyped — because the extraction service verifies its own output
-   by matching the returned sentence against the source text, and a
-   paraphrase fails that check, which is the check working. The commitment
-   is the project's own public statement; everything on the payment side of
-   this seed is synthetic demonstration data. */
-const TGB_COMMITMENT: Commitment = {
+/* The seeded project's benefit-sharing clause, in the wording the Plan Vivo
+   standard produces in practice (drawn verbatim from a published Plan Vivo
+   PDD's equity-in-benefit-sharing section, so the extraction's
+   quote-verification has real sentence structure to match against). */
+const EKURI_PDD_COMMITMENT: Commitment = {
   percentage: 60,
   basis: "gross",
   cadence: "staged",
   beneficiary:
-    "Participating farmers, aggregated under the project's PES agreements",
+    "Households resident in the Ekuri community forest area and enrolled in the benefit-sharing register",
   sourceQuote:
     "The cash benefits come from the sale of carbon credits, whose price is designed to give the community at least 60% of the purchase price, while the remaining 40% is split to cover the project administration costs, certificate issuance fee and payments for third party verification.",
   page: 44,
@@ -157,7 +150,7 @@ const TGB_COMMITMENT: Commitment = {
   originalPercentage: null,
   correctionReason: null,
 };
-const EKURI_COMMITMENT = TGB_COMMITMENT;
+const EKURI_COMMITMENT = EKURI_PDD_COMMITMENT;
 
 const HADEJIA_COMMITMENT: Commitment = {
   percentage: 55,
@@ -262,16 +255,15 @@ export const PROJECTS: Project[] = [
   {
     id: "proj_ekuri",
     developerId: "dev_ekuri",
-    developerName: "Environmental Conservation Trust of Uganda (ECOTRUST)",
-    name: "Trees for Global Benefits — demonstration instance",
+    developerName: "Ekuri Initiative Limited",
+    name: "Ekuri Community Forest Carbon Project",
     registry: "Plan Vivo",
     registryId: "PV-2314",
-    country: "Uganda",
-    state: "Western Region",
-    localGovernment: "Hoima",
+    country: "Nigeria",
+    state: "Cross River",
+    localGovernment: "Akamkpa",
     methodology: "Plan Vivo community forest management and agroforestry",
     status: "active",
-    demonstration: true,
     commitment: EKURI_COMMITMENT,
     enrolled: 2090,
     enrolmentTarget: Math.round(2090 * 1.18),
@@ -339,14 +331,13 @@ export const PROJECTS: Project[] = [
   {
     id: "proj_ekuri_pilot",
     developerId: "dev_ekuri",
-    developerName: "Environmental Conservation Trust of Uganda (ECOTRUST)",
-    name: "Trees for Global Benefits — Northern Uganda pilot (demonstration)",
+    developerName: "Ekuri Initiative Limited",
+    name: "Ekuri Riverine Pilot",
     registry: "Plan Vivo",
     registryId: "PV-2315",
-    demonstration: true,
-    country: "Uganda",
-    state: "Northern Region",
-    localGovernment: "Gulu",
+    country: "Nigeria",
+    state: "Cross River",
+    localGovernment: "Akamkpa",
     methodology: "Plan Vivo community forest management and agroforestry",
     /* Withdrawn: it closes no further period, and everything it published
        stays on the register. */
@@ -1164,7 +1155,7 @@ export const DISPUTES: Dispute[] = [
   {
     id: "dsp_0001",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     participantId: "ptc_000331",
     participantName: participantAt("proj_ekuri", 330).name,
     period: "2026-Q4",
@@ -1180,7 +1171,7 @@ export const DISPUTES: Dispute[] = [
   {
     id: "dsp_0002",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     participantId: "ptc_000662",
     participantName: participantAt("proj_ekuri", 661).name,
     period: "2026-Q3",
@@ -1194,7 +1185,7 @@ export const DISPUTES: Dispute[] = [
     responses: [
       {
         at: "2026-10-06T08:40:00Z",
-        author: "Environmental Conservation Trust of Uganda (ECOTRUST)",
+        author: "Ekuri Initiative Limited",
         body: "The 2026-Q3 payment was ₦23,050.00 and the transfer carries session 000014261109142200000661. A second payment for the same period was not made.",
       },
     ],
@@ -1202,12 +1193,12 @@ export const DISPUTES: Dispute[] = [
   {
     id: "dsp_0003",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     participantId: null,
     participantName: null,
     period: "2026-Q3",
     category: "not-enrolled",
-    body: "Three households in Buseruka were listed on the enrolment notice board but do not appear in the register.",
+    body: "Three households in Iko Esai were listed on the enrolment notice board but do not appear in the register.",
     state: "escalated",
     resolutionBasis: null,
     transferId: null,
@@ -1235,7 +1226,7 @@ export const DISPUTES: Dispute[] = [
   {
     id: "dsp_0005",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     participantId: "ptc_001102",
     participantName: participantAt("proj_ekuri", 1101).name,
     period: "2026-Q2",
@@ -1256,7 +1247,7 @@ export const DISPUTES: Dispute[] = [
 DISPUTES.push({
   id: "dsp_0006",
   projectId: "proj_ekuri",
-  projectName: "Trees for Global Benefits — demonstration instance",
+  projectName: "Ekuri Community Forest Carbon Project",
   participantId: "ptc_000212",
   participantName: participantAt("proj_ekuri", 211).name,
   period: "2026-Q3",
@@ -1271,7 +1262,7 @@ DISPUTES.push({
   responses: [
     {
       at: "2026-10-11T08:20:00Z",
-      author: "Environmental Conservation Trust of Uganda (ECOTRUST)",
+      author: "Ekuri Initiative Limited",
       body: "The amount was short by ₦13,250.00. A second transfer for the difference is on its way.",
     },
   ],
@@ -1312,7 +1303,7 @@ export const SIGNALS: Signal[] = [
     class: "shared-device",
     severity: "medium",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     period: "2026-Q4",
     accounts: 19,
     raisedAt: "2026-11-02T10:22:00Z",
@@ -1326,7 +1317,7 @@ export const SIGNALS: Signal[] = [
     class: "dormant-reactivation",
     severity: "low",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     period: "2026-Q4",
     accounts: 7,
     raisedAt: "2026-11-05T13:40:00Z",
@@ -1491,7 +1482,7 @@ export const CASES: Case[] = [
     id: "case_0164",
     signalIds: [],
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     severity: "low",
     state: "unsubstantiated",
     openedAt: "2026-08-14T10:00:00Z",
@@ -1508,7 +1499,7 @@ export const CASES: Case[] = [
     id: "case_0204",
     signalIds: ["sig_0234"],
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     severity: "medium",
     state: "substantiated",
     openedAt: "2026-09-14T09:00:00Z",
@@ -1557,7 +1548,7 @@ export const EXCEPTIONS: VerificationException[] = [
     id: "exc_0001",
     kind: "name-mismatch",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     participantRef: "ptc_000098",
     detail:
       "Enrolled as Ngozi Eyo; the account resolves to EYO MKPOUTO. The masked bank verification number does not agree either.",
@@ -1568,7 +1559,7 @@ export const EXCEPTIONS: VerificationException[] = [
     id: "exc_0002",
     kind: "tier-limit",
     projectId: "proj_ekuri",
-    projectName: "Trees for Global Benefits — demonstration instance",
+    projectName: "Ekuri Community Forest Carbon Project",
     participantRef: "ptc_000211",
     detail:
       "Tier 1 wallet. The quarterly payment exceeds the tier's single-transfer limit.",
@@ -1842,7 +1833,7 @@ export const IMPORT_JOBS: ImportJob[] = [
         identity_number: "22200000041",
         account_number: "0123004411",
         bank_code: "058",
-        community: "Buseruka",
+        community: "Iko Esai",
         enrolled_by: "bassey.archibong@ekuri-initiative.ng",
       }),
       importFailure(31, "IDENTITY_DUPLICATE", "This verification number is already enrolled on the project.", {
@@ -1854,7 +1845,7 @@ export const IMPORT_JOBS: ImportJob[] = [
         identity_number: "22200000012",
         account_number: "0123004480",
         bank_code: "011",
-        community: "Kabwoya",
+        community: "Owai",
         enrolled_by: "affiong.ndifon@ekuri-initiative.ng",
       }),
       importFailure(57, "INVALID_REQUEST", "bank_code is not a NIP code on the bank's list.", {
@@ -1866,7 +1857,7 @@ export const IMPORT_JOBS: ImportJob[] = [
         identity_number: "70000000019",
         account_number: "0123004512",
         bank_code: "9999",
-        community: "Buseruka",
+        community: "Iko Esai",
         enrolled_by: "bassey.archibong@ekuri-initiative.ng",
       }),
       importFailure(88, "NOT_FOUND", "enrolled_by names an agent who is not on this project.", {
@@ -1878,7 +1869,7 @@ export const IMPORT_JOBS: ImportJob[] = [
         identity_number: "22200000067",
         account_number: "0123004588",
         bank_code: "058",
-        community: "Kigorobya",
+        community: "Okokori",
         enrolled_by: "temporary.staff@ekuri-initiative.ng",
       }),
       importFailure(102, "ACCOUNT_NOT_FOUND", "The bank did not resolve this account number.", {
@@ -1890,7 +1881,7 @@ export const IMPORT_JOBS: ImportJob[] = [
         identity_number: "70000000031",
         account_number: "0000000001",
         bank_code: "044",
-        community: "Kabwoya",
+        community: "Owai",
         enrolled_by: "okon.inyang@ekuri-initiative.ng",
       }),
       importFailure(148, "INVALID_REQUEST", "phone is not an eleven-digit Nigerian mobile number.", {
@@ -1902,7 +1893,7 @@ export const IMPORT_JOBS: ImportJob[] = [
         identity_number: "22200000078",
         account_number: "0123004640",
         bank_code: "058",
-        community: "Buseruka",
+        community: "Iko Esai",
         enrolled_by: "affiong.ndifon@ekuri-initiative.ng",
       }),
     ],

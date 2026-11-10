@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Hoima landscape project area (demonstration)</name>
+    <name>Ekuri community forest boundary</name>
     <Placemark>
       <name>Project boundary</name>
       <Polygon><outerBoundaryIs><LinearRing><coordinates>
-        31.3012,1.4188,0 31.3621,1.4410,0 31.4203,1.4267,0 31.4488,1.3902,0
-        31.4391,1.3444,0 31.3977,1.3120,0 31.3388,1.3077,0 31.2904,1.3351,0
-        31.2762,1.3822,0 31.3012,1.4188,0
+        8.3012,5.8188,0 8.3621,5.8410,0 8.4203,5.8267,0 8.4488,5.7902,0
+        8.4391,5.7444,0 8.3977,5.7120,0 8.3388,5.7077,0 8.2904,5.7351,0
+        8.2762,5.7822,0 8.3012,5.8188,0
       </coordinates></LinearRing></outerBoundaryIs></Polygon>
     </Placemark>
   </Document>

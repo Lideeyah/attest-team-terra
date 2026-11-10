@@ -103,7 +103,7 @@ export function SavedSearches({ current }: { current: string }) {
               className="input"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Hoima projects"
+              placeholder="Cross River projects"
               data-save-search-name
             />
           </div>

@@ -1512,6 +1512,25 @@ the tokens because a receipt ships with no stylesheet — and failed the
 contrast rule the moment a gate looked; it is in step now. Gates re-run
 green: F-3 49, F-4 86, F-9 66.
 
+## The seeded identity, settled
+
+The register reads as a working account, with no demonstration labelling
+anywhere on a screen. The seeded project is the fictional Ekuri Community
+Forest Carbon Project again — Plan Vivo PV-2314, Nigeria, Cross River — so
+nothing on any surface attributes a payment figure to a real organisation,
+which is the guardrail the demo-seed note set and the reason the labels were
+there. The commitment keeps the Plan Vivo wording drawn verbatim from a
+published PDD's equity-in-benefit-sharing section, so the extraction's
+quote-verification still matches against real sentence structure, and the
+published Trees for Global Benefits annual report remains in demo/ as the
+closing beat's comparator — their filing as it exists, beside the same
+filing rendered from settlement, with no claim made about what they paid.
+
+The console pages also stopped leaving the width beside the rail unused:
+.console-page was capped at the public measure and sat flush against the
+rail, which read as a dead gap the width of the slack on every developer,
+ops and verifier screen. Records and tables now carry the width.
+
 ## The demo recording
 
 `npm run demo` re-seeds, records and converts: one continuous 4:30 take at

@@ -82,7 +82,7 @@ export default async function WatchlistStep({
             type="search"
             className="input"
             defaultValue={search.q ?? ""}
-            placeholder="Trees for Global Benefits, Plan Vivo, Hoima"
+            placeholder="Ekuri, Plan Vivo, Cross River"
           />
         </div>
         <button type="submit" className="btn-outline btn-sm">

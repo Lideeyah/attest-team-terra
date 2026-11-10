@@ -473,7 +473,7 @@ async function fixtureStates(): Promise<void> {
   const results: [string, boolean][] = [
     ["a withdrawn project keeps its record", await reads("/register/proj_ekuri_pilot", /withdrawn/i)],
     ["a suspended project is marked", await reads("/register/proj_delta", /suspended/i)],
-    ["an operator with several projects", await reads("/developers/dev_ekuri", /Northern Uganda pilot/i)],
+    ["an operator with several projects", await reads("/developers/dev_ekuri", /Ekuri Riverine Pilot/i)],
     ["an anchor that has not landed", await reads("/attestation/att_ekuri_pilot_2026q1", /waiting to anchor|anchor pending/i)],
     ["a correction supersedes a record", await reads("/attestation/att_ekuri_2026q3", /correction supersedes/i)],
     ["the correction names what it supersedes", await reads("/attestation/att_ekuri_2026q3_correction", /2026-Q3|Q3 2026/i)],
