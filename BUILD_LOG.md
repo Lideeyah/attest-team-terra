@@ -1290,3 +1290,46 @@ a phone-width column rather than refused outright. The phase says "never
 rendered on desktop"; a hard refusal would make the app unreviewable by the
 people who have to review it, and the column is the compromise. **Lydia's
 call.**
+
+---
+
+## F-8 — The bank operations console
+
+**Built.** Home, the signals queue, a signal with its account graph, case
+management, verification exceptions and reconciliation, in the masthead shell.
+
+The account graph is what the phase is for. Four hundred household wallets
+sweeping into three accounts inside forty-eight hours is the signature of a
+developer paying itself through households that do not exist, and it cannot be
+seen from outside a bank. It is drawn in ink and rules on the sunken surface
+with exactly one colour in it — the accounts the money concentrated into —
+because that is the thing the drawing is about. The layout is computed once
+and deterministically rather than simulated every frame, so the picture holds
+still while it is read, and panning writes a transform straight to the group,
+so a drag costs one style change and no React render.
+
+Each of the five signal classes says what was seen in its own words: five rows
+sharing one sentence would be one row five times, and an operator triaging a
+queue needs to tell them apart at a glance. Severity is worded as what it is —
+the bank's own order of work — rather than as a label about a project. A case
+action states its consequence before the control, carries a note for the case
+record, and can be refused by the desk that holds the authority: freezing an
+account stops money for real people.
+
+**Gate.** `npm run gate -- F-8`: 44 assertions, 44 passed. The graph drawn and
+counted, its spread measured so it is not a single blot, its frames measured
+while it is dragged, and the sampled state asserted against what the endpoint
+actually did. Every listed state, every class distinct and none of them shown
+as a contract name, and a sweep for words about people rather than accounts.
+
+**Decisions taken.**
+
+1. **The graph is a computed layout, not a live simulation.** A force
+   simulation over two hundred nodes spends the frame budget on jitter, and an
+   operator panning a graph needs it to hold still.
+2. **The endpoint samples 400 accounts to 220 and the screen says so**, with
+   both figures. The gate asserts the statement matches what the endpoint
+   reported rather than asserting a number.
+3. **Freeze and escalate are recorded as asked for, not as done.** The
+   authorisation is the financial crime desk's, and a console that says
+   "frozen" when it has only asked is a console that lies about money.
