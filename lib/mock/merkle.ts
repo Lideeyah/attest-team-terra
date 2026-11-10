@@ -81,7 +81,16 @@ export function leafFor(transfer: {
 }): string {
   return createHash("sha256")
     .update(
-      `${LEAF_DOMAIN}|${transfer.id}|${transfer.amount}|${transfer.sessionId ?? ""}|${transfer.settledAt ?? ""}`,
+      /* A fact that is absent and a fact that is an empty string are
+         different facts, so they hash differently: a bundle's leaf determines
+         its facts uniquely. */
+      [
+        LEAF_DOMAIN,
+        transfer.id,
+        transfer.amount,
+        transfer.sessionId === null ? "\u0000null" : transfer.sessionId,
+        transfer.settledAt === null ? "\u0000null" : transfer.settledAt,
+      ].join("|"),
     )
     .digest("hex");
 }

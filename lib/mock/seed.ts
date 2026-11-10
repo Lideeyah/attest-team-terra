@@ -184,6 +184,15 @@ const CALABAR_COMMITMENT: Commitment = {
    open, when it closed and whether it was corrected. Every figure in it is
    computed from the run behind it by computeCoverage below, because a figure
    that can be typed is a figure that can be authored. */
+/** The last day of the quarter a period names. */
+export function quarterEnds(period: string): string {
+  const match = /^(\d{4})-Q([1-4])$/.exec(period);
+  if (!match) {
+    return period;
+  }
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) * 3, 0)).toISOString();
+}
+
 function periodStub(
   period: string,
   state: PeriodSummary["state"],
@@ -194,6 +203,7 @@ function periodStub(
   return {
     period,
     state,
+    closesOn: quarterEnds(period),
     enrolled: 0,
     paid: 0,
     amountToHouseholds: "0.00",
@@ -234,6 +244,7 @@ export const PROJECTS: Project[] = [
     status: "active",
     commitment: EKURI_COMMITMENT,
     enrolled: 2090,
+    enrolmentTarget: Math.round(2090 * 1.18),
     paid: 1284,
     openDisputes: 4,
     substantiatedDisputes: 1,
@@ -256,6 +267,7 @@ export const PROJECTS: Project[] = [
     status: "active",
     commitment: HADEJIA_COMMITMENT,
     enrolled: 846,
+    enrolmentTarget: Math.round(846 * 1.18),
     paid: 846,
     openDisputes: 0,
     substantiatedDisputes: 0,
@@ -283,6 +295,7 @@ export const PROJECTS: Project[] = [
     status: "suspended",
     commitment: DELTA_COMMITMENT,
     enrolled: 1402,
+    enrolmentTarget: Math.round(1402 * 1.18),
     paid: 1308,
     openDisputes: 11,
     substantiatedDisputes: 3,
@@ -309,6 +322,7 @@ export const PROJECTS: Project[] = [
     status: "withdrawn",
     commitment: EKURI_COMMITMENT,
     enrolled: 0,
+    enrolmentTarget: 0,
     paid: 0,
     openDisputes: 0,
     substantiatedDisputes: 0,
@@ -331,6 +345,7 @@ export const PROJECTS: Project[] = [
     status: "onboarding",
     commitment: CALABAR_COMMITMENT,
     enrolled: 0,
+    enrolmentTarget: 0,
     paid: 0,
     openDisputes: 0,
     substantiatedDisputes: 0,
@@ -805,7 +820,9 @@ export const RUNS: Run[] = [
   run("run_funded", "proj_ekuri", "2026-Q4", "funded", 0, "80333333.33", "48205107.20", "2026-11-09T16:10:00Z", null),
   run("run_preflight", "proj_ekuri", "2026-Q4", "preflight-running", 0, "80333333.33", "48200000.00", "2026-11-09T16:20:00Z", null),
   run("run_preflight_failed", "proj_ekuri", "2026-Q4", "preflight-failed", 0, "80333333.33", "48200000.00", "2026-11-09T16:30:00Z", null),
-  run("run_partial", "proj_ekuri", "2026-Q3", "partially-complete", 1904, "73300000.00", "31000000.00", "2026-09-28T08:00:00Z", "2026-09-29T11:02:00Z"),
+  /* The retry batch for Q3: only the transfers that failed the first time,
+     so its counts are its own rather than a second account of the period. */
+  run("run_partial", "proj_ekuri", "2026-Q3", "partially-complete", 244, "73300000.00", "5620000.00", "2026-09-29T12:00:00Z", "2026-09-29T12:40:00Z"),
   run("run_cancelled", "proj_ekuri", "2026-Q2", "cancelled", 0, "68300000.00", "0.00", "2026-07-09T08:00:00Z", null),
   run("run_failed", "proj_ekuri", "2026-Q2", "failed", 0, "68300000.00", "32100000.00", "2026-07-09T09:00:00Z", "2026-07-09T09:14:00Z"),
   run("run_hadejia_q2", "proj_hadejia", "2026-Q2", "complete", 720, "25396363.64", "14050000.00", "2026-06-28T08:00:00Z", "2026-06-30T10:00:00Z"),
@@ -920,6 +937,24 @@ export function runForPeriod(projectId: string, period: string) {
 
 /** The disclosure bundle for one transfer: its leaf, the path to the period's
     root, and the record that root belongs to. Nothing else about anyone. */
+/* A correction's identifier is the period's identifier with a suffix, and it
+   attests to the same period's transfers. Resolving it to its period is what
+   makes a bundle and a proof-length check work on the record a reader is
+   most likely to be auditing. */
+function periodOfAttestation(
+  attestationId: string,
+): { projectId: string; period: PeriodSummary } | null {
+  const base = attestationId.replace(/_correction$/, "");
+  for (const project of PROJECTS) {
+    for (const period of project.periods) {
+      if (period.attestationId === base) {
+        return { projectId: project.id, period };
+      }
+    }
+  }
+  return null;
+}
+
 export function disclosureFor(
   attestationId: string,
   transferId: string,
@@ -931,30 +966,35 @@ export function disclosureFor(
   period: string;
   projectName: string;
 } | null {
-  for (const project of PROJECTS) {
-    for (const period of project.periods) {
-      if (period.attestationId !== attestationId) {
-        continue;
-      }
+  const found = periodOfAttestation(attestationId);
+  if (found) {
+    const project = projectById(found.projectId);
+    const period = found.period;
+    if (project) {
       const periodRun = runForPeriod(project.id, period.period);
       if (!periodRun) {
         return null;
       }
       const leaves: string[] = [];
       const facts: Transfer[] = [];
-      let found = -1;
+      let position = -1;
       for (let index = 0; index < periodRun.rosterSize; index += 1) {
         const transfer = transferAt(periodRun.id, index, project.id);
         if (transfer.state !== "settled" && transfer.state !== "unconfirmed") {
           continue;
         }
         if (transfer.id === transferId) {
-          found = leaves.length;
+          position = leaves.length;
         }
         facts.push(transfer);
         leaves.push(leafFor(transfer));
       }
-      const index = found >= 0 ? found : 0;
+      /* A transfer the period does not carry has no bundle; answering with
+         the first one would hand an auditor a proof about somebody else. */
+      if (position < 0) {
+        return null;
+      }
+      const index = position;
       const transfer = facts[index];
       return {
         transfer: {
@@ -1043,15 +1083,40 @@ export function attestationsFor(projectId: string): Attestation[] {
        the correction that supersedes it. Neither is rewritten and both stay
        readable, which is the whole point. */
     if (period.corrected) {
+      /* The correction is a different record, not a copy with a different
+         identifier: a period is corrected because a figure in it was wrong.
+         Here twelve households were settled after the close and counted into
+         the next period in error; the correction restates coverage and the
+         amount, and the two records differ by exactly that. */
+      const restored = 12;
+      const amount = multiplyAmount(AMOUNT_PER_HOUSEHOLD, restored);
       const correction: Attestation = {
         ...attestation,
         id: `${attestation.id}_correction`,
+        paid: attestation.paid + restored,
+        amountToHouseholds: addAmounts(attestation.amountToHouseholds, amount),
+        shortfall: subtractAmounts(attestation.shortfall, amount),
         hash: hashFor(`${projectId}-${period.period}-correction`),
         previousHash: attestation.hash,
+        /* The same transfers: the figures were wrong, not the set. Both
+           records fold to the same root, and a disclosure bundle verifies
+           against either. */
         chainPosition: attestation.chainPosition + 1,
+        anchor: {
+          ...attestation.anchor,
+          sequence:
+            attestation.anchor.sequence === null ? null : attestation.anchor.sequence + 1,
+        },
         supersedes: attestation.id,
         supersededBy: null,
         closedAt: period.closedAt ?? attestation.closedAt,
+        correction: {
+          field: "paid",
+          from: String(attestation.paid),
+          to: String(attestation.paid + restored),
+          reason:
+            "Twelve transfers settled on the day of the close and were counted into the following period. They belong to this one.",
+        },
       };
       attestation.supersededBy = correction.id;
       previous = correction.hash;
@@ -1154,6 +1219,32 @@ export const DISPUTES: Dispute[] = [
     responses: [],
   },
 ];
+
+/* A substantiated report on this project, so the state is reachable in the
+   console rather than only on a project the session cannot read. */
+DISPUTES.push({
+  id: "dsp_0006",
+  projectId: "proj_ekuri",
+  projectName: "Ekuri Community Forest Carbon Project",
+  participantId: "ptc_000212",
+  participantName: participantAt("proj_ekuri", 211).name,
+  period: "2026-Q3",
+  category: "wrong-amount",
+  body: "The amount received was ₦9,800.00 and the enrolment notice said ₦23,050.00.",
+  state: "substantiated",
+  resolutionBasis:
+    "The transfer settled at ₦9,800.00 against a commitment of ₦23,050.00 for the period. The difference was transferred on 14 October 2026 with session 000014261014090100000211, and the household confirmed receipt by SMS the same day.",
+  transferId: transferIdFor("run_2026q3", 211),
+  raisedAt: "2026-10-08T10:12:00Z",
+  updatedAt: "2026-10-14T09:40:00Z",
+  responses: [
+    {
+      at: "2026-10-11T08:20:00Z",
+      author: "Ekuri Initiative Limited",
+      body: "The amount was short by ₦13,250.00. A second transfer for the difference is on its way.",
+    },
+  ],
+});
 
 /* ---- Signals, cases, exceptions ------------------------------------------- */
 
@@ -1715,17 +1806,44 @@ export function importsFor(projectId: string): ImportJob[] {
 /** How many leaves the period behind an attestation has, so a proof of the
     wrong length is refused rather than folded. */
 export function leafCountFor(attestationId: string): number | null {
-  for (const project of PROJECTS) {
-    for (const period of project.periods) {
-      if (period.attestationId !== attestationId) {
-        continue;
-      }
-      const periodRun = runForPeriod(project.id, period.period);
-      if (!periodRun) {
-        return null;
-      }
-      return leavesFor(periodRun.id, project.id, periodRun.rosterSize).length;
-    }
+  const found = periodOfAttestation(attestationId);
+  if (!found) {
+    return null;
   }
-  return null;
+  const periodRun = runForPeriod(found.projectId, found.period.period);
+  if (!periodRun) {
+    return null;
+  }
+  return leavesFor(periodRun.id, found.projectId, periodRun.rosterSize).length;
+}
+
+/* ---- The open period, as the state panel can arrange it ------------------- */
+
+/** Moves the open period's close date or closes it, so the home screen's
+    "closing within 72 hours" and "period closed" states are reachable by
+    clicking rather than by waiting for December. */
+export function setPeriod(
+  projectId: string,
+  change: { closesOn?: string | null; state?: PeriodSummary["state"] | null },
+): PeriodSummary | null {
+  const project = projectById(projectId);
+  const period =
+    project?.periods.find((candidate) => candidate.state === "open") ??
+    project?.periods[project.periods.length - 1];
+  if (!period) {
+    return null;
+  }
+  if (change.closesOn === null) {
+    period.closesOn = quarterEnds(period.period);
+  } else if (typeof change.closesOn === "string") {
+    period.closesOn = change.closesOn;
+  }
+  if (change.state === null) {
+    period.state = "open";
+    period.closedAt = null;
+  } else if (change.state) {
+    period.state = change.state;
+    period.closedAt = change.state === "open" ? null : period.closesOn;
+  }
+  return period;
 }

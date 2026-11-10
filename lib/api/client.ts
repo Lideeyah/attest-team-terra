@@ -12,6 +12,7 @@ import type {
   Arithmetic,
   Attestation,
   Case,
+  DisclosureVerificationResult,
   Dispute,
   Envelope,
   ErrorCode,
@@ -19,6 +20,7 @@ import type {
   Invite,
   Meta,
   Participant,
+  PreflightExclusion,
   Project,
   Receipt,
   Reconciliation,
@@ -232,6 +234,10 @@ export const api = {
       agent?: string;
       tier?: string;
       flagged?: string;
+      wallet?: string;
+      phone?: string;
+      enrolled_from?: string;
+      enrolled_to?: string;
       q?: string;
     } = {},
   ) => request<Participant[]>(`/api/projects/${projectId}/participants`, { query }),
@@ -241,10 +247,11 @@ export const api = {
       { method: "POST", body, idempotencyKey },
     ),
   participant: (id: string) => request<Participant>(`/api/participants/${id}`),
-  /** Always refused with PARTICIPANT_DELETE_NOT_PERMITTED. It exists so the
-      refusal is loud rather than a silent absence; no screen calls it. */
-  deleteParticipant: (id: string) =>
-    request<never>(`/api/participants/${id}`, { method: "DELETE" }),
+  /* The client carries no method for removing a household. The endpoint
+     exists and refuses, and the refusal is asserted against it directly in
+     lib/api/client.test.ts, but a method here is a call somebody can make,
+     and the one thing this product must never do is erase a household from
+     the denominator of its own coverage. Removal is a status change. */
   updateParticipant: (
     id: string,
     body: { phone?: string; status?: string; reason: string },
@@ -273,10 +280,13 @@ export const api = {
   ) => request<Run>(`/api/projects/${projectId}/runs`, { method: "POST", body, idempotencyKey }),
   run: (id: string) => request<Run>(`/api/runs/${id}`),
   arithmetic: (id: string) => request<Arithmetic>(`/api/runs/${id}/arithmetic`),
-  preflight: (id: string) =>
-    request<{ passed: boolean; exclusions: { participantId: string; reason: ErrorCode; detail: string }[] }>(
+  preflight: (
+    id: string,
+    body: { excluding?: { participantId: string; reason: string }[] } = {},
+  ) =>
+    request<{ passed: boolean; exclusions: PreflightExclusion[] }>(
       `/api/runs/${id}/preflight`,
-      { method: "POST" },
+      { method: "POST", body },
     ),
   execute: (id: string, idempotencyKey: string) =>
     request<{ runId: string; state: string }>(`/api/runs/${id}/execute`, {
@@ -348,12 +358,10 @@ export const api = {
       { method: "POST", body },
     ),
   verifyDisclosure: (body: { bundle: unknown }) =>
-    request<{
-      outcome: "match" | "no-match";
-      period: string | null;
-      projectName: string | null;
-      anchorReachable: boolean;
-    }>("/api/verify/disclosure", { method: "POST", body }),
+    request<DisclosureVerificationResult>("/api/verify/disclosure", {
+      method: "POST",
+      body,
+    }),
 
   /* Field */
   bindDevice: (body: { deviceKey: string }) =>
@@ -428,31 +436,56 @@ export const api = {
   /* Console administration. Not in backend 4.3; see BUILD_LOG.md. */
   consoleUsers: (projectId: string) =>
     request<ConsoleUser[]>(`/api/projects/${projectId}/users`),
+  /* Each mutation takes the key its caller chose, so pressing a button twice
+     is one change: a key minted inside the client would be a different key
+     every time and the protection would be a header and nothing else. */
   inviteConsoleUser: (
     projectId: string,
     body: { name: string; email: string; role: ConsoleRole },
-  ) => request<ConsoleUser>(`/api/projects/${projectId}/users`, { method: "POST", body }),
-  changeConsoleRole: (id: string, body: { role: ConsoleRole }) =>
-    request<ConsoleUser>(`/api/users/${id}`, { method: "PATCH", body }),
-  removeConsoleUser: (id: string) =>
-    request<{ id: string; removed: boolean }>(`/api/users/${id}`, { method: "DELETE" }),
+    idempotencyKey: string,
+  ) =>
+    request<ConsoleUser>(`/api/projects/${projectId}/users`, {
+      method: "POST",
+      body,
+      idempotencyKey,
+    }),
+  changeConsoleRole: (id: string, body: { role: ConsoleRole }, idempotencyKey: string) =>
+    request<ConsoleUser>(`/api/users/${id}`, { method: "PATCH", body, idempotencyKey }),
+  removeConsoleUser: (id: string, idempotencyKey: string) =>
+    request<{ id: string; removed: boolean }>(`/api/users/${id}`, {
+      method: "DELETE",
+      idempotencyKey,
+    }),
 
   apiKeys: (projectId: string) => request<ApiKey[]>(`/api/projects/${projectId}/api-keys`),
-  createApiKey: (projectId: string, body: { label: string }) =>
-    request<ApiKey>(`/api/projects/${projectId}/api-keys`, { method: "POST", body }),
-  revokeApiKey: (id: string) =>
-    request<{ id: string; revoked: boolean }>(`/api/api-keys/${id}`, { method: "DELETE" }),
+  createApiKey: (projectId: string, body: { label: string }, idempotencyKey: string) =>
+    request<ApiKey>(`/api/projects/${projectId}/api-keys`, {
+      method: "POST",
+      body,
+      idempotencyKey,
+    }),
+  revokeApiKey: (id: string, idempotencyKey: string) =>
+    request<{ id: string; revoked: boolean }>(`/api/api-keys/${id}`, {
+      method: "DELETE",
+      idempotencyKey,
+    }),
 
   webhookEndpoints: (projectId: string) =>
     request<WebhookEndpoint[]>(`/api/projects/${projectId}/webhook-endpoints`),
-  createWebhookEndpoint: (projectId: string, body: { url: string; events: string[] }) =>
+  createWebhookEndpoint: (
+    projectId: string,
+    body: { url: string; events: string[] },
+    idempotencyKey: string,
+  ) =>
     request<WebhookEndpoint>(`/api/projects/${projectId}/webhook-endpoints`, {
       method: "POST",
       body,
+      idempotencyKey,
     }),
-  removeWebhookEndpoint: (id: string) =>
+  removeWebhookEndpoint: (id: string, idempotencyKey: string) =>
     request<{ id: string; removed: boolean }>(`/api/webhook-endpoints/${id}`, {
       method: "DELETE",
+      idempotencyKey,
     }),
 
   notificationPreferences: () =>

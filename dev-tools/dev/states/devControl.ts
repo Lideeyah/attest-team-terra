@@ -83,3 +83,16 @@ export async function setProjectStatus(
     body: JSON.stringify({ projectId, status }),
   });
 }
+
+/** The open period's close date and state, so "closing within 72 hours" and
+    "period closed" are reachable without waiting for the quarter. */
+export async function setPeriod(
+  projectId: string,
+  change: { closesOn?: string | null; state?: "open" | "closed" | "closed-late" | null },
+): Promise<void> {
+  await fetch("/api/dev/period", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ projectId, ...change }),
+  });
+}

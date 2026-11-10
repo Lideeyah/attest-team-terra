@@ -1,4 +1,10 @@
-import { forceCode, setProjectStatus, setRegisterSize, setRosterSize } from "./devControl";
+import {
+  forceCode,
+  setPeriod,
+  setProjectStatus,
+  setRegisterSize,
+  setRosterSize,
+} from "./devControl";
 
 /* Every state each public screen lists, with what has to be arranged for it
    and the screen it is on. The exit checklists say a state is reachable from
@@ -12,6 +18,7 @@ const clear = async () => {
   await setRegisterSize(null);
   await setProjectStatus("proj_ekuri", null);
   await setRosterSize("proj_ekuri", null);
+  await setPeriod("proj_ekuri", { closesOn: null, state: null });
 };
 
 export const STATE_INDEX: { path: string; states: State[] }[] = [
@@ -167,6 +174,13 @@ export const STATE_INDEX: { path: string; states: State[] }[] = [
       { label: "Home", href: "/app", arrange: clear },
       { label: "Pre-first-enrolment", href: "/app", arrange: async () => { await clear(); await setRosterSize("proj_ekuri", 0); } },
       { label: "Account suspended", href: "/app", arrange: async () => { await clear(); await setProjectStatus("proj_ekuri", "suspended"); } },
+      { label: "Suspended, run builder refuses", href: "/app/runs/new", arrange: async () => { await clear(); await setProjectStatus("proj_ekuri", "suspended"); } },
+      { label: "Period closing within 72 hours", href: "/app", arrange: async () => { await clear(); await setPeriod("proj_ekuri", { closesOn: "2026-11-12T23:59:59Z" }); } },
+      { label: "Period closed", href: "/app", arrange: async () => { await clear(); await setPeriod("proj_ekuri", { state: "closed" }); } },
+      { label: "Pre-flight, exclusions outstanding", href: "/app/runs/new?step=preflight", arrange: clear },
+      { label: "Reconciliation mismatch", href: "/app/funding", arrange: async () => { await clear(); await forceCode("RECONCILIATION_MISMATCH", "/api/projects", false); } },
+      { label: "Report awaiting the participant", href: "/app/disputes/dsp_0002", arrange: clear },
+      { label: "Report substantiated", href: "/app/disputes/dsp_0006", arrange: clear },
       { label: "Roster", href: "/app/roster", arrange: clear },
       { label: "Roster filtered", href: "/app/roster?status=flagged", arrange: clear },
       { label: "Roster filtered to nothing", href: "/app/roster?q=zzzzzz", arrange: clear },

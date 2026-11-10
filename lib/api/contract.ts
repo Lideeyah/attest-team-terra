@@ -128,6 +128,10 @@ export type Project = {
   status: ProjectStatus;
   commitment: Commitment;
   enrolled: number;
+  /** The households the project undertook to enrol in this programme. The
+      figure enrolment is measured against; without it "enrolled against
+      target" has no denominator. */
+  enrolmentTarget: number;
   paid: number;
   openDisputes: number;
   substantiatedDisputes: number;
@@ -150,6 +154,9 @@ export type PeriodSummary = {
   /** What the households received beyond the commitment. Both are stated, so
       a zero shortfall is never confused with an over-payment. */
   surplus: Amount;
+  /** The date the period closes on. A front end computing it from the
+      period's label would be deriving a fact the record already holds. */
+  closesOn: string;
   closedAt: string | null;
   attestationId: string | null;
   corrected: boolean;
@@ -302,6 +309,15 @@ export type Attestation = {
   chainBreak: boolean;
   supersededBy: string | null;
   supersedes: string | null;
+  /** On a correction, what it changed and why. A record that supersedes
+      another states the difference rather than leaving a reader to diff two
+      published documents. */
+  correction?: {
+    field: string;
+    from: string;
+    to: string;
+    reason: string;
+  };
   closedAt: string;
   closedLate: boolean;
 };
@@ -500,7 +516,19 @@ export type DisclosureVerificationResult = {
   period: string | null;
   projectName: string | null;
   anchorReachable: boolean;
+  /** Set when the record the proof holds against has since been corrected. A
+      proof that holds against a withdrawn record is still a proof, and a
+      reader has to be told which record they are citing. */
+  supersededBy?: string | null;
   checkedAt: string;
+};
+
+export type PreflightExclusion = {
+  participantId: string;
+  reason: ErrorCode;
+  detail: string;
+  /** True once the exclusion has been confirmed with a reason. */
+  excluded?: boolean;
 };
 
 /* ---- Console settings and roster imports ----------------------------------

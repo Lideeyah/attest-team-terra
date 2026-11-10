@@ -1,3 +1,4 @@
+import { NOTIFICATION_EVENTS } from "@/lib/api/contract";
 import type {
   ApiKey,
   Arithmetic,
@@ -273,6 +274,26 @@ function rosterFor(projectId: string, url: URL): Participant[] {
   const tier = url.searchParams.get("tier");
   const flagged = url.searchParams.get("flagged");
   const query = url.searchParams.get("q");
+  /* Every column the strip row shows is filterable, the wallet, the phone and
+     the enrolment date among them. */
+  const wallet = url.searchParams.get("wallet");
+  const phone = url.searchParams.get("phone");
+  const enrolledFrom = url.searchParams.get("enrolled_from");
+  const enrolledTo = url.searchParams.get("enrolled_to");
+
+  if (wallet) {
+    rows = rows.filter((row) => row.walletState === wallet);
+  }
+  if (phone) {
+    const digits = phone.replace(/\D/g, "");
+    rows = rows.filter((row) => row.phoneMasked.replace(/\D/g, "").includes(digits));
+  }
+  if (enrolledFrom) {
+    rows = rows.filter((row) => row.enrolledAt >= enrolledFrom);
+  }
+  if (enrolledTo) {
+    rows = rows.filter((row) => row.enrolledAt <= `${enrolledTo}T23:59:59Z`);
+  }
 
   if (status) {
     rows = rows.filter((row) => row.status === status);
@@ -297,8 +318,11 @@ function rosterFor(projectId: string, url: URL): Participant[] {
   return rows;
 }
 
-function arithmeticFor(runId: string): Arithmetic {
-  const run = RUNS.find((candidate) => candidate.id === runId) ?? RUNS[1];
+function arithmeticFor(runId: string): Arithmetic | null {
+  const run = RUNS.find((candidate) => candidate.id === runId);
+  if (!run) {
+    return null;
+  }
   const project = projectById(run.projectId);
   const percentage = project?.commitment.percentage ?? 60;
   const required = multiplyAmount(run.declaredGross, percentage / 100);
@@ -420,7 +444,15 @@ function isLeafOfAnotherPeriod(leaf: string, rootReference: string): boolean {
 /* An anchor that has not landed, one that cannot be reached, and a chain that
    does not join are facts about a record rather than failures to read it, so
    forcing one returns the record carrying that state. */
-const RECORD_STATES = new Set(["ANCHOR_PENDING", "ANCHOR_UNREACHABLE", "CHAIN_DISCONTINUITY"]);
+/* Codes that describe a record rather than a failure to produce one. The
+   endpoint answers with the record carrying the state, because a screen that
+   collapses to a notice shows a reader none of what the state is about. */
+const RECORD_STATES = new Set([
+  "ANCHOR_PENDING",
+  "ANCHOR_UNREACHABLE",
+  "CHAIN_DISCONTINUITY",
+  "RECONCILIATION_MISMATCH",
+]);
 
 function withRecordState(attestation: Attestation, code: ErrorCode): Attestation {
   if (code === "ANCHOR_PENDING") {
@@ -444,6 +476,80 @@ type Handler = (context: {
   /** A forced code that the endpoint answers with rather than fails on. */
   forced: ErrorCode | null;
 }) => Envelope<unknown>;
+
+/* Identifiers are minted from a counter rather than from a list's length, so
+   removing one and adding another does not reissue an identifier that has
+   already been used. */
+let userCounter = 0;
+let keyCounter = 0;
+
+function nextUserNumber(): number {
+  userCounter = Math.max(userCounter + 1, CONSOLE_USERS.length + 1);
+  return userCounter;
+}
+
+function nextKeyNumber(): number {
+  keyCounter = Math.max(keyCounter + 1, API_KEYS.length + 1);
+  return keyCounter;
+}
+
+function randomHex(length: number): string {
+  let out = "";
+  while (out.length < length) {
+    out += Math.floor(Math.random() * 16).toString(16);
+  }
+  return out.slice(0, length);
+}
+
+/* The contract has no code for this, and FORBIDDEN's own copy — "ask an
+   administrator to grant access" — is absurd said to the only administrator.
+   The code is the contract's; the words are this constraint's. */
+function lastAdmin(field: string): Envelope<never> {
+  return {
+    status: "error",
+    error: {
+      code: "FORBIDDEN",
+      message: "You are the only administrator on this project.",
+      field,
+      remediation:
+        "Add another administrator first. A project with nobody who can grant the role is a project nobody can administer.",
+    },
+    request_id: requestId(),
+  };
+}
+
+/* What pre-flight finds on this project's roster: an account that resolves to
+   another holder, a wallet below the payment amount, and a second enrolment
+   on one verification number. */
+const PREFLIGHT_EXCLUSIONS: { participantId: string; reason: ErrorCode; detail: string }[] = [
+  {
+    participantId: "ptc_000098",
+    reason: "NAME_MISMATCH",
+    detail: "The account resolves to a different holder.",
+  },
+  {
+    participantId: "ptc_000211",
+    reason: "LIMIT_EXCEEDED",
+    detail: "A tier 1 wallet takes less in a day than this payment.",
+  },
+  {
+    participantId: "ptc_000614",
+    reason: "IDENTITY_DUPLICATE",
+    detail: "A second enrolment carries the same verification number.",
+  },
+];
+
+const exclusionsByRun = new Map<string, Set<string>>();
+
+function confirmExclusion(runId: string, participantId: string): void {
+  const current = exclusionsByRun.get(runId) ?? new Set<string>();
+  current.add(participantId);
+  exclusionsByRun.set(runId, current);
+}
+
+function confirmedExclusions(runId: string): Set<string> {
+  return exclusionsByRun.get(runId) ?? new Set<string>();
+}
 
 function notFound(): Envelope<never> {
   return failure("NOT_FOUND");
@@ -798,22 +904,58 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/runs/:id",
     handler: ({ segments }) => {
       const run = RUNS.find((candidate) => candidate.id === segments[2]);
-      return run ? success(run) : notFound();
+      if (!run) {
+        return notFound();
+      }
+      if (run.projectId !== SESSION.projectId) {
+        return failure("FORBIDDEN");
+      }
+      return success(run);
     },
   },
-  { method: "GET", pattern: "/api/runs/:id/arithmetic", handler: ({ segments }) => success(arithmeticFor(segments[2])) },
+  {
+    method: "GET",
+    pattern: "/api/runs/:id/arithmetic",
+    handler: ({ segments }) => {
+      const figures = arithmeticFor(segments[2]);
+      return figures ? success(figures) : notFound();
+    },
+  },
   {
     method: "POST",
     pattern: "/api/runs/:id/preflight",
-    handler: () =>
-      success({
-        passed: false,
-        exclusions: [
-          { participantId: "ptc_000098", reason: "NAME_MISMATCH", detail: "The account resolves to a different holder." },
-          { participantId: "ptc_000211", reason: "LIMIT_EXCEEDED", detail: "Tier 1 wallet below the payment amount." },
-          { participantId: "ptc_000614", reason: "IDENTITY_DUPLICATE", detail: "A second enrolment carries the same verification number." },
-        ],
-      }),
+    handler: ({ segments, body }) => {
+      const runId = segments[2];
+      /* An exclusion the console has confirmed, with its reason, is recorded
+         against the run. Pre-flight passes when every enrolment it found is
+         either corrected or excluded; until then the run does not execute,
+         which is what the refusal on the step means. */
+      const confirming = Array.isArray(body.excluding)
+        ? (body.excluding as { participantId?: string; reason?: string }[])
+        : [];
+      for (const entry of confirming) {
+        if (typeof entry.participantId !== "string") {
+          return failure("INVALID_REQUEST", "excluding");
+        }
+        if (typeof entry.reason !== "string" || entry.reason.trim().length < 8) {
+          return failure("INVALID_REQUEST", "reason");
+        }
+        confirmExclusion(runId, entry.participantId);
+      }
+
+      const found = PREFLIGHT_EXCLUSIONS;
+      const confirmed = confirmedExclusions(runId);
+      const outstanding = found.filter(
+        (exclusion) => !confirmed.has(exclusion.participantId),
+      );
+      return success({
+        passed: outstanding.length === 0,
+        exclusions: found.map((exclusion) => ({
+          ...exclusion,
+          excluded: confirmed.has(exclusion.participantId),
+        })),
+      });
+    },
   },
   {
     method: "POST",
@@ -902,11 +1044,31 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/projects/:id/reconciliation",
-    handler: ({ segments, url }) => {
-      const { page, meta } = paginate(
-        RECONCILIATIONS.filter((row) => row.projectId === segments[2]),
-        url,
-      );
+    handler: ({ segments, url, forced }) => {
+      const rows = RECONCILIATIONS.filter((row) => row.projectId === segments[2]);
+      /* A forced mismatch is answered as the period's own state: the row says
+         it does not reconcile, by how much, and what the candidate causes
+         are, which is what a reader needs to see beside the account. */
+      const shaped =
+        forced === "RECONCILIATION_MISMATCH" && rows.length > 0
+          ? rows.map((row, index) =>
+              index === rows.length - 1
+                ? {
+                    ...row,
+                    state: "mismatch" as const,
+                    delta: row.delta === "0.00" ? "182400.00" : row.delta,
+                    candidateCauses:
+                      row.candidateCauses.length > 0
+                        ? row.candidateCauses
+                        : [
+                            "A reversal landed after the period's figures were computed.",
+                            "A charge was debited on a transfer the period does not carry.",
+                          ],
+                  }
+                : row,
+            )
+          : rows;
+      const { page, meta } = paginate(shaped, url);
       return success(page, meta);
     },
   },
@@ -926,7 +1088,15 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/disputes/:id",
     handler: ({ segments }) => {
       const dispute = DISPUTES.find((candidate) => candidate.id === segments[2]);
-      return dispute ? success(dispute) : notFound();
+      if (!dispute) {
+        return notFound();
+      }
+      /* Scoping is at the query, never in the response filter: a record
+         belonging to another project is not this session's to read. */
+      if (dispute.projectId !== SESSION.projectId) {
+        return failure("FORBIDDEN");
+      }
+      return success(dispute);
     },
   },
   {
@@ -937,10 +1107,19 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       if (!dispute) {
         return notFound();
       }
+      if (dispute.projectId !== SESSION.projectId) {
+        return failure("FORBIDDEN");
+      }
+      if (String(body.body ?? "").trim().length < 12) {
+        return failure("INVALID_REQUEST", "body");
+      }
+      /* The response goes to the household, and the report is theirs to
+         close: it waits on them until they confirm or the transfer is
+         reversed. Nothing the project says closes it. */
       return success(
         {
           ...dispute,
-          state: "developer-responded" as const,
+          state: "awaiting-participant" as const,
           responses: [
             ...dispute.responses,
             {
@@ -1047,7 +1226,13 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         typeof transfer.id !== "string" ||
         typeof transfer.amount !== "string" ||
         (transfer.sessionId !== null && typeof transfer.sessionId !== "string") ||
-        (transfer.settledAt !== null && typeof transfer.settledAt !== "string")
+        (transfer.settledAt !== null && typeof transfer.settledAt !== "string") ||
+        /* A bundle carries the four facts its leaf is computed from and
+           nothing else. An extra key would be read as part of the record and
+           proved by nothing. */
+        Object.keys(transfer).some(
+          (key) => !["id", "amount", "sessionId", "settledAt"].includes(key),
+        )
       ) {
         return failure("INVALID_REQUEST", "bundle");
       }
@@ -1098,6 +1283,11 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         period: attestation.period,
         projectName: attestation.projectName,
         anchorReachable: attestation.anchorState === "anchored",
+        /* A proof that holds against a record that has since been corrected
+           is still a proof, and an auditor has to be told the record was
+           superseded. Saying only "match" would let a withdrawn record be
+           cited as current. */
+        supersededBy: attestation.supersededBy,
         checkedAt: "2026-11-09T16:12:00Z",
       });
     },
@@ -1498,7 +1688,10 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/projects/:id/users",
-    handler: ({ url }) => {
+    handler: ({ segments, url }) => {
+      if (!projectById(segments[2])) {
+        return notFound();
+      }
       const { page, meta } = paginate(CONSOLE_USERS, url);
       return success(page, meta);
     },
@@ -1515,7 +1708,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         return failure("DUPLICATE_REQUEST", "email");
       }
       const user: ConsoleUser = {
-        id: `usr_${String(CONSOLE_USERS.length + 1).padStart(4, "0")}`,
+        id: `usr_${String(nextUserNumber()).padStart(4, "0")}`,
         name: String(body.name ?? email),
         email,
         role: (body.role as ConsoleRole) ?? "viewer",
@@ -1523,6 +1716,9 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         lastSignInAt: null,
         self: false,
       };
+      /* The invite is held, so a second one with the same address is the
+         duplicate the refusal says it is. */
+      CONSOLE_USERS.push(user);
       return success(user, null, "Invite sent");
     },
   },
@@ -1535,13 +1731,14 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         return notFound();
       }
       const role = (body.role as ConsoleRole) ?? user.role;
-      /* The last admin cannot demote themselves, or the project is left with
-         nobody who can add one. */
+      /* The last administrator cannot give up the role, or the project is
+         left with nobody who can grant it. */
       const admins = CONSOLE_USERS.filter((candidate) => candidate.role === "admin");
       if (user.role === "admin" && role !== "admin" && admins.length === 1) {
-        return failure("FORBIDDEN", "role");
+        return lastAdmin("role");
       }
-      return success({ ...user, role }, null, "Role changed");
+      user.role = role;
+      return success(user, null, "Role changed");
     },
   },
   {
@@ -1554,8 +1751,9 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       }
       const admins = CONSOLE_USERS.filter((candidate) => candidate.role === "admin");
       if (user.role === "admin" && admins.length === 1) {
-        return failure("FORBIDDEN", "id");
+        return lastAdmin("id");
       }
+      CONSOLE_USERS.splice(CONSOLE_USERS.indexOf(user), 1);
       return success({ id: user.id, removed: true }, null, "Access removed");
     },
   },
@@ -1563,7 +1761,10 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/projects/:id/api-keys",
-    handler: ({ url }) => {
+    handler: ({ segments, url }) => {
+      if (!projectById(segments[2])) {
+        return notFound();
+      }
       const { page, meta } = paginate(API_KEYS, url);
       return success(page, meta);
     },
@@ -1576,16 +1777,18 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       if (label.length === 0) {
         return failure("INVALID_REQUEST", "label");
       }
-      /* The secret is returned once. Nothing holds it afterwards, here or in
-         the console. */
+      /* The secret is returned once and is this key's own. Nothing holds it
+         afterwards, here or in the console: only the prefix is kept. */
+      const secret = `att_live_${randomHex(32)}`;
       const key: ApiKey = {
-        id: `key_${String(API_KEYS.length + 1).padStart(4, "0")}`,
+        id: `key_${String(nextKeyNumber()).padStart(4, "0")}`,
         label,
         prefix: "att_live",
         createdAt: new Date().toISOString(),
         lastUsedAt: null,
-        secret: `att_live_${"4f8a2c91b7d3e6054a1f8b2c9d7e30".slice(0, 30)}`,
+        secret,
       };
+      API_KEYS.push({ ...key, secret: null });
       return success(key, null, "Key created. It is shown once.");
     },
   },
@@ -1594,14 +1797,21 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/api-keys/:id",
     handler: ({ segments }) => {
       const key = API_KEYS.find((candidate) => candidate.id === segments[2]);
-      return key ? success({ id: key.id, revoked: true }, null, "Key revoked") : notFound();
+      if (!key) {
+        return notFound();
+      }
+      API_KEYS.splice(API_KEYS.indexOf(key), 1);
+      return success({ id: key.id, revoked: true }, null, "Key revoked");
     },
   },
 
   {
     method: "GET",
     pattern: "/api/projects/:id/webhook-endpoints",
-    handler: ({ url }) => {
+    handler: ({ segments, url }) => {
+      if (!projectById(segments[2])) {
+        return notFound();
+      }
       const { page, meta } = paginate(WEBHOOK_ENDPOINTS, url);
       return success(page, meta);
     },
@@ -1611,17 +1821,26 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/projects/:id/webhook-endpoints",
     handler: ({ body }) => {
       const target = String(body.url ?? "");
-      if (!/^https:\/\//.test(target)) {
+      /* A URL scheme is case-insensitive, so HTTPS:// is https. */
+      if (!/^https:\/\//i.test(target)) {
         return failure("INVALID_REQUEST", "url");
+      }
+      const events = Array.isArray(body.events) ? (body.events as string[]) : [];
+      const unknown = events.filter(
+        (event) => !NOTIFICATION_EVENTS.includes(event as NotificationEvent),
+      );
+      if (unknown.length > 0) {
+        return failure("INVALID_REQUEST", "events");
       }
       const endpoint: WebhookEndpoint = {
         id: `whk_${String(WEBHOOK_ENDPOINTS.length + 1).padStart(4, "0")}`,
         url: target,
-        events: Array.isArray(body.events) ? (body.events as string[]) : [],
+        events,
         createdAt: new Date().toISOString(),
         lastDeliveryAt: null,
         lastDeliveryState: "none",
       };
+      WEBHOOK_ENDPOINTS.push(endpoint);
       return success(endpoint, null, "Endpoint registered");
     },
   },
@@ -1630,9 +1849,11 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/webhook-endpoints/:id",
     handler: ({ segments }) => {
       const endpoint = WEBHOOK_ENDPOINTS.find((candidate) => candidate.id === segments[2]);
-      return endpoint
-        ? success({ id: endpoint.id, removed: true }, null, "Endpoint removed")
-        : notFound();
+      if (!endpoint) {
+        return notFound();
+      }
+      WEBHOOK_ENDPOINTS.splice(WEBHOOK_ENDPOINTS.indexOf(endpoint), 1);
+      return success({ id: endpoint.id, removed: true }, null, "Endpoint removed");
     },
   },
 
@@ -1646,6 +1867,12 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/notifications/preferences",
     handler: ({ body }) => {
       const events = (body.events ?? {}) as Partial<Record<NotificationEvent, boolean>>;
+      const unknown = Object.keys(events).filter(
+        (event) => !NOTIFICATION_EVENTS.includes(event as NotificationEvent),
+      );
+      if (unknown.length > 0) {
+        return failure("INVALID_REQUEST", "events");
+      }
       return success(
         setNotificationPreferences("usr_0001", events),
         null,

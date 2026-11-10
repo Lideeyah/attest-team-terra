@@ -55,13 +55,16 @@ describe("errors", () => {
     expect(result.transport).toBe(false);
   });
 
+  /* The typed client deliberately carries no method for this: the refusal is
+     asserted against the endpoint itself, so the product has no call to make
+     and the backend's refusal is still proved. */
   it("refuses to delete a participant", async () => {
-    const result = await api.deleteParticipant("ptc_000001");
-    expect(result.ok).toBe(false);
-    if (result.ok) {
-      return;
-    }
-    expect(result.code).toBe("PARTICIPANT_DELETE_NOT_PERMITTED");
+    const response = await fetch("http://127.0.0.1/api/participants/ptc_000001", {
+      method: "DELETE",
+    });
+    const payload = (await response.json()) as { error?: { code?: string } };
+    expect(response.status).toBe(403);
+    expect(payload.error?.code).toBe("PARTICIPANT_DELETE_NOT_PERMITTED");
   });
 });
 

@@ -65,6 +65,17 @@ function stream(request: Request, runId: string): Response {
         controller.close();
       };
 
+      /* A transfer is queued, then in flight, then it settles or fails, and
+         each is its own event at its own moment: a bank does not resolve a
+         transfer in the instant it accepts it. Emitting all three in one tick
+         made the in-flight state unobservable — the screen could never show a
+         transfer in flight, because none ever was. */
+      const inFlight: { transfer: (typeof transfers)[number]; since: number }[] = [];
+      /* How many ticks a transfer stays in flight. At the configured rate
+         this keeps a realistic number of them unresolved at once. */
+      const DWELL = 6;
+      let tick = 0;
+
       const emit = () => {
         /* A code forced from /dev/states drops the connection, so the live
            run screen's reconnecting state is reachable by clicking. The
@@ -79,30 +90,43 @@ function stream(request: Request, runId: string): Response {
           return;
         }
 
+        tick += 1;
+
+        /* Anything that has been in flight long enough resolves. */
+        while (inFlight.length > 0 && tick - inFlight[0].since >= DWELL) {
+          const resolved = inFlight.shift();
+          if (!resolved) {
+            break;
+          }
+          const transfer = resolved.transfer;
+          /* Each event carries the transfer id and its new state and nothing
+             else, as the contract says. The run screen patches its own table
+             and reads the failure class from /api/runs/:id/transfers, where
+             the same row carries it. */
+          if (transfer.state === "failed") {
+            send("transfer.failed", { id: transfer.id, state: "failed" });
+          } else {
+            send("transfer.settled", { id: transfer.id, state: "settled" });
+            if (transfer.state === "reversed") {
+              /* The sandbox settles and then reverses about a minute later.
+                 The settlement stands and the reversal is a correction. */
+              send("transfer.reversed", { id: transfer.id, state: "reversed" });
+            }
+          }
+        }
+
         if (index >= transfers.length) {
-          send("run.complete", { id: runId, state: "complete" });
-          stop();
+          if (inFlight.length === 0) {
+            send("run.complete", { id: runId, state: "complete" });
+            stop();
+          }
           return;
         }
 
         const transfer = transfers[index];
-
         send("transfer.queued", { id: transfer.id, state: "queued" });
         send("transfer.in_flight", { id: transfer.id, state: "in_flight" });
-        /* Each event carries the transfer id and its new state and nothing
-           else, as the contract says. The run screen patches its own table and
-           reads the failure class from /api/runs/:id/transfers, where the same
-           row carries it. */
-        if (transfer.state === "failed") {
-          send("transfer.failed", { id: transfer.id, state: "failed" });
-        } else {
-          send("transfer.settled", { id: transfer.id, state: "settled" });
-          if (transfer.state === "reversed") {
-            /* The sandbox settles and then reverses about a minute later. The
-               settlement stands and the reversal is a correction. */
-            send("transfer.reversed", { id: transfer.id, state: "reversed" });
-          }
-        }
+        inFlight.push({ transfer, since: tick });
         index += 1;
       };
 
