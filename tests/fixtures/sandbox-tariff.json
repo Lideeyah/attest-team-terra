@@ -1,0 +1,41 @@
+{
+  "tariff": "sandbox",
+  "examples": {
+    "intrabank_3000": {
+      "fee": 0.0,
+      "vat": 0.0,
+      "stamp_duty": 0.0,
+      "total_charges": 0.0
+    },
+    "nip_3000": {
+      "fee": 10.0,
+      "vat": 0.75,
+      "stamp_duty": 0.0,
+      "total_charges": 10.75
+    },
+    "intrabank_25000": {
+      "fee": 0.0,
+      "vat": 0.0,
+      "stamp_duty": 0.0,
+      "total_charges": 0.0
+    },
+    "nip_25000": {
+      "fee": 25.0,
+      "vat": 1.88,
+      "stamp_duty": 0.0,
+      "total_charges": 26.88
+    },
+    "intrabank_75000": {
+      "fee": 0.0,
+      "vat": 0.0,
+      "stamp_duty": 0.0,
+      "total_charges": 0.0
+    },
+    "nip_75000": {
+      "fee": 50.0,
+      "vat": 3.75,
+      "stamp_duty": 0.0,
+      "total_charges": 53.75
+    }
+  }
+}

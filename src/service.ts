@@ -10,8 +10,12 @@ import type {Table} from './store.js';
 import type { Store } from './store.js';
 import { translation } from './messaging.js';
 import {jobText,jobPage,jobPages,optionalText,enrolmentInput,runInput,disputeInput,record} from './validation.js';
-import { periodDeadline,currentPeriod } from './period.js';
+import { periodDeadline,currentPeriod,reportingCadence } from './period.js';
 import { capabilityPath } from './bank-capabilities.js';
+import {prepareBatches,submitPendingBatches,applyBankResult} from './batches.js';
+import {onwardPage} from './onward.js';
+import {demonstrationDisclosure,publicReferenceStatistics} from './provenance.js';
+import {MockBank,bankFailureMessage} from './bank.js';
 
 export class Service {
   events = new EventEmitter(); signer = new Signer();
@@ -30,10 +34,12 @@ export class Service {
     if(p.role==='agent') ensure(entity.agentId===p.id,'FORBIDDEN',403);
     return entity;
   }
-  async createProject(p: Principal, registryId: string) {
+  async createProject(p: Principal, registryId: string, boundaryId?:string) {
     ensure(p.role==='developer_admin','FORBIDDEN',403);
     const record=await this.providers.registry(registryId);
-    const project=await this.db.put('projects',row({...record,organisationId:p.organisationId,status:'onboarding'}));
+    const upload=boundaryId?await this.db.get('tokens',boundaryId):undefined;
+    if(boundaryId)ensure(upload?.type==='boundary-upload'&&upload.organisationId===p.organisationId&&upload.geometry,'FORBIDDEN',403);
+    const project=await this.db.put('projects',row({...record,...(upload?{boundary:upload.geometry,boundaryStatus:'available',boundarySource:{sha256:upload.sha256,name:upload.name,uploadedBy:upload.ownerId}}:{}),organisationId:p.organisationId,status:'onboarding',isDemonstration:this.providers.bank instanceof MockBank}));
     await this.audit(p.id,'project.created',project.id); return project;
   }
   async enqueue(type: string, data: JobData, jobId:string=id()) { const existing=await this.db.get('jobs',jobId); if(existing) return existing; return this.db.put('jobs',row({id:jobId,type,data,state:'pending',attempts:0,nextAt:now()})); }
@@ -47,6 +53,7 @@ export class Service {
     const project=await this.project(p,input.projectId);
     ensure(['agent','developer_admin','developer_operator'].includes(p.role),'FORBIDDEN',403);
     ensure(input.consent===true,'CONSENT_MISSING');
+    ensure(project.boundary,'BOUNDARY_NOT_AVAILABLE',409);
     ensure(typeof input.clientId==='string'&&/^[a-f0-9-]{36}$/i.test(input.clientId),'INVALID_REQUEST');
     ensure(typeof input.name==='string'&&input.name.length>2&&input.name.length<200&&typeof input.phone==='string'&&/^\+\d{8,15}$/.test(input.phone),'INVALID_REQUEST');
     for(const [evidenceId,kind]of [[input.photographId,'photograph'],[input.consentEvidenceId,'consent']] as const)if(evidenceId){const evidence=await this.required('evidence',evidenceId);ensure(evidence.projectId===project.id&&evidence.kind===kind&&evidence.ownerId===p.id,'FORBIDDEN',403);}
@@ -75,11 +82,19 @@ export class Service {
       if(!verification.match) flags.push('BVN_MISMATCH');
       if(!input.point) flags.push('GPS_UNAVAILABLE');
       else if(!await tx.inside(project.id,input.point)) { ensure(input.boundaryReason,'BOUNDARY_OUTSIDE'); flags.push('BOUNDARY_OUTSIDE'); }
-      const wallet=input.accountNumber ? {account_number:input.accountNumber,kyc_level:undefined} : await bank.call<WalletResult>('POST','/wallets',{owner_name:input.name,[input.identityType]:input.identity,phone:input.phone,reference:input.clientId},hash(input.clientId+':wallet'));
+      ensure(input.accountNumber||input.identityType==='bvn','WALLET_ACCOUNT_REQUIRED',422);
+      let wallet:{account_number:string;kyc_level?:number;wallet_id?:string};
+      if(input.accountNumber)wallet={account_number:input.accountNumber};
+      else{
+        const created=await bank.call<WalletResult>('POST','/wallets',{owner_name:input.name,bvn:input.identity,phone:input.phone,reference:input.clientId},hash(input.clientId+':wallet'));
+        ensure(typeof created.wallet_id==='string'&&Number.isInteger(created.tier),'INVALID_BANK_RESPONSE',502);
+        const account=await bank.call<{account_number:string}>('POST','/virtual-accounts',{customer_name:input.name,customer_phone:input.phone,customer_email:input.clientId+'@example.test',bvn:input.identity,type:'dedicated',reference:'VA-'+input.clientId},hash(input.clientId+':virtual-account'));
+        ensure(typeof account.account_number==='string'&&/^\d{10}$/.test(account.account_number),'INVALID_BANK_RESPONSE',502);wallet={account_number:account.account_number,kyc_level:created.tier,wallet_id:created.wallet_id};
+      }
       const bankCode=input.bankCode??'000014';
       let enquiry:Partial<NameResult>={};
       try {
-        enquiry=await bank.call<NameResult>('POST',`/transfers/${bankCode==='000014'?'intrabank':'interbank'}/name-enquiry`,{account_number:wallet.account_number,destination_bank_code:bankCode,...(process.env.BANK_PROVIDER!=='live'?{mock_name:input.name}:{})},hash(input.clientId+':enquiry'));
+        enquiry=await bank.call<NameResult>('POST',`/transfers/${bankCode==='000014'?'intra':'interbank'}/name-enquiry`,{account_number:wallet.account_number,destination_bank_code:bankCode,...(process.env.BANK_PROVIDER!=='live'?{mock_name:input.name}:{})},hash(input.clientId+':enquiry'));
       } catch(e) { flags.push(e instanceof Fault?e.code:'BANK_UNAVAILABLE'); }
       const match=enquiry.account_name ? nameMatch(input.name,enquiry.account_name) : 'uncertain';
       if(match!=='match') flags.push('NAME_MISMATCH');
@@ -87,7 +102,7 @@ export class Service {
         const masked=enquiry.bvn_masked;
         if(masked.length!==input.identity.length||[...masked].some((c,i)=>/\d/.test(c)&&input.identity[i]!==c))flags.push('ACCOUNT_IDENTITY_MISMATCH');
       }
-      const participant=await tx.put('participants',row({id:input.clientId,projectId:project.id,organisationId:project.organisationId,agentId:p.id,name:input.name,phone:input.phone,identityHash:digest,identityLastFour:input.identity.slice(-4),identityType:input.identityType,verification,point:input.point??null,capturedAt:input.capturedAt,receivedAt:now(),syncDelayMs:Date.now()-Date.parse(input.capturedAt),consent:true,accountNumber:wallet.account_number,bankCode,kycLevel:enquiry.kyc_level??wallet.kyc_level??1,resolvedAccountName:enquiry.account_name??null,nameMatch:match,maskedBvn:enquiry.bvn_masked??null,flags,status:'active',noticeAttempted:false,noticeStatus:'pending'}));
+      const participant=await tx.put('participants',row({id:input.clientId,projectId:project.id,organisationId:project.organisationId,agentId:p.id,name:input.name,phone:input.phone,identityHash:digest,identityLastFour:input.identity.slice(-4),identityType:input.identityType,verification,point:input.point??null,capturedAt:input.capturedAt,receivedAt:now(),syncDelayMs:Date.now()-Date.parse(input.capturedAt),consent:true,accountNumber:wallet.account_number,walletId:wallet.wallet_id,bankCode,kycLevel:enquiry.kyc_level??wallet.kyc_level??1,resolvedAccountName:enquiry.account_name??null,nameMatch:match,maskedBvn:enquiry.bvn_masked??null,flags,status:'active',noticeAttempted:false,noticeStatus:'pending'}));
       await tx.put('participants',{...participant,language,photographId:input.photographId??null,consentEvidenceId:input.consentEvidenceId??null});
       await tx.put('jobs',row({id:'enrol-notice:'+participant.id,type:'enrol-notice',data:{participantId:participant.id},state:'pending',attempts:0,nextAt:now()}));
       if(match==='uncertain'&&enquiry.account_name)await tx.put('jobs',row({id:'name-review:'+participant.id,type:'name-review',data:{participantId:participant.id},state:'pending',attempts:0,nextAt:now()}));
@@ -100,7 +115,8 @@ export class Service {
     const project=await this.project(p,projectId,true); const committed=(await this.db.list('commitments',{projectId,accepted:true})).at(-1); ensure(committed,'EXTRACTION_LOW_CONFIDENCE',422);
     cents(input.declaredGross); cents(input.fundingAmount);if(committed.basis==='net'){cents(input.declaredNet);ensure(cents(input.declaredNet)<=cents(input.declaredGross),'INVALID_REQUEST');}
     ensure(typeof input.period==='string'&&input.period.length<80,'INVALID_REQUEST');
-    let closesAt:string;try{closesAt=periodDeadline(input.period,committed.cadence??'quarterly');}catch(error){ensure(process.env.NODE_ENV!=='production'&&Number.isFinite(Date.parse(input.closesAt??'')),'INVALID_REQUEST');closesAt=new Date(input.closesAt!).toISOString();}
+    reportingCadence(committed);
+    let closesAt:string;try{closesAt=periodDeadline(input.period,reportingCadence(committed));}catch(error){ensure(process.env.NODE_ENV!=='production'&&Number.isFinite(Date.parse(input.closesAt??'')),'INVALID_REQUEST');closesAt=new Date(input.closesAt!).toISOString();}
     ensure(Date.parse(closesAt)>Date.now(),'PERIOD_CLOSED',409);
     if(project.sourceAccount)ensure(!input.sourceAccount||input.sourceAccount===project.sourceAccount,'FORBIDDEN',403);
     if(process.env.NODE_ENV==='production')ensure(project.sourceAccount,'FUNDING_NOT_RECEIVED',422);
@@ -146,8 +162,8 @@ export class Service {
       const limit=BigInt(({1:5000000,2:10000000,3:500000000,4:1000000000} as Record<number,number>)[p.kycLevel]??0);
       if(cents(a.perHousehold)>limit) reasons.push('LIMIT_EXCEEDED');
       const dailyLimit=BigInt(({1:30000000,2:50000000,3:2500000000,4:10000000000} as Record<number,number>)[p.kycLevel]??0);
-      const today=now().slice(0,10);
-      const alreadySent=(await this.db.list('transfers',{participantId:p.id})).filter(t=>['in_flight','settling','settled'].includes(t.state)&&t.submittedAt?.startsWith(today)).reduce((total,t)=>total+cents(t.amount),0n);
+      const today=new Date(Date.now()+3600000).toISOString().slice(0,10);
+      const alreadySent=(await this.db.list('transfers',{participantId:p.id})).filter(t=>['in_flight','settling','settled'].includes(t.state)&&Number.isFinite(Date.parse(t.submittedAt??''))&&new Date(Date.parse(t.submittedAt)+3600000).toISOString().startsWith(today)).reduce((total,t)=>total+cents(t.amount),0n);
       if(alreadySent+cents(a.perHousehold)>dailyLimit&&!reasons.includes('LIMIT_EXCEEDED'))reasons.push('LIMIT_EXCEEDED');
       if(reasons.length) exclusions.push({participantId,reasons});
     }
@@ -157,57 +173,47 @@ export class Service {
     await this.db.put('runs',updated); return {passed:updated.state==='funded',exclusions,arithmetic:a};
   }
   async execute(runId: string) {
-    // Persist the claim and transfer intents BEFORE any remote call. A crashed/unknown batch is only requeried.
-    const claim=await this.db.lock('run:'+runId,async tx=>{
-      const run=await tx.get('runs',runId); ensure(run,'NOT_FOUND',404);
-      if(['executing','complete','partially_complete'].includes(run.state)) return null;
+    await this.db.lock('run:'+runId,async tx=>{
+      const run=await tx.get('runs',runId);ensure(run,'NOT_FOUND',404);
+      if(['executing','complete','partially_complete'].includes(run.state))return;
       ensure(run.state==='funded'&&run.eligibleIds&&run.arithmetic,'PREFLIGHT_EXCLUSIONS_REQUIRED',422);
       ensure(Date.parse(run.closesAt)>Date.now(),'PERIOD_CLOSED',409);
-      const transfers=[];
-      for(const pid of run.eligibleIds) {
-        const p=await tx.get('participants',pid); ensure(p?.noticeAttempted && p.noticeStatus==='sent','ENROLMENT_NOTICE_PENDING',422);
+      const transfers:Transfer[]=[];
+      for(const pid of run.eligibleIds){
+        const p=await tx.get('participants',pid);ensure(p?.noticeAttempted&&p.noticeStatus==='sent','ENROLMENT_NOTICE_PENDING',422);
         ensure(p.status==='active'&&p.flags.length===0,'PREFLIGHT_EXCLUSIONS_REQUIRED',422);
-        transfers.push(await tx.put('transfers',row({id:hash(run.id+':'+pid),projectId:run.projectId,runId,participantId:pid,reference:'ATT-'+hash(run.id+':'+pid),amount:run.arithmetic.perHousehold,accountNumber:p.accountNumber,bankCode:p.bankCode,state:'in_flight',fee:'0.00',vat:'0.00',stampDuty:'0.00',totalDebit:'0.00',submittedAt:now()})));
+        const t=await tx.put('transfers',row({id:hash(run.id+':'+pid),projectId:run.projectId,runId,participantId:pid,reference:'ATT-'+hash(run.id+':'+pid),amount:run.arithmetic.perHousehold,accountNumber:p.accountNumber,bankCode:p.bankCode,state:'queued',fee:'0.00',vat:'0.00',stampDuty:'0.00',totalDebit:'0.00',submittedAt:now()}));transfers.push(t);
+        await this.emit(runId,'transfer.queued',t.id,tx);
       }
-      const updated:Run={...run,state:'executing',claimedAt:now()}; await tx.put('runs',updated); return {run:updated,transfers};
+      const references=await prepareBatches(tx,run,transfers,run.batchReference);
+      await tx.put('runs',{...run,state:'executing',claimedAt:now(),batchReferences:references});
     });
-    if(!claim) return this.required('runs',runId);
-    for(const t of claim.transfers){await this.emit(runId,'transfer.queued',t.id);await this.emit(runId,'transfer.in_flight',t.id);}
-    try {
-      const result=await this.providers.bank.call<BulkResult>('POST','/transfers/bulk',{source_account:claim.run.sourceAccount,batch_reference:claim.run.batchReference,auto_name_enquiry:true,items:claim.transfers.map(t=>({destination_bank_code:t.bankCode,destination_account:t.accountNumber,amount:t.amount,narration:'Community benefit share',reference:t.reference}))},hash(claim.run.id+':bulk'));
-      for(const item of result.items??[]) { const t=claim.transfers.find(t=>t.reference===item.reference); if(t) await this.applyTransfer(t.id,item); }
-    } catch(e) {
-      // Every transport/server error is an unknown outcome. NEVER clear the durable claim.
-      if(e instanceof Fault&&e.status>=400&&e.status<500&&![408,409,429].includes(e.status))for(const transfer of claim.transfers)await this.db.put('transfers',{...transfer,state:'failed',failureClass:e.code,submissionRejected:true});
-      await this.audit('worker','batch.requery_required',claim.run.projectId,{runId,code:e instanceof Fault?e.code:'BANK_UNAVAILABLE'});
-    }
-    await this.enqueue('requery',{runId},'requery:'+runId); return this.required('runs',runId);
+    await submitPendingBatches(this,runId);
+    await this.enqueue('requery',{runId},'requery:'+runId);return this.required('runs',runId);
   }
   async emit(runId: string, type: string, transferId?: string,store:Store=this.db) { const event=row({runId,type,transferId:transferId??null});await store.put('events',event);this.events.emit(runId,{id:event.id,type,transferId}); }
   async retry(runId:string,failureClass:string){
     ensure(['INSUFFICIENT_FUNDS','BANK_UNAVAILABLE','ACCOUNT_RESTRICTED','LIMIT_EXCEEDED'].includes(failureClass),'INVALID_REQUEST');
-    const claim=await this.db.lock('run:'+runId,async tx=>{
+    await this.db.lock('run:'+runId,async tx=>{
       const run=await tx.get('runs',runId);ensure(run,'NOT_FOUND',404);ensure(Date.parse(run.closesAt)>Date.now(),'PERIOD_CLOSED',409);
-      const failed=(await tx.list('transfers',{runId,state:'failed',failureClass}));if(!failed.length)return null;
+      const failed=await tx.list('transfers',{runId,state:'failed',failureClass});if(!failed.length)return;
       const retryNumber=(run.retryNumber??0)+1;ensure(retryNumber<=10,'LIMIT_EXCEEDED',422);
-      for(const t of failed){try{const status=await this.providers.forStore(tx).bank.call<TransferResult>('GET','/transfers/'+encodeURIComponent(t.reference));ensure(status.status==='failed','PREFLIGHT_EXCLUSIONS_REQUIRED',409);}catch(error){if(!(error instanceof Fault&&error.code==='NOT_FOUND'&&t.submissionRejected))throw error;}}
-      const batchReference=run.batchReference+'-R'+retryNumber;const transfers=[];
-      for(const t of failed){const p=await tx.get('participants',t.participantId);ensure(p?.status==='active'&&p.noticeStatus==='sent'&&p.flags.length===0,'PREFLIGHT_EXCLUSIONS_REQUIRED',422);transfers.push(await tx.put('transfers',{...t,attempts:[...(t.attempts??[]),{reference:t.reference,state:t.state,failureClass:t.failureClass}],reference:'ATT-'+hash(t.id+':retry:'+retryNumber),state:'in_flight',submissionRejected:false,submittedAt:now()}));}
-      const updated:Run={...run,retryNumber,state:'executing',batchReferences:[...(run.batchReferences??[run.batchReference]),batchReference]};await tx.put('runs',updated);return {run:updated,batchReference,transfers};
+      for(const t of failed){if(t.submissionRejected)continue;const status=await this.providers.forStore(tx).bank.call<TransferResult>('GET','/transfers/'+encodeURIComponent(t.reference));ensure(['failed','rejected'].includes(status.status),'PREFLIGHT_EXCLUSIONS_REQUIRED',409);}
+      const transfers:Transfer[]=[];
+      for(const t of failed){const p=await tx.get('participants',t.participantId);ensure(p?.status==='active'&&p.noticeStatus==='sent'&&p.flags.length===0,'PREFLIGHT_EXCLUSIONS_REQUIRED',422);transfers.push(await tx.put('transfers',{...t,attempts:[...(t.attempts??[]),{reference:t.reference,state:t.state,failureClass:t.failureClass,failureMessage:t.failureMessage}],failureMessage:null,reference:'ATT-'+hash(t.id+':retry:'+retryNumber),state:'queued',submissionRejected:false,submittedAt:now()}));}
+      const references=await prepareBatches(tx,run,transfers,run.batchReference+'-R'+retryNumber);
+      await tx.put('runs',{...run,retryNumber,state:'executing',batchReferences:[...(run.batchReferences??[run.batchReference]),...references]});
     });
-    if(!claim)return this.required('runs',runId);
-    try{const result=await this.providers.bank.call<BulkResult>('POST','/transfers/bulk',{source_account:claim.run.sourceAccount,batch_reference:claim.batchReference,auto_name_enquiry:true,items:claim.transfers.map(t=>({destination_bank_code:t.bankCode,destination_account:t.accountNumber,amount:t.amount,narration:'Community benefit share',reference:t.reference}))},hash(claim.batchReference));for(const resultItem of result.items??[]){const t=claim.transfers.find(t=>t.reference===resultItem.reference);if(t)await this.applyTransfer(t.id,resultItem);}}
-    catch(error){if(error instanceof Fault&&error.status>=400&&error.status<500&&![408,409,429].includes(error.status)){for(const t of claim.transfers){await this.applyTransfer(t.id,{status:'failed',error_code:error.code});const latest=await this.required('transfers',t.id);if(latest.state==='failed')await this.db.put('transfers',{...latest,submissionRejected:true});}}await this.audit('worker','retry.requery_required',claim.run.projectId,{runId,code:error instanceof Fault?error.code:'BANK_UNAVAILABLE'});}
-    return this.required('runs',runId);
+    await submitPendingBatches(this,runId);return this.required('runs',runId);
   }
   async applyTransfer(transferId: string, value: unknown) {
     const parsed=record(value);ensure(typeof parsed.status==='string','INVALID_BANK_RESPONSE',502);const response=parsed as unknown as TransferResult;
     await this.db.lock('transfer:'+transferId,async tx=>{
       const t=await tx.get('transfers',transferId); ensure(t,'NOT_FOUND',404);
-      const state=({successful:'settled',settled:'settled',pending:'settling',failed:'failed',reversed:'reversed'} as Record<string,string>)[response.status]; ensure(state,'INVALID_REQUEST');
+      const state=({successful:'settled',settled:'settled',pending:'settling',failed:'failed',rejected:'failed',reversed:'reversed'} as Record<string,string>)[response.status]; ensure(state,'INVALID_REQUEST');
       if(t.state==='reversed' || t.state==='settled'&&state!=='reversed' || t.state==='failed') return;
       const changed=state!==t.state;
-      if(state==='settled'&&!t.sessionId){
+      if(state==='settled'){
         ensure(response.fee!==undefined&&response.vat!==undefined&&response.stamp_duty!==undefined&&response.total_debit!==undefined&&response.amount!==undefined,'INVALID_BANK_RESPONSE',502);
         ensure(bankMoney(response.amount)===t.amount,'RECONCILIATION_MISMATCH',409);
       }
@@ -217,7 +223,7 @@ export class Service {
         ensure(cents(totalDebit)===cents(t.amount)+cents(fee)+cents(vat)+cents(stampDuty),'RECONCILIATION_MISMATCH',409);
         ensure(typeof response.settled_at==='string'&&Number.isFinite(Date.parse(response.settled_at)),'INVALID_BANK_RESPONSE',502);
       }
-      await tx.put('transfers',{...t,state,fee,vat,stampDuty,totalDebit,sessionId:response.session_id??t.sessionId,failureClass:response.error_code??null,settledAt:state==='settled'?new Date(response.settled_at!).toISOString():t.settledAt,reversedAt:state==='reversed'?now():t.reversedAt});
+      await tx.put('transfers',{...t,state,fee,vat,stampDuty,totalDebit,sessionId:response.session_id??t.sessionId,failureClass:response.error_code??null,failureMessage:state==='failed'?bankFailureMessage(response.message):null,settledAt:state==='settled'?new Date(response.settled_at!).toISOString():t.settledAt,reversedAt:state==='reversed'?now():t.reversedAt});
       if(changed) {
         await this.emit(t.runId,'transfer.'+state,t.id,tx);
         if(state==='settled') {
@@ -232,16 +238,18 @@ export class Service {
     });
   }
   async requery(runId: string, transferId?: string) {
-    const run=await this.required('runs',runId);
-    const transfers=await this.db.list('transfers',{runId});
-    if(!transferId) {
-      try {
-        for(const reference of run.batchReferences??[run.batchReference]){const batch=await this.providers.bank.call<BulkResult>('GET',`/transfers/bulk/${encodeURIComponent(reference)}`);for(const item of batch.items??[]) {const t=transfers.find(t=>t.reference===item.reference);if(t)await this.applyTransfer(t.id,item);}}
-      } catch(e) { if(!(e instanceof Fault))throw e; return transfers; }
-    }
-    for(const t of transfers) {
-      if(!transferId || t.id!==transferId || ['failed','reversed'].includes(t.state)) continue;
-      try { await this.applyTransfer(t.id,await this.providers.bank.call<TransferResult>('GET',`/transfers/${encodeURIComponent(t.reference)}`)); } catch(e) { if(!(e instanceof Fault)) throw e; }
+    const run=await this.required('runs',runId),transfers=await this.db.list('transfers',{runId});
+    if(!transferId){
+      for(const reference of run.batchReferences??[run.batchReference]){
+        const intent=await this.db.get('transfer_batches',hash(reference));if(intent&&['pending','rejected'].includes(intent.state))continue;
+        try{
+          const batch=await this.providers.bank.call<BulkResult>('GET','/transfers/bulk/'+encodeURIComponent(reference));
+          for(const item of batch.items??[]){const t=transfers.find(t=>t.reference===item.reference);if(!t||['failed','reversed'].includes(t.state))continue;try{await applyBankResult(this,t,item);}catch(error){if(!(error instanceof Fault))throw error;}}
+        }catch(error){if(!(error instanceof Fault))throw error;if(error.code==='RATE_LIMITED')break;await this.audit('worker','batch.query_pending',run.projectId,{runId,batchReference:reference,code:error.code});}
+      }
+    }else{
+      const t=transfers.find(t=>t.id===transferId);ensure(t,'NOT_FOUND',404);
+      if(!['queued','failed','reversed'].includes(t.state))try{await applyBankResult(this,t,await this.providers.bank.call<TransferResult>('GET','/transfers/'+encodeURIComponent(t.reference)));}catch(error){if(!(error instanceof Fault))throw error;}
     }
     return this.db.lock('run:'+runId,async tx=>{const current=await tx.get('runs',runId);ensure(current,'NOT_FOUND',404);const final=await tx.list('transfers',{runId});const complete=final.length>0&&final.every(t=>['settled','failed','reversed'].includes(t.state));if(!['draft','funded','cancelled','preflight_failed'].includes(current.state)){await tx.put('runs',{...current,state:complete?'complete':'partially_complete'});if(complete&&current.state!=='complete')await this.emit(runId,'run.complete',undefined,tx);}return final;});
   }
@@ -282,9 +290,9 @@ export class Service {
     const p=await this.required('projects',projectId); const participants=await this.db.list('participants',{projectId});
     const attestations=await this.db.list('attestations',{projectId}); const disputes=await this.db.list('disputes',{projectId});
     const commitment=(await this.db.list('commitments',{projectId,accepted:true})).at(-1);
-    return {id:p.id,name:p.name,registryId:p.registryId,country:p.country,status:p.status,organisationId:p.organisationId,enrolled:participants.length,commitment:commitment?{percentage:commitment.percentage,basis:commitment.basis,sourceQuote:commitment.source_quote,page:commitment.page}:null,attestations:attestations.map(a=>this.publicAttestation(a)),openDisputes:disputes.filter(d=>!d.resolvedAt).length,signalCount:(await this.db.list('signals',{projectId})).length};
+    return {...demonstrationDisclosure(p.isDemonstration===true||this.providers.bank instanceof MockBank||attestations.some(a=>['mock','sandbox'].includes(a.document.bankEvidence))),referenceStatistics:publicReferenceStatistics(p.referenceStatistics),id:p.id,name:p.name,registryId:p.registryId,country:p.country,status:p.status,organisationId:p.organisationId,enrolled:participants.length,commitment:commitment?{percentage:commitment.percentage,basis:commitment.basis,cadence:commitment.cadence,reportingCadence:reportingCadence(commitment),paymentSchedule:commitment.paymentSchedule??null,sourceLocator:commitment.sourceLocator??null,sourceQuote:commitment.source_quote,page:commitment.page}:null,attestations:attestations.map(a=>this.publicAttestation(a)),openDisputes:disputes.filter(d=>!d.resolvedAt).length,signalCount:(await this.db.list('signals',{projectId})).length};
   }
-  publicAttestation(a: Attestation) { return {id:a.id,createdAt:a.createdAt,document:a.document,hash:a.hash,signature:a.signature,publicKey:a.publicKey}; }
+  publicAttestation(a: Attestation) { return {...demonstrationDisclosure(['mock','sandbox'].includes(a.document.bankEvidence)),id:a.id,createdAt:a.createdAt,document:a.document,hash:a.hash,signature:a.signature,publicKey:a.publicKey}; }
   async geography(projectId: string) {
     await this.required('projects',projectId); const cells=new Map<string,number>();
     for(const p of await this.db.list('participants',{projectId})) if(p.point) {const cell=latLngToCell(p.point[1],p.point[0],4);cells.set(cell,(cells.get(cell)??0)+1);}
@@ -360,7 +368,7 @@ export class Service {
     if(type==='sms-reply'){const p=await this.required('participants',jobText(data,'participantId'));await this.providers.sms(p.phone,jobText(data,'message'),job.id);return;}
     if(type==='account-control'){
       const participant=await this.required('participants',jobText(data,'participantId'));ensure(participant.bankCode==='000014','ACCOUNT_RESTRICTED',422);
-      const path=capabilityPath(process.env.BANK_ACCOUNT_CONTROL_PATH,participant.accountNumber);await this.providers.bank.call('POST',path,{status:data.action==='freeze'?'frozen':'active',reason:data.reason,case_reference:jobText(data,'caseId')},hash(job.id));
+      const path=capabilityPath(process.env.BANK_ACCOUNT_CONTROL_PATH??'/admin/accounts/{account}/status',participant.accountNumber);await this.providers.bank.call('POST',path,{status:data.action==='freeze'?'frozen':'active',reason:data.reason,case_reference:jobText(data,'caseId')},hash(job.id));
       await this.audit('bank-worker','account.'+data.action,participant.projectId,{participantId:participant.id,caseId:jobText(data,'caseId')});return;
     }
     if(type==='onward-sync'){
@@ -368,8 +376,8 @@ export class Service {
     }
     if(type==='onward-account'){
       ensure(!(await this.db.list('runs')).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
-      const p=await this.required('participants',jobText(data,'participantId'));const path=capabilityPath(process.env.BANK_FLOW_PATH,p.accountNumber).replaceAll('{page}',String(jobPage(data)));
-      const response=await this.providers.bank.call<ListResult<Flow>|Flow[]>('GET',path);const records=Array.isArray(response)?response:response.items;ensure(Array.isArray(records)&&records.length<=1000,'INVALID_BANK_RESPONSE',502);
+      const p=await this.required('participants',jobText(data,'participantId'));const path=process.env.BANK_FLOW_PATH?capabilityPath(process.env.BANK_FLOW_PATH,p.accountNumber).replaceAll('{page}',String(jobPage(data))):null;
+      const response=path?await this.providers.bank.call<ListResult<Flow>|Flow[]>('GET',path):await onwardPage(this,p.id,jobPage(data));const records=Array.isArray(response)?response:response.items;ensure(Array.isArray(records)&&records.length<=1000,'INVALID_BANK_RESPONSE',502);
       await this.db.put('tokens',row({id:'onward-flows:'+p.id+':'+jobPage(data),projectId:jobText(data,'projectId'),type:'onward-flows',flows:records.map(f=>({...f,participantId:p.id}))}));
       const pages=Number(Array.isArray(response)?1:response.meta?.total_pages??1);ensure(Number.isInteger(pages)&&pages>=1&&pages<=100,'INVALID_BANK_RESPONSE',502);
       if(jobPage(data)<pages)await this.enqueue('onward-account',{...data,page:jobPage(data)+1},job.id.replace(/:\d+$/,':'+(jobPage(data)+1)));
@@ -382,7 +390,7 @@ export class Service {
     else if(type==='signals') await this.detect(jobText(data,'projectId'),data.flows??[]);
     else if(type==='registry-sync'){
       const project=await this.required('projects',jobText(data,'projectId'));
-      try{const reference=await this.providers.registry(project.registryId);await this.db.put('projects',{...project,...reference,registrySyncedAt:now(),registrySyncStatus:'current'});await this.db.put('registry_history',row({projectId:project.id,registryId:project.registryId,status:'success',sourceHash:hash(canonical(reference)),principal:'worker'}));}
+      try{const reference=await this.providers.registry(project.registryId);await this.db.put('projects',{...project,...reference,boundary:reference.boundary??project.boundary,boundaryStatus:reference.boundary||project.boundary?'available':'upload_required',registrySyncedAt:now(),registrySyncStatus:'current'});await this.db.put('registry_history',row({projectId:project.id,registryId:project.registryId,status:'success',sourceHash:hash(canonical(reference)),principal:'worker'}));}
       catch(error){await this.db.put('registry_history',row({projectId:project.id,registryId:project.registryId,status:'failed',code:error instanceof Fault?error.code:'REGISTRY_UNREACHABLE',principal:'worker'}));throw error;}
     }
     else if(type==='reconciliation'){const result=await this.reconciliation(jobText(data,'projectId'));await this.db.put('notifications',row({...result,type:'reconciliation'}));if(result.status==='mismatch')await this.audit('worker','reconciliation.mismatch',jobText(data,'projectId'),result);}
@@ -397,7 +405,7 @@ export class Service {
     else if(type==='extraction') {
       if(await this.db.get('commitments','extraction:'+job.id))return;ensure(!(await this.db.list('runs')).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
       try{const result=await this.providers.extract(jobPages(data));await this.db.put('commitments',row({id:'extraction:'+job.id,projectId:jobText(data,'projectId'),...result,accepted:false,original:true,reviewStatus:result.confidence<0.8?'pending':'developer_review'}));}
-      catch(error){if(!(error instanceof Fault)||!['EXTRACTION_LOW_CONFIDENCE','PDD_NO_COMMITMENT','PDD_UNREADABLE'].includes(error.code))throw error;const proposal=await this.db.get('tokens','proposal:extract:'+hash(canonical(jobPages(data))));await this.db.put('commitments',row({id:'extraction:'+job.id,projectId:jobText(data,'projectId'),original:true,accepted:false,reviewStatus:'pending',errorCode:error.code,proposal:proposal?.proposal??null}));}
+      catch(error){if(!(error instanceof Fault)||!['EXTRACTION_LOW_CONFIDENCE','PDD_NO_COMMITMENT','PDD_UNREADABLE'].includes(error.code))throw error;const proposal=await this.db.get('tokens','proposal:extract:v2:'+hash(canonical(jobPages(data))));await this.db.put('commitments',row({id:'extraction:'+job.id,projectId:jobText(data,'projectId'),original:true,accepted:false,reviewStatus:'pending',errorCode:error.code,proposal:proposal?.proposal??null}));}
     }
     else if(type==='anchor') {const a=await this.required('attestations',jobText(data,'attestationId'));const result=await this.providers.anchor(a.hash);await this.db.put('anchors',row({id:a.id,projectId:a.projectId,attestationId:a.id,...result}));}
     else if(type==='enrol-notice'||type==='payment-notice') {
@@ -411,16 +419,16 @@ export class Service {
       if(type==='enrol-notice') await this.db.put('participants',{...p,noticeAttempted:true,noticeStatus:'sent'});
     }
     else if(type==='forge-event') {
-      const event=data, payload=event.data??{};
+      const event={...data,type:data.type??(data as JobData&{event?:string}).event}, payload=event.data??{};
       if(event.type==='transfer.bulk.completed'){
         const runs=(await this.db.list('runs')).filter(r=>(r.batchReferences??[r.batchReference]).includes(String(payload.batch_reference)));for(const run of runs)await this.requery(run.id);
       }else if(event.type?.startsWith('transfer.')) {
         const transfers=await this.db.list('transfers',{reference:payload.reference});
-        for(const t of transfers) await this.applyTransfer(t.id,{...payload,status:event.type.split('.').at(-1)});
+        for(const t of transfers)await applyBankResult(this,t,{...payload,status:event.type.split('.').at(-1)!});
       } else if(event.type==='carbon.mrv.verified'||event.type==='carbon.mrv.rejected') {
         const projects=await this.db.list('projects',{carbonId:payload.project_id});for(const p of projects){const project:Project={...p,mrvVerified:event.type.endsWith('verified'),mrvStatus:event.type.endsWith('verified')?'verified':'rejected'};await this.db.put('projects',project);if(project.mrvVerified&&project.retirement)await this.openCarbonPeriod(project,project.retirement);}
       } else if(event.type==='carbon.credits.retired') {
-        const projects=await this.db.list('projects',{carbonId:payload.project_id});for(const p of projects){const retirement:CarbonEventData={id:optionalText(payload.id),period:optionalText(payload.period),certificate_id:optionalText(payload.certificate_id),eventId:event.event_id};await this.db.put('projects',{...p,retirement});if(p.mrvVerified)await this.openCarbonPeriod(p,retirement);}
+        const projects=await this.db.list('projects',{carbonId:payload.project_id});for(const p of projects){const retirement:CarbonEventData={id:optionalText(payload.retirement_id)??optionalText(payload.id),retirement_id:optionalText(payload.retirement_id),credit_batch_id:optionalText(payload.credit_batch_id),period:optionalText(payload.period),certificate_id:optionalText(payload.certificate_id)??optionalText(payload.retirement_id),eventId:event.event_id};await this.db.put('projects',{...p,retirement});if(p.mrvVerified)await this.openCarbonPeriod(p,retirement);}
       }else if(event.type==='virtual_account.credited'||event.type==='settlement.completed'){
         const projects=(await this.db.list('projects')).filter(p=>p.sourceAccount&&(p.sourceAccount===payload.account_number||p.sourceAccount===payload.source_account));
         for(const p of projects){if(event.type==='virtual_account.credited'){const amount=bankMoney(payload.amount);await this.db.put('notifications',row({id:'funding:'+event.event_id,projectId:p.id,type:'funding',amount,bankReference:payload.reference??event.event_id}));}await this.enqueue('reconciliation',{projectId:p.id},'reconciliation:'+event.event_id+':'+p.id);}
@@ -429,7 +437,7 @@ export class Service {
   }
   async openCarbonPeriod(project:Project,retirement:CarbonEventData){
     const rosterId=hash(project.id+':retirement:'+String(retirement.id??retirement.eventId));
-    await this.db.lock('carbon-period:'+rosterId,async tx=>{if(await tx.get('rosters',rosterId))return;const commitment=(await tx.list('commitments',{projectId:project.id,accepted:true})).at(-1);ensure(commitment,'EXTRACTION_LOW_CONFIDENCE',422);const period=String(retirement.period??currentPeriod(commitment.cadence));periodDeadline(period,commitment.cadence);const participants=await tx.list('participants',{projectId:project.id});await tx.put('rosters',row({id:rosterId,projectId:project.id,period,participantIds:participants.map(p=>p.id),openedBy:'carbon.credits.retired',certificateId:retirement.certificate_id??null}));const latest=await tx.get('projects',project.id);await tx.put('projects',{...latest!,openPeriod:period,periodOpenedAt:now(),openRosterId:rosterId});});
+    await this.db.lock('carbon-period:'+rosterId,async tx=>{if(await tx.get('rosters',rosterId))return;const commitment=(await tx.list('commitments',{projectId:project.id,accepted:true})).at(-1);ensure(commitment,'EXTRACTION_LOW_CONFIDENCE',422);const period=String(retirement.period??currentPeriod(reportingCadence(commitment)));periodDeadline(period,reportingCadence(commitment));const participants=await tx.list('participants',{projectId:project.id});await tx.put('rosters',row({id:rosterId,projectId:project.id,period,participantIds:participants.map(p=>p.id),openedBy:'carbon.credits.retired',certificateId:retirement.certificate_id??null}));const latest=await tx.get('projects',project.id);await tx.put('projects',{...latest!,openPeriod:period,periodOpenedAt:now(),openRosterId:rosterId});});
   }
   async reconciliation(projectId:string){
     const project=await this.required('projects',projectId);ensure(project.sourceAccount,'FUNDING_NOT_RECEIVED',422);
@@ -462,7 +470,7 @@ export class Service {
     }
     for(const run of await this.db.list('runs')) {
       // Include settled transfers for late reversal detection.
-      if(['executing','partially_complete','complete'].includes(run.state)) await this.requery(run.id);
+      if(['executing','partially_complete','complete'].includes(run.state)){await submitPendingBatches(this,run.id);await this.requery(run.id);}
       if(run.state!=='cancelled'&&Date.parse(run.closesAt)<=Date.now()) await this.close(run.id);
     }
     for(const project of await this.db.list('projects')) {

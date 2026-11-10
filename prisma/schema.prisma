@@ -13,7 +13,7 @@ model Project {
   id String @id
   data Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  boundary Unsupported("geometry(Polygon,4326)")?
+  boundary Unsupported("geometry(MultiPolygon,4326)")?
   organisationId String? @default(dbgenerated()) @map("organisation_id")
   registryId String? @default(dbgenerated()) @map("registry_id")
   name String? @default(dbgenerated()) @map("name")
@@ -170,4 +170,11 @@ model AuditEntry {
   beforeData Json? @default(dbgenerated()) @map("before_data")
   afterData Json? @default(dbgenerated()) @map("after_data")
   @@map("audit")
+}
+
+model TransferBatch {
+  id String @id
+  data Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("transfer_batches")
 }

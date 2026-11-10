@@ -1,9 +1,9 @@
 import {ensure} from './core.js';
 import {record,text,runInput,disputeInput} from './validation.js';
 import type {Flow} from './models.js';
-import type {RunInput} from './contracts.js';
+import type {RunInput,BoundaryInput,ReportingCadence,PaymentCadence,PaymentSchedule} from './contracts.js';
 type Items={items:Record<string,unknown>[]};
-interface Review{percentage:number;basis:string;cadence:string;source_quote:string;page:number;beneficiary_definition:string;}
+interface Review{percentage:number;basis:string;cadence:PaymentCadence;reportingCadence?:ReportingCadence;paymentSchedule?:PaymentSchedule;sourceLocator?:string;source_quote:string;page:number;beneficiary_definition:string;}
 export interface RequestBodies{
  '/api/auth/signup':{email:string;password:string;organisation:string;role?:string};
  '/api/auth/signin':{email:string;password:string};
@@ -11,7 +11,8 @@ export interface RequestBodies{
  '/api/auth/reset/request':{email:string};
  '/api/auth/reset/confirm':{token:string;password:string};
  '/api/projects/lookup':{registryId:string};
- '/api/projects':{registryId?:string;registryRecord?:{registryId:string}};
+ '/api/projects':{registryId?:string;boundaryId?:string;registryRecord?:{registryId:string;boundaryId?:string}};
+ '/api/registry/boundary':BoundaryInput;
  '/api/admin/projects/:id/account':{accountNumber:string};
  '/api/admin/registry/import':{record:unknown};
  '/api/admin/extractions/:id/review':{commitment:Review;reason:string};
@@ -41,13 +42,13 @@ export interface RequestBodies{
  '/api/participants/:id/receipts/revoke':{reason:string};
  '/api/ops/cases/:id/action':{action:string;note:string};
  '/api/receipt/:token/dispute':{category:string;body?:string;voiceNoteId?:string};
- '/hooks/forge':{event_id:string;type:string;data:Record<string,unknown>};
+ '/hooks/forge':{event_id:string;type?:string;event?:string;data:Record<string,unknown>};
  '/api/webhooks/sms-delivery':{id:string;status:string};
  '/api/webhooks/sms-inbound':{from:string;text:string;id?:string};
 }
 export type BodyFor<P extends string>=P extends keyof RequestBodies?RequestBodies[P]:Record<string,unknown>;
 const required:Record<string,string[]>={
- '/api/auth/signup':['email','password','organisation'],'/api/auth/signin':['email','password'],'/api/auth/verify-email':['token'],'/api/auth/reset/request':['email'],'/api/auth/reset/confirm':['token','password'],'/api/projects/lookup':['registryId'],'/api/admin/projects/:id/account':['accountNumber'],'/api/projects/:id/commitment':['field','reason'],'/api/projects/:id/register':['type'],'/api/participants/:id':['reason'],'/api/projects/:id/agents/invite':['name','email'],'/api/invites/:code/redeem':['deviceKey'],'/api/agents/:id':['status','reason'],'/api/agents/:id/identity':['bvn','firstName','lastName','dateOfBirth'],'/api/field/device/bind':['deviceKey'],'/api/runs/:id/retry':['failureClass'],'/api/disputes/:id/respond':['body'],'/api/attestations/:id/disclosure':['transferId'],'/api/ops/signals/scan':['projectId'],'/api/verifier/watchlist':['projectId'],'/api/verifier/alerts':['projectId','condition'],'/api/verifier/export':['projectId','period'],'/api/participants/:id/receipts/revoke':['reason'],'/api/ops/cases/:id/action':['action','note'],'/api/admin/extractions/:id/review':['reason'],'/api/webhooks/sms-delivery':['id','status'],'/api/webhooks/sms-inbound':['from','text']};
+ '/api/auth/signup':['email','password','organisation'],'/api/auth/signin':['email','password'],'/api/auth/verify-email':['token'],'/api/auth/reset/request':['email'],'/api/auth/reset/confirm':['token','password'],'/api/projects/lookup':['registryId'],'/api/registry/boundary':['kml','name'],'/api/admin/projects/:id/account':['accountNumber'],'/api/projects/:id/commitment':['field','reason'],'/api/projects/:id/register':['type'],'/api/participants/:id':['reason'],'/api/projects/:id/agents/invite':['name','email'],'/api/invites/:code/redeem':['deviceKey'],'/api/agents/:id':['status','reason'],'/api/agents/:id/identity':['bvn','firstName','lastName','dateOfBirth'],'/api/field/device/bind':['deviceKey'],'/api/runs/:id/retry':['failureClass'],'/api/disputes/:id/respond':['body'],'/api/attestations/:id/disclosure':['transferId'],'/api/ops/signals/scan':['projectId'],'/api/verifier/watchlist':['projectId'],'/api/verifier/alerts':['projectId','condition'],'/api/verifier/export':['projectId','period'],'/api/participants/:id/receipts/revoke':['reason'],'/api/ops/cases/:id/action':['action','note'],'/api/admin/extractions/:id/review':['reason'],'/api/webhooks/sms-delivery':['id','status'],'/api/webhooks/sms-inbound':['from','text']};
 const optionalStrings=['phone','status','resolutionBasis','transferId','format','role','hash','condition'];
 export function parseBody<P extends string>(path:P,input:unknown):BodyFor<P>{
  const value=record(input??{});for(const field of required[path]??[])text(value[field]);

@@ -13,10 +13,12 @@
     "migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed.ts",
     "reseed:bank": "tsx scripts/reseed-bank.ts",
-    "test": "npm run build && node --test dist/tests/*.test.js",
+    "test": "npm run build && node --test --test-concurrency=2 dist/tests/*.test.js",
     "check": "tsc --noEmit",
     "build:contracts": "tsc -p packages/contracts/tsconfig.json",
-    "validate:schema": "prisma validate"
+    "validate:schema": "prisma validate",
+    "demo": "npm run build && node dist/scripts/demo.js",
+    "demo:assets": "npm run build && node dist/scripts/demo-assets.js"
   },
   "dependencies": {
     "@attest/contracts": "file:packages/contracts",
@@ -28,7 +30,8 @@
     "nodemailer": "10.4.0",
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.20.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "fast-xml-parser": "^5.3.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
@@ -52,5 +55,8 @@
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
 }

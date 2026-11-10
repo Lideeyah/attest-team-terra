@@ -45,10 +45,10 @@ Never use `kubectl config view --raw`, print the token, or commit the kubeconfig
 
 These helpers do not apply manifests, create secrets, or deploy the application. Application deployment still requires a built image, runtime secrets and a separately reviewed deployment command.
 
-## Verification result
+## Verification result ? updated 10 November 2026
 
-- Installed official Windows x64 kubectl v1.37.2 and verified its published SHA-256.
-- Confirmed the wrapper selects `team05@sandbox` and namespace `team05`.
-- Confirmed `team05.yml` and `.tools` are ignored by Git and excluded from the Docker context.
-- The live version check fails with `tls: failed to verify certificate: x509: certificate signed by unknown authority`. The kubeconfig's embedded CA has not been replaced, and TLS verification has not been disabled. A trusted certificate chain for the current API endpoint is required before access and RBAC checks can pass.
-- The server version remains unknown until TLS succeeds; client/server version compatibility cannot yet be confirmed.
+The previously recorded TLS failure is historical. The latest read-only check succeeded and found no application pods in `team05`. TLS verification was kept enabled; neither the supplied CA nor the kubeconfig was changed.
+
+A temporary `attest-contract-probe` pod was used to check the internal bank contract, then deleted. It received the existing `huawei-gateway` secret through `envFrom`; the key was never printed or written to a file. Tariff/balance reads, wallet creation, and a two-recipient synthetic mixed-bank bulk settlement succeeded. See [backend completion](backend-completion.md) for the evidence and limits.
+
+This does not mean the application has been deployed. The image placeholders, database/runtime secrets, migration execution, frontend integration and remaining live provider checks still need to be completed before a public release.

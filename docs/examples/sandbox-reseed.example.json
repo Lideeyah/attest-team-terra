@@ -1,0 +1,120 @@
+[
+  {
+    "id": "fund",
+    "operation": "fund",
+    "path": "/admin/accounts/0123456790/fund",
+    "body": {
+      "amount": "100000.00"
+    }
+  },
+  {
+    "id": "register",
+    "operation": "register",
+    "path": "/carbon/projects",
+    "body": {
+      "name": "Trees for Global Benefits / synthetic bank rehearsal",
+      "type": "tree_planting",
+      "location": {
+        "state": "Cross River",
+        "lga": "Ogoja",
+        "lat": 6.6,
+        "lng": 8.8
+      },
+      "owner": {
+        "name": "Synthetic Forest Co-operative",
+        "contact_name": "Synthetic Contact",
+        "phone": "+2348000000001",
+        "payout_account": "0123987006",
+        "bank_code": "000016"
+      },
+      "methodology": "Synthetic registry rehearsal"
+    }
+  },
+  {
+    "id": "mrv",
+    "operation": "submit_mrv",
+    "path": "/carbon/projects/${register.project_id}/mrv",
+    "body": {
+      "period": {
+        "from": "2026-01-01",
+        "to": "2026-10-31"
+      },
+      "metric": "trees_planted",
+      "value": 10000,
+      "evidence_url": "https://example.test/synthetic-evidence"
+    }
+  },
+  {
+    "id": "review",
+    "operation": "review_mrv",
+    "path": "/carbon/mrv/${mrv.submission_id}/review",
+    "body": {
+      "decision": "verified"
+    }
+  },
+  {
+    "id": "checkout",
+    "operation": "checkout",
+    "path": "/payments/checkout",
+    "body": {
+      "merchant_id": "mer_900",
+      "amount": "10000.00",
+      "currency": "NGN",
+      "customer": {
+        "name": "Synthetic Buyer",
+        "email": "buyer@example.test",
+        "phone": "+2348000000001"
+      },
+      "channels": [
+        "bank_transfer"
+      ],
+      "description": "Synthetic carbon retirement",
+      "reference": "CHANGE-TO-UNIQUE-COLLECTION-REFERENCE"
+    }
+  },
+  {
+    "id": "paid",
+    "operation": "pay_collection",
+    "path": "/payments/${checkout.reference}/simulate-transfer",
+    "body": {
+      "amount": "10000.00"
+    }
+  },
+  {
+    "id": "retire",
+    "operation": "retire",
+    "path": "/carbon/credits/retire",
+    "body": {
+      "credit_batch_id": "${review.credit_batch_id}",
+      "quantity": 10,
+      "buyer": {
+        "name": "Synthetic Buyer",
+        "email": "buyer@example.test"
+      },
+      "price_per_credit": "1000.00",
+      "currency": "NGN",
+      "payment_reference": "${checkout.reference}",
+      "retirement_reason": "Synthetic rehearsal"
+    }
+  },
+  {
+    "id": "webhook",
+    "operation": "register_webhook",
+    "path": "/webhooks",
+    "body": {
+      "url": "http://app.team05.svc.cluster.local/hooks/forge",
+      "events": [
+        "transfer.pending",
+        "transfer.successful",
+        "transfer.failed",
+        "transfer.reversed",
+        "transfer.bulk.completed",
+        "carbon.mrv.verified",
+        "carbon.mrv.rejected",
+        "carbon.credits.retired",
+        "virtual_account.credited",
+        "settlement.completed"
+      ]
+    }
+  }
+]

@@ -9,7 +9,7 @@ import { authHandler } from './authjs.js';
 import { Service } from './service.js';
 import type { Store,Table,PageOptions } from './store.js';
 import type { EntityMap } from './models.js';
-import { attestationPdf } from './pdf.js';
+import { attestationPdf,benefitSharingPdf } from './pdf.js';
 import { storeEvidence,readEvidence, type EvidenceKind } from './evidence.js';
 import { enabledLanguages,translation,parseSms } from './messaging.js';
 import type {BalanceResult,NameResult,IdentityResult,WebhookRegistration} from './bank.js';
@@ -17,6 +17,10 @@ import {parseBody,queryValues,type BodyFor} from './request-types.js';
 import type {Envelope,Meta} from './contracts.js';
 import {record,text} from './validation.js';
 import { validateRegistry,registryDigest } from './registry.js';
+
+import {benefitSharingReport} from './reports.js';
+import {validateCommitmentSchedule} from './period.js';
+import {registerCarbon,submitMrv,listMrv,retireCredits,certificates} from './carbon.js';
 
 type Context<B=Record<string,unknown>>={s:Service;p:Principal;b:B;q:Record<string,string>;params:Record<string,string>;req:FastifyRequest;reply:FastifyReply};
 export async function createApp(db: Store, suppliedService?: Service) {
@@ -112,12 +116,26 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('POST','/api/admin/registry/import',async c=>{const record=validateRegistry(c.b.record);const digest=registryDigest(record);await c.s.db.put('tokens',row({id:'registry:'+record.registryId,type:'registry-export',record,digest,reviewedBy:c.p.id,reviewedAt:now(),approved:true}));await c.s.db.put('registry_history',row({registryId:record.registryId,principal:c.p.id,action:'export.imported',digest,sources:record.sources}));return {registryId:record.registryId,digest};},['platform_admin']);
   route('GET','/api/admin/registry/history',async c=>paged(c,'registry_history'),['platform_admin']);
   route('POST','/api/projects/:id/registry/sync',async c=>{await c.s.project(c.p,c.params.id,true);return {jobId:(await c.s.enqueue('registry-sync',{projectId:c.params.id})).id};},['developer_admin']);
-  route('POST','/api/projects',async c=>c.s.createProject(c.p,text(c.b.registryRecord?.registryId??c.b.registryId)),['developer_admin']);
+  route('POST','/api/registry/boundary',async c=>{
+    ensure(c.b.name.trim().length>0&&c.b.name.length<=200&&Buffer.byteLength(c.b.kml)<=2*1024*1024,'INVALID_BOUNDARY');
+    const geometry=c.s.providers.parseBoundary(c.b.kml),areaHectares=await c.s.db.boundaryArea(geometry),sha256=hash(c.b.kml),boundaryId=hash('boundary:'+c.p.organisationId+':'+sha256);
+    const points=(geometry.type==='Polygon'?geometry.coordinates[0]:geometry.coordinates[0][0]) as [number,number][];
+    await c.s.db.put('tokens',row({id:boundaryId,type:'boundary-upload',organisationId:c.p.organisationId,ownerId:c.p.id,name:c.b.name.trim(),geometry,sha256,areaHectares}));
+    return {name:c.b.name.trim(),points,areaHectares,geometry,boundaryId,sha256};
+  },dev);
+  route('POST','/api/projects',async c=>c.s.createProject(c.p,text(c.b.registryRecord?.registryId??c.b.registryId),c.b.boundaryId??c.b.registryRecord?.boundaryId),['developer_admin']);
   route('POST','/api/admin/projects/:id/account',async c=>{
     const project=await c.s.required('projects',c.params.id);ensure(/^\d{10}$/.test(c.b.accountNumber??''),'INVALID_REQUEST');
     return c.s.db.lock('source-account:'+c.b.accountNumber,async tx=>{const assigned=await tx.get('tokens','source-account:'+c.b.accountNumber);ensure(!assigned||assigned.projectId===project.id,'FORBIDDEN',403);const balance=await c.s.providers.bank.call<BalanceResult>('GET',`/accounts/${c.b.accountNumber}/balance`);await tx.put('tokens',row({id:'source-account:'+c.b.accountNumber,projectId:project.id}));await tx.put('projects',{...project,sourceAccount:c.b.accountNumber,openingBalance:bankMoney(balance.available_balance)});await c.s.audit(c.p.id,'project.account_linked',project.id,{accountLastFour:c.b.accountNumber.slice(-4)});return {linked:true};});
   },['platform_admin']);
   route('GET','/api/projects/:id',async c=>c.s.project(c.p,c.params.id));
+  route('GET','/api/projects/:id/boundary',async c=>{const p=await c.s.project(c.p,c.params.id);ensure(p.boundary,'BOUNDARY_NOT_AVAILABLE',409);return {boundary:p.boundary,boundaryStatus:'available'};},dev);
+  route('POST','/api/projects/:id/boundary',async c=>{
+    await c.s.project(c.p,c.params.id,true);const file=await c.req.file();ensure(file&&/\.kml$/i.test(file.filename),'INVALID_BOUNDARY');
+    const bytes=await file.toBuffer();ensure(bytes.length<=2*1024*1024,'INVALID_BOUNDARY');const boundary=c.s.providers.parseBoundary(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+    return c.s.db.lock('boundary:'+c.params.id,async tx=>{const p=await tx.get('projects',c.params.id);ensure(p,'NOT_FOUND',404);const source={sha256:hash(bytes),filename:file.filename,uploadedAt:now(),uploadedBy:c.p.id};await tx.put('projects',{...p,boundary,boundaryStatus:'available',boundarySource:source});await tx.put('registry_history',row({projectId:p.id,registryId:p.registryId,principal:c.p.id,action:'boundary.uploaded',source,before:p.boundary??null,after:boundary}));return {boundary,boundaryStatus:'available',sha256:source.sha256};});
+  },dev);
+
   route('POST','/api/projects/:id/pdd',async c=>{
     await c.s.project(c.p,c.params.id,true);const file=await c.req.file();ensure(file?.mimetype==='application/pdf','PDD_UNREADABLE',422);
     const buffer=await file.toBuffer();ensure(buffer.subarray(0,5).toString()==='%PDF-','PDD_UNREADABLE',422);
@@ -128,18 +146,23 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('POST','/api/admin/extractions/:id/review',async c=>{
     const original=await c.s.required('commitments',c.params.id);ensure(c.b.reason&&typeof c.b.reason==='string','INVALID_REQUEST');
     const job=await c.s.required('jobs',original.id.replace(/^extraction:/,''));const proposal=c.b.commitment;
-    ensure(proposal&&Number.isFinite(proposal.percentage)&&proposal.percentage>=0&&proposal.percentage<=100&&['gross','net'].includes(proposal.basis)&&['monthly','quarterly','annual'].includes(proposal.cadence)&&Number.isInteger(proposal.page)&&typeof proposal.source_quote==='string'&&job.data.pages?.[proposal.page-1]?.includes(proposal.source_quote),'EXTRACTION_LOW_CONFIDENCE',422);
-    const record=await c.s.db.put('commitments',row({projectId:original.projectId,percentage:proposal.percentage,basis:proposal.basis,cadence:proposal.cadence,source_quote:proposal.source_quote,page:proposal.page,beneficiary_definition:proposal.beneficiary_definition,confidence:original.confidence,reviewStatus:'developer_review',original:false,supersedes:original.id,reviewedBy:c.p.id,reason:c.b.reason,accepted:false}));await c.s.audit(c.p.id,'extraction.reviewed',original.projectId,{originalId:original.id,reviewId:record.id,reason:c.b.reason});return record;
+    ensure(proposal&&Number.isFinite(proposal.percentage)&&proposal.percentage>=0&&proposal.percentage<=100&&['gross','net'].includes(proposal.basis)&&['monthly','quarterly','annual','staged'].includes(proposal.cadence)&&Number.isInteger(proposal.page)&&typeof proposal.source_quote==='string'&&job.data.pages?.[proposal.page-1]?.includes(proposal.source_quote),'EXTRACTION_LOW_CONFIDENCE',422);
+    validateCommitmentSchedule(proposal);
+    const record=await c.s.db.put('commitments',row({projectId:original.projectId,percentage:proposal.percentage,basis:proposal.basis,cadence:proposal.cadence,reportingCadence:proposal.reportingCadence,paymentSchedule:proposal.paymentSchedule,sourceLocator:proposal.sourceLocator,source_quote:proposal.source_quote,page:proposal.page,beneficiary_definition:proposal.beneficiary_definition,confidence:original.confidence,reviewStatus:'developer_review',original:false,supersedes:original.id,reviewedBy:c.p.id,reason:c.b.reason,accepted:false}));await c.s.audit(c.p.id,'extraction.reviewed',original.projectId,{originalId:original.id,reviewId:record.id,reason:c.b.reason});return record;
   },['platform_admin']);
   route('PATCH','/api/projects/:id/commitment',async c=>{
     await c.s.project(c.p,c.params.id,true);const original=(await c.s.db.list('commitments',{projectId:c.params.id})).at(-1);ensure(original,'PDD_NO_COMMITMENT',422);
-    ensure(['percentage','basis','cadence','beneficiary_definition','accepted'].includes(c.b.field)&&typeof c.b.reason==='string'&&c.b.reason.trim(),'INVALID_REQUEST');
+    ensure(['percentage','basis','cadence','reportingCadence','paymentSchedule','sourceLocator','beneficiary_definition','accepted'].includes(c.b.field)&&typeof c.b.reason==='string'&&c.b.reason.trim(),'INVALID_REQUEST');
     const next={...original,[c.b.field]:c.b.value,id:id(),createdAt:now(),original:false,supersedes:original.id,reason:c.b.reason};
-    ensure(typeof next.percentage==='number'&&Number.isFinite(next.percentage)&&next.percentage>=0&&next.percentage<=100&&['gross','net'].includes(next.basis)&&['monthly','quarterly','annual'].includes(next.cadence)&&typeof next.accepted==='boolean','INVALID_REQUEST');
+    ensure(typeof next.percentage==='number'&&Number.isFinite(next.percentage)&&next.percentage>=0&&next.percentage<=100&&['gross','net'].includes(next.basis)&&['monthly','quarterly','annual','staged'].includes(next.cadence)&&typeof next.accepted==='boolean','INVALID_REQUEST');
+    validateCommitmentSchedule(next);
     await c.s.audit(c.p.id,'commitment.reviewed',c.params.id,{previousId:original.id,field:c.b.field,reason:c.b.reason});return c.s.db.put('commitments',next);
   },dev);
-  route('POST','/api/projects/:id/register',async c=>{const p=await c.s.project(c.p,c.params.id,true);const carbon=await c.s.providers.bank.call<{id:string}>('POST','/carbon/projects',{name:p.name,type:c.b.type},hash(p.id+':register'));await c.s.db.put('projects',{...p,carbonId:carbon.id});return carbon;},dev);
-  for(const [method,suffix]of [['GET','mrv'],['POST','mrv'],['GET','certificates']])route(method,`/api/projects/:id/${suffix}`,async c=>{const p=await c.s.project(c.p,c.params.id,method==='POST');ensure(p.carbonId,'REGISTRY_NOT_FOUND',404);return c.s.providers.bank.call(method,`/carbon/projects/${p.carbonId}/${suffix}`,method==='POST'?c.b:undefined);},dev);
+  route('POST','/api/projects/:id/register',async c=>registerCarbon(c.s,c.p,c.params.id,c.b),dev);
+  route('POST','/api/projects/:id/mrv',async c=>submitMrv(c.s,c.p,c.params.id,c.b,hash(c.p.id+':mrv:'+String(c.req.headers['idempotency-key']))),dev);
+  route('GET','/api/projects/:id/mrv',async c=>listMrv(c.s,c.p,c.params.id),dev);
+  route('POST','/api/projects/:id/credits/retire',async c=>retireCredits(c.s,c.p,c.params.id,c.b,hash(c.p.id+':retire:'+String(c.req.headers['idempotency-key']))),dev);
+  route('GET','/api/projects/:id/certificates',async c=>certificates(c.s,c.p,c.params.id),dev);
   route('GET','/api/projects/:id/participants',async c=>{await c.s.project(c.p,c.params.id);const where:Record<string,unknown>={projectId:c.params.id};for(const [query,field]of [['status','status'],['agent','agentId'],['tier','kycLevel']])if(c.q[query])where[field]=query==='tier'?Number(c.q[query]):c.q[query];return paged(c,'participants',where,r=>({...r,phone:maskPhone(r.phone)}),{flagged:c.q.flagged==='true',search:c.q.q?{field:'name',value:c.q.q}:undefined});},dev);
   const enrolBatch=async(c:Context<{items:Record<string,unknown>[]}>)=>{ensure(Array.isArray(c.b.items)&&c.b.items.length>0&&c.b.items.length<=500,'INVALID_REQUEST');const results=[];for(const input of c.b.items){try{const p=await c.s.enrol(c.p,{...input,projectId:c.params.id??input.projectId});results.push({clientId:input.clientId,status:'success',data:{id:p.id,flags:p.flags}});}catch(e){results.push({clientId:input.clientId,status:'error',code:e instanceof Fault?e.code:'INTERNAL_ERROR'});}}return results;};
   route('POST','/api/projects/:id/participants',enrolBatch,dev);route('POST','/api/field/enrolments',enrolBatch,['agent']);
@@ -147,7 +170,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('PATCH','/api/participants/:id',async c=>{const p=await c.s.scoped(c.p,'participants',c.params.id,true);ensure(typeof c.b.reason==='string'&&c.b.reason.trim()&&Object.keys(c.b).every(k=>['phone','status','reason'].includes(k)),'INVALID_REQUEST');if(c.b.phone)ensure(/^\+\d{8,15}$/.test(c.b.phone),'INVALID_REQUEST');if(c.b.status)ensure(['active','removed','suspended'].includes(c.b.status),'INVALID_REQUEST');await c.s.audit(c.p.id,'participant.corrected',p.projectId,{participantId:p.id,reason:c.b.reason});return c.s.db.put('participants',{...p,phone:c.b.phone??p.phone,status:c.b.status??p.status});},dev);
   app.delete('/api/participants/:id',async()=>{throw new Fault('PARTICIPANT_DELETE_NOT_PERMITTED',403);});
   route('GET','/api/participants/:id/payments',async c=>{await c.s.scoped(c.p,'participants',c.params.id);return paged(c,'transfers',{participantId:c.params.id});},dev);
-  route('POST','/api/participants/:id/name-check',async c=>{const p=await c.s.scoped(c.p,'participants',c.params.id,true);const r=await c.s.providers.bank.call<NameResult>('POST',`/transfers/${p.bankCode==='000014'?'intrabank':'interbank'}/name-enquiry`,{account_number:p.accountNumber,destination_bank_code:p.bankCode});const match=r.account_name?nameMatch(p.name,r.account_name):'uncertain';const flags=p.flags.filter(f=>f!=='NAME_MISMATCH');if(match!=='match')flags.push('NAME_MISMATCH');await c.s.db.put('participants',{...p,resolvedAccountName:r.account_name??null,nameMatch:match,kycLevel:r.kyc_level??p.kycLevel,maskedBvn:r.bvn_masked??p.maskedBvn,flags});if(match==='uncertain'&&r.account_name)await c.s.enqueue('name-review',{participantId:p.id},'name-review:'+p.id+':'+hash(r.account_name));return {accountName:r.account_name,match,kycLevel:r.kyc_level,flags};},dev);
+  route('POST','/api/participants/:id/name-check',async c=>{const p=await c.s.scoped(c.p,'participants',c.params.id,true);const r=await c.s.providers.bank.call<NameResult>('POST',`/transfers/${p.bankCode==='000014'?'intra':'interbank'}/name-enquiry`,{account_number:p.accountNumber,destination_bank_code:p.bankCode});const match=r.account_name?nameMatch(p.name,r.account_name):'uncertain';const flags=p.flags.filter(f=>f!=='NAME_MISMATCH');if(match!=='match')flags.push('NAME_MISMATCH');await c.s.db.put('participants',{...p,resolvedAccountName:r.account_name??null,nameMatch:match,kycLevel:r.kyc_level??p.kycLevel,maskedBvn:r.bvn_masked??p.maskedBvn,flags});if(match==='uncertain'&&r.account_name)await c.s.enqueue('name-review',{participantId:p.id},'name-review:'+p.id+':'+hash(r.account_name));return {accountName:r.account_name,match,kycLevel:r.kyc_level,flags};},dev);
   route('GET','/api/projects/:id/agents',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'agents',{projectId:c.params.id});},dev);
   route('GET','/api/projects/:id/notifications/summary',async c=>{await c.s.project(c.p,c.params.id);const participants=await c.s.db.list('participants',{projectId:c.params.id});const notifications=await c.s.db.list('notifications',{projectId:c.params.id});const failed=new Set(notifications.filter(n=>['Failed','Rejected','Undelivered','failed','rejected'].includes(n.deliveryStatus??'')).map(n=>n.participantId));return {enrolled:participants.length,noticePending:participants.filter(p=>p.noticeStatus!=='sent').length,noReachableNumber:participants.filter(p=>!p.phone||failed.has(p.id)).length};},[...dev,...ops]);
   route('POST','/api/projects/:id/agents/invite',async c=>{await c.s.project(c.p,c.params.id,true);const code=id()+id();await c.s.db.put('invites',row({id:hash(code),projectId:c.params.id,organisationId:c.p.organisationId,name:c.b.name,email:c.b.email,expiresAt:new Date(Date.now()+2*86400_000).toISOString(),used:false,revoked:false}));return {code};},['developer_admin']);
@@ -205,6 +228,15 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('POST','/api/disputes/:id/respond',async c=>{const d=await c.s.scoped(c.p,'disputes',c.params.id,true);ensure(!c.b.status&&!c.b.resolutionBasis,'DISPUTE_RESOLUTION_BASIS_REQUIRED',403);ensure(typeof c.b.body==='string'&&c.b.body.length<=4000,'INVALID_REQUEST');await c.s.audit(c.p.id,'dispute.response',d.projectId,{disputeId:d.id,body:c.b.body});return c.s.db.put('disputes',{...d,status:'developer_responded'});},dev);
   route('GET','/api/projects/:id/attestations',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'attestations',{projectId:c.params.id},a=>c.s.publicAttestation(a));},dev);
   route('GET','/api/attestations/:id',async c=>c.s.publicAttestation(await c.s.scoped(c.p,'attestations',c.params.id)),dev);
+  app.get('/api/attestations/:id/report',async(req,reply)=>{
+    const p=await session(db,req.headers.authorization,req.headers.cookie);ensure([...dev,'verifier'].includes(p.role),'FORBIDDEN',403);
+    const a=await root.required('attestations',(req.params as {id:string}).id);if(p.role!=='verifier')await root.project(p,a.projectId);
+    const query=queryValues(req.query??{}),format=query.format??(String(req.headers.accept??'').split(',')[0].split(';')[0].trim()==='application/pdf'?'pdf':'json');ensure(['json','pdf'].includes(format),'INVALID_REQUEST');reply.header('Vary','Accept');
+    const report=await benefitSharingReport(root,a.id);if(format==='json')return ok(req,report);
+    await root.audit(p.id,'benefit_report.downloaded',a.projectId,{attestationId:a.id});return reply.type('application/pdf').header('Content-Disposition',`attachment; filename="benefit-sharing-${a.hash.slice(0,16)}.pdf"`).send(await benefitSharingPdf(report));
+  });
+  route('GET','/api/attestations/:id/benefit-sharing',async c=>{const a=await c.s.required('attestations',c.params.id);if(c.p.role!=='verifier')await c.s.project(c.p,a.projectId);return benefitSharingReport(c.s,a.id);},[...dev,'verifier']);
+  app.get('/api/attestations/:id/benefit-sharing/pdf',async(req,reply)=>{const p=await session(db,req.headers.authorization,req.headers.cookie);ensure([...dev,'verifier'].includes(p.role),'FORBIDDEN',403);const a=await root.required('attestations',(req.params as {id:string}).id);if(p.role!=='verifier')await root.project(p,a.projectId);const report=await benefitSharingReport(root,a.id);await root.audit(p.id,'benefit_report.downloaded',a.projectId,{attestationId:a.id});return reply.type('application/pdf').header('Content-Disposition',`attachment; filename="benefit-sharing-${a.hash.slice(0,16)}.pdf"`).send(await benefitSharingPdf(report));});
   route('POST','/api/attestations/:id/disclosure',async c=>c.s.disclosure(await c.s.scoped(c.p,'attestations',c.params.id),c.b.transferId),dev);
   const pdfBytes=async(a:import('./models.js').Attestation)=>db.lock('pdf:'+a.hash,async tx=>{const cached=await tx.get('tokens','pdf:'+a.hash);if(cached)return Buffer.from(cached.bytes!,'base64');const bytes=await attestationPdf(a);await tx.put('tokens',row({id:'pdf:'+a.hash,bytes:bytes.toString('base64'),fileHash:hash(bytes)}));return bytes;});
   app.get('/api/public/attestations/:id/pdf',async(req,reply)=>{const a=await root.required('attestations',(req.params as {id:string}).id);return reply.type('application/pdf').header('Content-Disposition',`attachment; filename="attestation-${a.hash.slice(0,16)}.pdf"`).send(await pdfBytes(a));});
@@ -235,17 +267,17 @@ export async function createApp(db: Store, suppliedService?: Service) {
     if(c.b.format==='csv'){
       const escape=(v:unknown)=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')+'"';
       const columns=['period','enrolledCount','paidCount','amountCommitted','amountMovedToHouseholds','chargesBorne','shortfall','closedAt'] as const;
-      const content=[[...columns,'hash','signature'].map(escape).join(','),...a.map(r=>[...columns.map(k=>r.document[k]),r.hash,r.signature].map(escape).join(','))].join('\r\n');return {format:'csv',contentType:'text/csv',content};
+      const content=[[...columns,'hash','signature','isDemonstration','paymentData','demonstrationNotice'].map(escape).join(','),...a.map(r=>{const disclosure=c.s.publicAttestation(r);return [...columns.map(k=>r.document[k]),r.hash,r.signature,disclosure.isDemonstration,disclosure.paymentData,disclosure.demonstrationNotice].map(escape).join(',');})].join('\r\n');return {format:'csv',contentType:'text/csv',content};
     }
-    if(c.b.format==='pdf')return {format:'pdf',downloads:a.map(r=>({attestationId:r.id,url:`/api/public/attestations/${r.id}/pdf`}))};
-    return {format:'json',attestations:a.map(r=>c.s.publicAttestation(r))};
+    if(c.b.format==='pdf')return {format:'pdf',downloads:a.map(r=>({attestationId:r.id,url:`/api/attestations/${r.id}/report?format=pdf`}))};
+    ensure(!c.b.format||c.b.format==='json','INVALID_REQUEST');return {format:'json',attestations:a.map(r=>c.s.publicAttestation(r)),reports:await Promise.all(a.map(r=>benefitSharingReport(c.s,r.id)))};
   },['verifier']);
   route('GET','/api/ops/signals',async c=>paged(c,'signals',c.q.class?{class:c.q.class}:{}),ops);
   route('GET','/api/ops/signals/:id',async c=>c.s.required('signals',c.params.id),ops);
   route('GET','/api/ops/signals/:id/graph',async c=>{const s=await c.s.required('signals',c.params.id);const edges=s.detail.edges??(s.detail.to?s.participantIds.map((id:string)=>({from:id,to:s.detail.to})):[]);const ids=new Set<string>(s.participantIds);for(const edge of edges){ids.add(edge.from);if(edge.to)ids.add(edge.to);}return {nodes:[...ids].map(id=>({id})),edges,sampled:s.detail.sampled??true};},ops);
   route('GET','/api/ops/cases',async c=>paged(c,'cases'),ops);
-  route('POST','/api/ops/cases/:id/action',async c=>{const r=await c.s.required('cases',c.params.id);ensure(['request_documentation','escalate','clear','substantiated','freeze','unfreeze'].includes(c.b.action)&&typeof c.b.note==='string'&&c.b.note.trim().length>0&&c.b.note.length<=4000,'INVALID_REQUEST');if(['freeze','unfreeze'].includes(c.b.action)){ensure(process.env.BANK_ACCOUNT_CONTROL_PATH,'BANK_CAPABILITY_UNCONFIGURED',503);const signal=await c.s.required('signals',r.signalId);for(const participantId of signal.participantIds)await c.s.enqueue('account-control',{participantId,action:c.b.action,caseId:r.id,reason:c.b.note});}const updated=await c.s.db.put('cases',{...r,status:c.b.action==='clear'?'unsubstantiated':c.b.action,actions:[...r.actions,{action:c.b.action,note:c.b.note,at:now(),by:c.p.id}]});await c.s.audit(c.p.id,'case.action',r.projectId,{caseId:r.id,action:c.b.action});if(c.b.action==='substantiated')for(const run of await c.s.db.list('runs',{projectId:r.projectId}))await c.s.enqueue('correction',{projectId:r.projectId,runId:run.id,reason:'substantiated_case'},'case-correction:'+r.id+':'+run.id);return updated;},ops);
-  route('POST','/api/ops/projects/:id/onward-sync',async c=>{await c.s.required('projects',c.params.id);ensure(process.env.BANK_FLOW_PATH,'BANK_CAPABILITY_UNCONFIGURED',503);return {jobId:(await c.s.enqueue('onward-sync',{projectId:c.params.id})).id};},ops);
+  route('POST','/api/ops/cases/:id/action',async c=>{const r=await c.s.required('cases',c.params.id);ensure(['request_documentation','escalate','clear','substantiated','freeze','unfreeze'].includes(c.b.action)&&typeof c.b.note==='string'&&c.b.note.trim().length>0&&c.b.note.length<=4000,'INVALID_REQUEST');if(['freeze','unfreeze'].includes(c.b.action)){const signal=await c.s.required('signals',r.signalId);for(const participantId of signal.participantIds)await c.s.enqueue('account-control',{participantId,action:c.b.action,caseId:r.id,reason:c.b.note});}const updated=await c.s.db.put('cases',{...r,status:c.b.action==='clear'?'unsubstantiated':c.b.action,actions:[...r.actions,{action:c.b.action,note:c.b.note,at:now(),by:c.p.id}]});await c.s.audit(c.p.id,'case.action',r.projectId,{caseId:r.id,action:c.b.action});if(c.b.action==='substantiated')for(const run of await c.s.db.list('runs',{projectId:r.projectId}))await c.s.enqueue('correction',{projectId:r.projectId,runId:run.id,reason:'substantiated_case'},'case-correction:'+r.id+':'+run.id);return updated;},ops);
+  route('POST','/api/ops/projects/:id/onward-sync',async c=>{await c.s.required('projects',c.params.id);return {jobId:(await c.s.enqueue('onward-sync',{projectId:c.params.id})).id};},ops);
   route('GET','/api/ops/exceptions',async c=>paged(c,'participants',{},p=>({id:p.id,projectId:p.projectId,flags:p.flags}),{flagged:true}),ops);
   route('GET','/api/ops/reconciliation',async c=>list(c,await Promise.all((await c.s.db.list('projects')).filter(p=>p.sourceAccount).map(p=>c.s.reconciliation(p.id)))),ops);
   route('POST','/api/ops/webhooks/recover',async c=>c.s.recoverWebhooks(),ops);
@@ -258,8 +290,8 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('POST','/hooks/forge',async c=>{
     const configuredSecret=process.env.FORGE_WEBHOOK_SECRET??(await c.s.db.get('tokens','forge-webhook-secret'))?.secret??'';
     ensure(verifyWebhook(c.req.rawBody??'',String(c.req.headers['x-forge-timestamp']??''),String(c.req.headers['x-forge-signature']??''),configuredSecret),'FORBIDDEN',403);
-    ensure(typeof c.b.event_id==='string'&&typeof c.b.type==='string','INVALID_REQUEST');
-    await c.s.db.lock('event:'+c.b.event_id,async tx=>{if(await tx.get('events',c.b.event_id))return;await tx.put('events',row({id:c.b.event_id,type:c.b.type}));await tx.put('jobs',row({id:'event:'+c.b.event_id,type:'forge-event',data:c.b,state:'pending',attempts:0,nextAt:now()}));});return {accepted:true};
+    ensure(typeof c.b.event_id==='string'&&c.b.event_id.length<=200&&typeof(c.b.event??c.b.type)==='string','INVALID_REQUEST');const eventType=String(c.b.event??c.b.type);ensure(!c.b.event||!c.b.type||c.b.event===c.b.type,'INVALID_REQUEST');ensure(!c.req.headers['x-forge-event']||c.req.headers['x-forge-event']===eventType,'INVALID_REQUEST');record(c.b.data);
+    await c.s.db.lock('event:'+c.b.event_id,async tx=>{if(await tx.get('events',c.b.event_id))return;await tx.put('events',row({id:c.b.event_id,type:eventType}));await tx.put('jobs',row({id:'event:'+c.b.event_id,type:'forge-event',data:{...c.b,type:eventType},state:'pending',attempts:0,nextAt:now()}));});return {accepted:true};
   },undefined,true);
   const callback=async(c:Pick<Context,'req'>)=>{ensure(process.env.AT_CALLBACK_SECRET&&c.req.headers.authorization===`Bearer ${process.env.AT_CALLBACK_SECRET}`,'FORBIDDEN',403);};
   route('POST','/api/webhooks/sms-delivery',async c=>{await callback(c);const n=(await c.s.db.list('notifications',{providerMessageId:c.b.id}))[0];if(n)await c.s.db.put('notifications',{...n,deliveryStatus:c.b.status});return {accepted:true};},undefined,true);

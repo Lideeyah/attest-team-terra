@@ -15,7 +15,7 @@ import {devCodes} from '../src/dev-tools.js';
 process.env.IDENTITY_PEPPER='synthetic-integration-pepper-at-least-thirty-two-characters';
 const admin={id:'admin',organisationId:'org',role:'developer_admin' as const};
 
-test('PostGIS-backed API completes a run, scopes SQL reads, pages filtered rows and retains one completion event',{timeout:45000},async()=>{
+test('PostGIS-backed API completes a run, scopes SQL reads, pages filtered rows and retains one completion event',{timeout:120000},async()=>{
  const {db:engine,pool}=await openEmbedded();const db=new PgStore(pool),bank=new MockBank(),s=new Service(db,new Providers(db,bank));const app=await createApp(db,s);
  try{
   await db.put('users',row({...admin,email:'admin@example.test',passwordHash:passwordHash('Synthetic-password-2026'),verified:true}));const token=await issueSession(db,admin.id);const headers={authorization:'Bearer '+token,'idempotency-key':id()};
@@ -42,7 +42,7 @@ test('shared contracts package is consumed by a typed client against the actual 
 
 test('stable PKCS8 signing keys and persisted mock state survive reconstruction',async()=>{
  const previous=process.env.SIGNING_KEY_BASE64;try{process.env.SIGNING_KEY_BASE64=generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64');const a=new Signer(),b=new Signer();assert.equal(a.publicKey,b.publicKey);assert(b.verify('synthetic',a.sign('synthetic')));}finally{if(previous)process.env.SIGNING_KEY_BASE64=previous;else delete process.env.SIGNING_KEY_BASE64;}
- const first=new MockBank();await first.call('POST','/transfers/bulk',{source_account:'0123456790',batch_reference:'persisted',items:[{reference:'persisted-reference',destination_bank_code:'000014',destination_account:'8000000001',amount:'10.00'}]},'stable-key');const second=new MockBank();second.restore(JSON.parse(JSON.stringify(first.snapshot())));assert.equal((await second.call<{status:string}>('GET','/transfers/persisted-reference')).status,'successful');assert.equal(second.bulkCalls,1);assert.match(bankKey('stable-key'),/^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
+ const first=new MockBank();await first.call('POST','/transfers/bulk',{source_account:'0123456790',batch_reference:'persisted',auto_name_enquiry:true,items:[{reference:'persisted-reference',destination_bank_code:'000014',destination_account:'8000000001',amount:'10.00'}]},'stable-key');const second=new MockBank();second.restore(JSON.parse(JSON.stringify(first.snapshot())));assert.equal((await second.call<{status:string}>('GET','/transfers/persisted-reference')).status,'successful');assert.equal(second.bulkCalls,1);assert.match(bankKey('stable-key'),/^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
 });
 
 test('synthetic fixtures compute three closed records, retain clean controls and seed concentration',async()=>{

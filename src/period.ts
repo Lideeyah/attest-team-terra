@@ -1,4 +1,16 @@
 import { ensure } from './core.js';
+import type {ReportingCadence} from './contracts.js';
+export function reportingCadence(commitment:{cadence:string;reportingCadence?:string}):ReportingCadence{
+ const cadence=commitment.cadence==='staged'?commitment.reportingCadence:commitment.cadence??'quarterly';
+ ensure(cadence&&['monthly','quarterly','annual'].includes(cadence),commitment.cadence==='staged'?'REPORTING_CADENCE_REQUIRED':'INVALID_REQUEST',422);
+ return cadence as ReportingCadence;
+}
+export function validateCommitmentSchedule(value:{cadence:string;reportingCadence?:string;paymentSchedule?:unknown;sourceLocator?:unknown}){
+ reportingCadence(value);
+ if(value.reportingCadence!==undefined)ensure(['monthly','quarterly','annual'].includes(value.reportingCadence),'INVALID_REQUEST');
+ if(value.sourceLocator!==undefined)ensure(typeof value.sourceLocator==='string'&&value.sourceLocator.length>0&&value.sourceLocator.length<=200,'INVALID_REQUEST');
+ if(value.paymentSchedule!==undefined){const schedule=value.paymentSchedule;ensure(typeof schedule==='object'&&schedule!==null&&'type'in schedule&&schedule.type==='verification_milestones'&&'description'in schedule&&typeof schedule.description==='string'&&schedule.description.length>0&&schedule.description.length<=2000,'INVALID_REQUEST');}
+}
 export function currentPeriod(cadence:string,date=new Date()):string{const year=date.getUTCFullYear();if(cadence==='quarterly')return `${year}-Q${Math.floor(date.getUTCMonth()/3)+1}`;if(cadence==='annual')return String(year);ensure(cadence==='monthly','INVALID_REQUEST');return date.toISOString().slice(0,7);}
 export function periodDeadline(period:string,cadence:string):string {
  let result:Date;

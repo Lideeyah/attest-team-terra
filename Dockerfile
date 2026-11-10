@@ -6,6 +6,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
+COPY data ./data
 COPY tests ./tests
 COPY packages ./packages
 RUN npm run build:production && npm prune --omit=dev

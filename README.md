@@ -1,8 +1,10 @@
 # Attest backend
 
-Implementation of Raheem's backend lane from the supplied product and backend specifications. Node 24+, TypeScript, Fastify, PostgreSQL/PostGIS, Auth.js, a durable database job queue, and independently selectable mock/live providers.
+Implementation of Raheem's backend lane, including the participant bank contract and Spec Patch 02. TypeScript, Fastify, PostgreSQL/PostGIS, Auth.js, a durable database job queue, and independently selectable mock/live providers. Production uses Node 24; local checks also ran with the installed Node 23.11.0. See the [consolidated specification alignment](docs/specification-alignment.md) and [completion handover](docs/backend-completion.md) for the API additions, evidence and release boundaries.
 
-For the supplied `team05.yml`, use `.\forge.cmd get pods` from PowerShell. The project-local client is installed; see [Kubernetes access](docs/kubernetes-access.md) for setup and the current certificate-trust blocker.
+Frontend developers: start with the [frontend integration guide](docs/frontend-integration.md) for local setup, browser authentication, onboarding, enrolment, payments, live updates and report downloads. The companion [endpoint reference](docs/frontend-api-reference.md) maps the remaining screens, roles and request/response shapes.
+
+For the supplied `team05.yml`, use `.\forge.cmd get pods` from PowerShell. The project-local client is installed; see [Kubernetes access](docs/kubernetes-access.md) for setup and the current access status.
 
 The repository started with five specification files and no application. The original files are unchanged. This implementation is suitable for local review and integration work; it has not been deployed or certified against the Forge sandbox. See [assignment status](docs/raheem-status.md) for the remaining work and integration boundaries.
 
@@ -14,7 +16,7 @@ npm test
 node dist/scripts/demo.js
 ```
 
-The demonstration generates `output/offline-demo.json` and a visibly labelled `output/offline-attestation.pdf`: 500 synthetic households, one mock bulk submission, a computed attestation, an Ed25519 signature, a Merkle disclosure, and a chain integrity check. Its anchor is explicitly marked `mock`. No real bank, registry, messaging, or ledger calls are made.
+The demonstration generates `output/offline-demo.json` and a visibly labelled `output/offline-attestation.pdf`: 500 synthetic households, three bounded mock bulk submissions, a computed attestation, an Ed25519 signature, a Merkle disclosure, and a chain integrity check. Its anchor is explicitly marked `mock`. No real bank, registry, messaging, or ledger calls are made.
 
 To inspect the bank operations console:
 
@@ -47,7 +49,7 @@ Redis is provisioned without persistence to fit the platform's single-PV limit. 
 
 Direct HCS testnet submission uses the official Hedera SDK, persists the signed transaction before submission, reuses its transaction ID after uncertainty, and supports mirror-node message verification. Configure `HEDERA_ACCOUNT_ID`, `HEDERA_PRIVATE_KEY` (DER), and an existing `HEDERA_TOPIC_ID`. See the [Hedera submit-message reference](https://docs.hedera.com/native/consensus/submit-message). An optional configured HCS bridge can also be used. No transaction was submitted during local verification.
 
-The section 5 JSON auth endpoints also support opaque bearer tokens for API clients. Every JSON mutation requires `Idempotency-Key` with 8–200 characters, except authenticated inbound callbacks. A replay with the same principal, key, URL, method, and body returns the stored result; a changed request returns 409.
+The section 5 JSON auth endpoints also support opaque bearer tokens for API clients. Every JSON mutation requires `Idempotency-Key` with 8â€“200 characters, except authenticated inbound callbacks. A replay with the same principal, key, URL, method, and body returns the stored result; a changed request returns 409.
 
 Public signup creates an unverified developer administrator in a new organisation. It cannot grant verifier, bank ops, agent, or platform admin privileges. Verification and reset messages are durable SMTP jobs. Configure `MAIL_PROVIDER=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `MAIL_FROM` for TLS-protected delivery. An operator can also issue a token through the approved credential workflow using:
 
@@ -58,7 +60,7 @@ node dist/scripts/auth-token.js developer@example.test reset
 
 Deliver the resulting token through the user's approved channel. The JSON API accepts it at `/api/auth/verify-email` or `/api/auth/reset/confirm`. No debug endpoint exposes these tokens. Operational roles must be provisioned by an authorised database operator; agent identities come from single-use, expiring project invites.
 
-The shared wire types are in `src/contracts.ts`. JSON responses use the specification's success/error envelope. Amounts are NGN decimal strings. Lists accept `page` and `per_page` (maximum 100). Run creation additionally requires `closesAt` in UTC and a source account; the deadline is needed by the automatic close worker. Public readers use a strict allowlist and never receive household names, phones, identity numbers, or coordinates. H3 geography suppresses buckets containing fewer than five households.
+The browser-safe shared wire types are in `packages/contracts` (`@attest/contracts`), re-exported by `src/contracts.ts`. JSON responses use the specification's success/error envelope. Amounts are NGN decimal strings. Lists accept `page` and `per_page` (maximum 100). Run deadlines are computed from the reporting cadence and period; production payments require a platform-linked source account. Staged commitments require a separate reporting cadence. Public readers use a strict allowlist and never receive household names, phones, identity numbers, or coordinates. H3 geography suppresses buckets containing fewer than five households.
 
 Verifier rules evaluate coverage, disputes, late closes and corrections, retaining deduplicated alert events and queueing SMTP delivery. CSV exports escape spreadsheet formula prefixes. PDF downloads embed the signed JSON record; uploaded verification checks the exact cached file hash as well as the record signature.
 
@@ -83,4 +85,4 @@ Set `TEST_DATABASE_URL` to an isolated migrated PostGIS database to enable the d
 
 The production image uses a non-root user, listens on `0.0.0.0:8080`, and exposes `/healthz`. Kubernetes manifests have four pods, three Services, one 5Gi PVC, total requests of 300m CPU and 704Mi RAM, and total limits of 2 CPU and 1888Mi RAM. Service `app` publishes port 80. Replace the registry image placeholders with a versioned image. Provision `postgres-credentials` and `attest-runtime` secrets through your credential workflow; `huawei-gateway` is injected directly from the namespace.
 
-Do not apply the manifests until database ownership, migrations, runtime secrets, pull credentials, and the bank adapter checks in the status document have been reviewed. The supplied `team05.yml` is ignored by Git and used by the project-local wrapper. Live access currently fails certificate validation; no image was pushed and no cluster resources were modified.
+Apply migrations through `004_batches_and_boundaries.sql` before starting this version. Public release also requires database ownership, runtime secrets, image/pull credentials and frontend integration. The supplied `team05.yml` remains private and is used by the project-local wrapper. Cluster access and a small mixed-bank synthetic batch were verified; the temporary diagnostic pod was deleted. No public app was deployed or image pushed. See the [completion handover](docs/backend-completion.md).

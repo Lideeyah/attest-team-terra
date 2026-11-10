@@ -1,8 +1,10 @@
 import pg from 'pg';
 import type {EntityMap} from './models.js';
+import type {Boundary} from './registry.js';
+import {boundaryAreaHectares} from './registry.js';
 import { Fault, row, type Row, type Principal } from './core.js';
 
-export const tables = ['users','sessions','tokens','invites','projects','commitments','participants','agents','rosters','runs','transfers','confirmations','attestations','anchors','disputes','signals','cases','audit','jobs','receipts','events','idempotency','watchlist','alerts','notifications','evidence','registry_history'] as const;
+export const tables = ['users','sessions','tokens','invites','projects','commitments','participants','agents','rosters','runs','transfers','transfer_batches','confirmations','attestations','anchors','disputes','signals','cases','audit','jobs','receipts','events','idempotency','watchlist','alerts','notifications','evidence','registry_history'] as const;
 export type Table = typeof tables[number];
 export interface PageOptions{page:number;perPage:number;where?:Record<string,unknown>;search?:{field:string;value:string};flagged?:boolean;sort?:string;descending?:boolean;}
 export interface SqlResult{rows:Record<string,unknown>[];rowCount:number|null;}
@@ -15,6 +17,7 @@ export interface Store {
   put<T extends Table>(table: T, value: Row): Promise<EntityMap[T]>;
   lock<T>(key: string, work: (tx: Store) => Promise<T>): Promise<T>;
   inside(projectId: string, point: [number, number]): Promise<boolean>;
+  boundaryArea(boundary:Boundary):Promise<number>;
   scoped<T extends Table>(table: T, id: string, principal: Principal): Promise<EntityMap[T] | undefined>;
   asActor(actor: string): Store;
 }
@@ -44,10 +47,11 @@ export class PgStore implements Store {
   async get<T extends Table>(table: T, id: string) { return (await this.query(`SELECT data FROM "${table}" WHERE id=$1`, [id])).rows[0]?.data as EntityMap[T] | undefined; }
   async put<T extends Table>(table: T, value: Row):Promise<EntityMap[T]> {
     if(!this.client)return this.lock('write:'+table+':'+value.id,tx=>tx.put(table,value));
+    if(table==='projects'&&value.boundary){const result=await this.query('SELECT ST_IsValid(g) AND NOT ST_IsEmpty(g) AND ST_Area(g)>0 AS valid FROM (SELECT ST_SetSRID(ST_GeomFromGeoJSON($1),4326) g) b',[JSON.stringify(value.boundary)]);if(result.rows[0]?.valid!==true)throw new Fault('INVALID_BOUNDARY');}
     const append = ['attestations','audit','confirmations','events','evidence','registry_history','commitments'].includes(table);
     try {
       await this.query(`INSERT INTO "${table}" (id,data) VALUES ($1,$2::jsonb) ${append ? '' : 'ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data'}`, [value.id, JSON.stringify(value)]);
-      if (table === 'projects' && value.boundary) await this.query('UPDATE projects SET boundary=ST_SetSRID(ST_GeomFromGeoJSON($2),4326) WHERE id=$1', [value.id,JSON.stringify(value.boundary)]);
+      if (table === 'projects' && value.boundary) await this.query('UPDATE projects SET boundary=ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($2),4326)) WHERE id=$1', [value.id,JSON.stringify(value.boundary)]);
       if (table === 'participants' && value.point) await this.query('UPDATE participants SET location=ST_SetSRID(ST_MakePoint($2,$3),4326) WHERE id=$1',[value.id,...value.point as [number,number]]);
       return value as EntityMap[T];
     } catch (e: unknown) { if (typeof e==='object'&&e!==null&&'code'in e&&e.code === '23505') throw new Fault('DUPLICATE_REQUEST',409); throw e; }
@@ -64,10 +68,15 @@ export class PgStore implements Store {
     catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
   }
   async inside(projectId: string, point: [number,number]) { return (await this.query('SELECT ST_Contains(boundary,ST_SetSRID(ST_MakePoint($2,$3),4326)) AS inside FROM projects WHERE id=$1',[projectId,...point])).rows[0]?.inside === true; }
+  async boundaryArea(boundary:Boundary){
+    const result=await this.query('SELECT ST_IsValid(g) AS valid, CASE WHEN ST_IsValid(g) THEN ST_Area(g::geography)/10000 END AS hectares FROM (SELECT ST_SetSRID(ST_GeomFromGeoJSON($1),4326) g) b',[JSON.stringify(boundary)]);
+    const area=Number(result.rows[0]?.hectares);if(result.rows[0]?.valid!==true||!Number.isFinite(area)||area<=0)throw new Fault('INVALID_BOUNDARY');return area;
+  }
 }
 
 // Test-only store. The production entry point always requires PostgreSQL.
 export class MemoryStore implements Store {
+  async boundaryArea(boundary:Boundary){return boundaryAreaHectares(boundary);}
   data = new Map<string,Row>(); private locks = new Map<string,Promise<unknown>>();
   private actor='worker';
   asActor(actor:string):Store {const view=Object.create(this) as MemoryStore;view.actor=actor;return view;}
@@ -89,8 +98,13 @@ export class MemoryStore implements Store {
     try { return await fn(this); } finally { release(); if (this.locks.get(key) === next) this.locks.delete(key); }
   }
   async inside(projectId: string, point: [number,number]) {
-    const p = await this.get('projects',projectId); const ring = p?.boundary?.coordinates?.[0] ?? []; let inside = false;
-    for(let i=0,j=ring.length-1;i<ring.length;j=i++) { const [xi,yi]=ring[i], [xj,yj]=ring[j]; if((yi>point[1]) !== (yj>point[1]) && point[0]<(xj-xi)*(point[1]-yi)/(yj-yi)+xi) inside=!inside; }
-    return inside;
+    const p=await this.get('projects',projectId);if(!p?.boundary)return false;
+    const polygons=(p.boundary.type==='Polygon'?[p.boundary.coordinates]:p.boundary.coordinates) as [number,number][][][];
+    const inRing=(ring:[number,number][]):number=>{let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const [xi,yi]=ring[i],[xj,yj]=ring[j];
+      if((point[0]-xi)*(yj-yi)===(point[1]-yi)*(xj-xi)&&point[0]>=Math.min(xi,xj)&&point[0]<=Math.max(xi,xj)&&point[1]>=Math.min(yi,yj)&&point[1]<=Math.max(yi,yj))return 0;
+      if((yi>point[1])!==(yj>point[1])&&point[0]<(xj-xi)*(point[1]-yi)/(yj-yi)+xi)inside=!inside;
+    }return inside?1:-1;};
+    return polygons.some(rings=>inRing(rings[0])===1&&!rings.slice(1).some(ring=>inRing(ring)>=0));
   }
 }
