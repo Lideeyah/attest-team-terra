@@ -5,11 +5,12 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { ArithmeticPanel } from "@/components/console/ArithmeticPanel";
 import { ExecuteRun } from "@/components/console/ExecuteRun";
+import { PreflightExclusions } from "@/components/console/PreflightExclusions";
 import { api } from "@/lib/api/client";
 import { RUN_COPY } from "@/lib/copy/console";
 import { headingFor } from "@/lib/copy/codes";
 import type { ErrorCode } from "@/lib/api/contract";
-import { formatCount, formatNaira, formatPeriod } from "@/lib/record";
+import { UNKNOWN, formatCount, formatNaira, formatPeriod } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "New run",
@@ -101,6 +102,34 @@ export default async function NewRunPage({
   }
 
   const project = projectResult.ok ? projectResult.data : null;
+
+  /* A suspended project cannot create a run, and the run builder is where
+     that has to be said: home saying it is not the same as this screen
+     offering to execute one. */
+  if (project?.status === "suspended" || project?.status === "withdrawn") {
+    return (
+      <div className="console-page stack-lg">
+        <header className="stack">
+          <p className="eyebrow">{RUN_COPY.newHeading}</p>
+          <h1 className="h2-display">No run can be created</h1>
+          <Rule weight="heavy" />
+        </header>
+        <Notice
+          tone="blocked"
+          title={
+            project.status === "suspended"
+              ? "This project is suspended"
+              : "This project is withdrawn"
+          }
+        >
+          <p data-run-blocked={project.status}>
+            The record stays readable and every figure already published stands.
+            No new run is created while the project is {project.status}.
+          </p>
+        </Notice>
+      </div>
+    );
+  }
   const runs = runsResult.ok ? runsResult.data : [];
   const openPeriod = project?.periods.find((period) => period.state === "open") ?? null;
 
@@ -140,8 +169,8 @@ export default async function NewRunPage({
 
   const figures = arithmetic && arithmetic.ok ? arithmetic.data : null;
   const shortfall = figures ? Number(figures.shortfall) : 0;
-  const exclusions =
-    preflight && preflight.ok ? preflight.data.exclusions : [];
+  const exclusions = preflight && preflight.ok ? preflight.data.exclusions : [];
+  const outstanding = exclusions.filter((exclusion) => !exclusion.excluded);
   const passed = preflight && preflight.ok ? preflight.data.passed : null;
 
   return (
@@ -192,9 +221,9 @@ export default async function NewRunPage({
               </dd>
             </div>
             <div>
-              <dt className="eyebrow">Funding in the account</dt>
+              <dt className="eyebrow">Funding allocated to this run</dt>
               <dd className="record-cell">
-                {figures ? formatNaira(figures.funded) : "—"}
+                {figures ? formatNaira(figures.funded) : UNKNOWN}
               </dd>
             </div>
           </dl>
@@ -213,41 +242,11 @@ export default async function NewRunPage({
         <section className="stack" aria-label="Pre-flight">
           <h2 className="h3-display">Pre-flight</h2>
           <Rule />
-          {passed === true ? (
-            <Notice title="Pre-flight passed">
-              <p data-preflight="passed">{RUN_COPY.preflightPassed}</p>
-            </Notice>
-          ) : (
-            <>
-              <Notice
-                tone="flagged"
-                title={`${formatCount(exclusions.length)} enrolments cannot be paid as they stand`}
-              >
-                <p data-preflight="exclusions">
-                  Each must be excluded with a reason or corrected before the
-                  run executes. An exclusion stays on the record and is counted
-                  in the period&rsquo;s coverage denominator.
-                </p>
-              </Notice>
-              <ul className="stack-tight">
-                {exclusions.map((exclusion) => (
-                  <li key={exclusion.participantId} className="exclusion-row">
-                    <Link
-                      href={`/app/roster/${exclusion.participantId}`}
-                      prefetch={false}
-                      className="record-cell"
-                    >
-                      {exclusion.participantId}
-                    </Link>
-                    <span className="record-cell">
-                      {headingFor(exclusion.reason, exclusion.detail)}
-                    </span>
-                    <span className="note">{exclusion.detail}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <PreflightExclusions
+            runId={candidate?.id ?? ""}
+            exclusions={exclusions}
+            passed={passed === true}
+          />
         </section>
       ) : null}
 
@@ -272,11 +271,28 @@ export default async function NewRunPage({
               <p>{RUN_COPY.noShortfall}</p>
             </Notice>
           )}
-          <ExecuteRun
-            runId={candidate?.id ?? ""}
-            shortfall={figures.shortfall}
-            households={project?.enrolled ?? 0}
-          />
+          {passed === false ? (
+            <Notice
+              tone="blocked"
+              title={`${formatCount(outstanding.length)} enrolments are still outstanding at pre-flight`}
+            >
+              <p data-execute-blocked="exclusions">
+                Each has to be excluded with a reason or corrected first. The
+                run does not execute while pre-flight has not passed.
+              </p>
+              <p>
+                <Link href="/app/runs/new?step=preflight" prefetch={false}>
+                  Go back to pre-flight
+                </Link>
+              </p>
+            </Notice>
+          ) : (
+            <ExecuteRun
+              runId={candidate?.id ?? ""}
+              shortfall={figures.shortfall}
+              households={project?.enrolled ?? 0}
+            />
+          )}
         </section>
       ) : null}
     </div>

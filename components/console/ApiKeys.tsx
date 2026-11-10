@@ -27,7 +27,7 @@ export function ApiKeys({
 
   async function create(): Promise<void> {
     setRefused(null);
-    const result = await api.createApiKey(projectId, { label });
+    const result = await api.createApiKey(projectId, { label }, `create-key:${label}`);
     if (!result.ok) {
       setRefused(result.message);
       return;
@@ -39,7 +39,7 @@ export function ApiKeys({
 
   async function revoke(key: ApiKey): Promise<void> {
     setRefused(null);
-    const result = await api.revokeApiKey(key.id);
+    const result = await api.revokeApiKey(key.id, `revoke-key:${key.id}`);
     if (!result.ok) {
       setRefused(result.message);
       return;

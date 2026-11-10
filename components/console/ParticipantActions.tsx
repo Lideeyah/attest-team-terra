@@ -5,7 +5,11 @@ import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { api } from "@/lib/api/client";
-import { PARTICIPANT_COPY, ROSTER_COPY } from "@/lib/copy/console";
+import {
+  PARTICIPANT_COPY,
+  PARTICIPANT_STATE_LABEL,
+  ROSTER_COPY,
+} from "@/lib/copy/console";
 import type { ParticipantStatus } from "@/lib/api/contract";
 
 /* What can be changed about a household, and what cannot.
@@ -50,7 +54,7 @@ export function ParticipantActions({
       kind: "saved",
       line: body.phone
         ? `The phone number is now ${result.data.phoneMasked}. The change is logged with its reason.`
-        : `The status is now ${result.data.status}. The change is logged with its reason.`,
+        : `${PARTICIPANT_STATE_LABEL[result.data.status] ?? "The status"} is what the record now says. The change is logged with its reason.`,
     });
   }
 

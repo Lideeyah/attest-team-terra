@@ -58,7 +58,7 @@ export function ArithmeticPanel({ figures }: { figures: Arithmetic }) {
     {
       key: "funded",
       label: "Funded",
-      note: "What has arrived in the disbursement account for this period.",
+      note: "What this run is funded with. The disbursement account's own balance, and what it holds for other runs in the period, are on the funding screen.",
       value: figures.funded,
       display: formatNaira(figures.funded),
     },

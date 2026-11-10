@@ -9,7 +9,12 @@ import { api } from "@/lib/api/client";
 import { ROSTER_COPY } from "@/lib/copy/console";
 import { headingFor } from "@/lib/copy/codes";
 import type { ErrorCode } from "@/lib/api/contract";
-import { AGENT_FILTERS, STATUS_FILTERS, TIER_FILTERS } from "@/lib/copy/filters";
+import {
+  AGENT_FILTERS,
+  STATUS_FILTERS,
+  TIER_FILTERS,
+  WALLET_FILTERS,
+} from "@/lib/copy/filters";
 import { formatCount } from "@/lib/record";
 
 export const metadata: Metadata = {
@@ -22,6 +27,8 @@ type Search = {
   agent?: string;
   tier?: string;
   flagged?: string;
+  wallet?: string;
+  enrolled_from?: string;
   import?: string;
 };
 
@@ -59,6 +66,8 @@ export default async function RosterPage({
     ...(search.agent ? { agent: search.agent } : {}),
     ...(search.tier ? { tier: search.tier } : {}),
     ...(search.flagged ? { flagged: search.flagged } : {}),
+    ...(search.wallet ? { wallet: search.wallet } : {}),
+    ...(search.enrolled_from ? { enrolled_from: search.enrolled_from } : {}),
   };
   const filtered = Object.keys(query).length > 0;
 
@@ -95,6 +104,14 @@ export default async function RosterPage({
   }
 
   const total = rows.meta?.total ?? rows.data.length;
+  /* The filtered count is not the roster. Reading the roster's own size costs
+     one more request and keeps the heading from quietly becoming the filter's
+     result. */
+  const wholeRoster = filtered
+    ? await api.participants(projectId, { page: 1, per_page: 1 })
+    : null;
+  const whole =
+    wholeRoster && wholeRoster.ok ? (wholeRoster.meta?.total ?? total) : total;
   const jobs = imports.ok ? imports.data : [];
   const running = jobs.find((job) => job.state === "running") ?? null;
   const partial = jobs.find((job) => job.state === "partially-failed") ?? null;
@@ -106,14 +123,16 @@ export default async function RosterPage({
       <header className="stack">
         <p className="eyebrow">{ROSTER_COPY.heading}</p>
         <h1 className="h2-display">
-          {total === 0 && !filtered
+          {whole === 0
             ? "Nobody is enrolled yet"
-            : `${formatCount(total)} households`}
+            : filtered
+              ? `${formatCount(total)} of ${formatCount(whole)} households`
+              : `${formatCount(whole)} households`}
         </h1>
         <Rule weight="heavy" />
       </header>
 
-      {showRunning && running ? (
+      {whole > 0 && showRunning && running ? (
         <Notice tone="review" title="An import is running">
           <p data-import-state="running">
             The import is running. {formatCount(running.imported)} of{" "}
@@ -122,7 +141,7 @@ export default async function RosterPage({
         </Notice>
       ) : null}
 
-      {showPartial && partial ? (
+      {whole > 0 && showPartial && partial ? (
         <Notice tone="flagged" title={`${formatCount(partial.failed)} rows failed`}>
           <p data-import-state="partially-failed">
             {formatCount(partial.failed)} of {formatCount(partial.rows)} rows
@@ -191,6 +210,35 @@ export default async function RosterPage({
               </option>
             ))}
           </select>
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="roster-wallet">
+            Wallet
+          </label>
+          <select
+            id="roster-wallet"
+            className="select"
+            name="wallet"
+            defaultValue={search.wallet ?? ""}
+          >
+            {WALLET_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="roster-enrolled">
+            Enrolled on or after
+          </label>
+          <input
+            id="roster-enrolled"
+            className="input"
+            type="date"
+            name="enrolled_from"
+            defaultValue={search.enrolled_from ?? ""}
+          />
         </div>
         <div className="field">
           <label className="label" htmlFor="roster-agent">

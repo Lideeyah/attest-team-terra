@@ -10,6 +10,7 @@ import { api } from "@/lib/api/client";
 import { RUN_STATE_LABEL } from "@/lib/copy/console";
 import { headingFor } from "@/lib/copy/codes";
 import { formatCount, formatDate, formatNaira, formatPeriod } from "@/lib/record";
+import { settledOf } from "@/lib/console-format";
 import type { RunState } from "@/lib/api/contract";
 
 export const metadata: Metadata = {
@@ -91,9 +92,9 @@ export default async function RunsPage() {
                     </span>
                     <span className="record-cell">{RUN_STATE_LABEL[run.state]}</span>
                     <span className="record-cell">
-                      {run.rosterSize === 0
-                        ? "—"
-                        : `${formatCount(run.counts.settled)} of ${formatCount(run.rosterSize)} settled`}
+                      {run.executedAt === null
+                        ? "Not executed"
+                        : `${formatCount(settledOf(run))} of ${formatCount(run.rosterSize)} settled`}
                     </span>
                     <span className="record-cell">{formatNaira(run.fundingAmount)}</span>
                     <span className="record-cell">{formatDate(run.createdAt)}</span>

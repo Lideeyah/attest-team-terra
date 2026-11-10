@@ -339,6 +339,21 @@ export async function f1(): Promise<void> {
   for (const code of ERROR_CODES) {
     await force(baseUrl, code);
 
+    if (code === "RECONCILIATION_MISMATCH") {
+      /* A period that does not reconcile is a fact about the period, so it
+         comes back on the period's own row rather than as a failure to read
+         it. */
+      const probe = await fetch(`${baseUrl}/api/projects/proj_ekuri/reconciliation`);
+      const payload = (await probe.json()) as Envelope & {
+        data?: { state?: string }[];
+      };
+      const shown = (payload.data ?? []).some((row) => row.state === "mismatch");
+      if (!shown) {
+        unforceable.push(`${code} -> ${JSON.stringify(payload.data ?? payload.error)}`);
+      }
+      continue;
+    }
+
     if (RECORD_STATE_CODES.includes(code)) {
       /* Forced on the record it is about, it comes back as the record's own
          state rather than as a failure. */

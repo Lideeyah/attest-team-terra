@@ -28,7 +28,11 @@ export function WebhookEndpoints({
 
   async function create(): Promise<void> {
     setRefused(null);
-    const result = await api.createWebhookEndpoint(projectId, { url, events: chosen });
+    const result = await api.createWebhookEndpoint(
+      projectId,
+      { url, events: chosen },
+      `create-endpoint:${url}`,
+    );
     if (!result.ok) {
       setRefused(
         result.code === "INVALID_REQUEST"
@@ -43,7 +47,10 @@ export function WebhookEndpoints({
 
   async function remove(endpoint: WebhookEndpoint): Promise<void> {
     setRefused(null);
-    const result = await api.removeWebhookEndpoint(endpoint.id);
+    const result = await api.removeWebhookEndpoint(
+      endpoint.id,
+      `remove-endpoint:${endpoint.id}`,
+    );
     if (!result.ok) {
       setRefused(result.message);
       return;

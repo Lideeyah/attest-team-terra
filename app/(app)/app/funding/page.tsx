@@ -35,11 +35,7 @@ export default async function FundingPage() {
     return (
       <div className="console-page stack-lg">
         <Notice tone="blocked" title={headingFor(funding.code, funding.message)}>
-          <p data-refusal={funding.code}>
-            {funding.code === "RECONCILIATION_MISMATCH"
-              ? FUNDING_COPY.mismatch
-              : funding.message}
-          </p>
+          <p data-refusal={funding.code}>{funding.message}</p>
           <p className="note">{funding.remediation}</p>
         </Notice>
       </div>

@@ -64,9 +64,17 @@ export default async function AgentsPage() {
       {above.length > 0 ? (
         <Notice
           tone="flagged"
-          title={`${formatCount(above.length)} agents are above the threshold`}
+          title={
+            above.length === 1
+              ? "One agent is above the threshold"
+              : `${formatCount(above.length)} agents are above the threshold`
+          }
         >
-          <p data-above-threshold={above.length}>{AGENT_COPY.aboveThreshold}</p>
+          <p data-above-threshold={above.length}>
+            {above.map((agent) => agent.name).join(", ")}
+            {above.length === 1 ? " is" : " are"} above it.{" "}
+            {AGENT_COPY.aboveThreshold}
+          </p>
         </Notice>
       ) : null}
 
@@ -101,7 +109,9 @@ export default async function AgentsPage() {
                     </span>
                     <span className="record-cell">{formatCount(agent.enrolments)}</span>
                     <span className="record-cell" data-flag-rate={agent.flagRate}>
-                      {flagRate(agent.flagRate)}
+                      {agent.enrolments === 0
+                        ? "—"
+                        : `${flagRate(agent.flagRate)} of ${formatCount(agent.enrolments)}`}
                     </span>
                     <span className="record-cell">{syncDelay(agent.averageSyncDelaySeconds)}</span>
                     <span className="record-cell">

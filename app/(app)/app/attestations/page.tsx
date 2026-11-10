@@ -116,9 +116,7 @@ export default async function AttestationsPage() {
                 <div>
                   <dt className="eyebrow">Coverage</dt>
                   <dd className="record-cell">
-                    {formatCoverage(attestation.paid, attestation.enrolled)} ·{" "}
-                    {formatCount(attestation.paid)} of{" "}
-                    {formatCount(attestation.enrolled)} households
+                    {formatCoverage(attestation.paid, attestation.enrolled)} households
                   </dd>
                 </div>
                 <div>
@@ -173,9 +171,10 @@ export default async function AttestationsPage() {
               </dl>
 
               {attestation.supersedes ? (
-                <p className="note">
-                  This record corrects {attestation.supersedes}, which stays
-                  published.
+                <p className="note" data-correction-of={attestation.supersedes}>
+                  {attestation.correction
+                    ? `This record corrects ${attestation.supersedes}, which stays published. ${attestation.correction.field} read ${attestation.correction.from} and reads ${attestation.correction.to}. ${attestation.correction.reason}`
+                    : `This record corrects ${attestation.supersedes}, which stays published.`}
                 </p>
               ) : null}
               {attestation.supersededBy ? (

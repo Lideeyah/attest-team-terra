@@ -8,6 +8,8 @@ import { Rule } from "@/components/Rule";
 import { api, newIdempotencyKey } from "@/lib/api/client";
 import type { ErrorCode, Run, Transfer, TransferState } from "@/lib/api/contract";
 import { FAILURE_COPY, RUN_COPY } from "@/lib/copy/console";
+import { headingFor } from "@/lib/copy/codes";
+import { settledOf } from "@/lib/console-format";
 import { PRIMITIVE_CLASS } from "@/lib/motion";
 import { formatCount, formatNaira, formatSettlement, orUnknown } from "@/lib/record";
 
@@ -44,11 +46,16 @@ const STREAMED_STATES: TransferState[] = [
 type Patches = {
   /** The state each transfer is in, as the stream has reported it. */
   state: Map<string, TransferState>;
-  /** The transfers that settled while this screen was watching, which are the
-      only ones whose stamp lands: a row that was already settled when the
-      page opened did not just happen. */
-  landed: Set<string>;
+  /** The transfers that settled while this screen was watching, and when, so
+      the stamp lands once and then is simply a stamp. A row that was already
+      settled when the page opened did not just happen, and a row that settled
+      a minute ago is not still landing. */
+  landed: Map<string, number>;
 };
+
+/* The stamp's two beats, in milliseconds: eight frames of impact and eight of
+   the ink setting, at the system's 24fps. */
+const STAMP_MS = Math.round((16 / 24) * 1000);
 
 /* The live run. The stream carries a transfer id and its new state and
    nothing else, so this screen patches its own table rather than replacing
@@ -67,7 +74,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
   });
   const [patches, setPatches] = useState<Patches>(() => ({
     state: new Map(),
-    landed: new Set(),
+    landed: new Map(),
   }));
   const [connection, setConnection] = useState<Connection>("connecting");
   const [complete, setComplete] = useState(run.state === "complete");
@@ -117,12 +124,20 @@ export function LiveRun({ run, first }: LiveRunProps) {
       }
       const batch = [...buffer.entries()];
       buffer.clear();
+      const now = performance.now();
       setPatches((previous) => {
         const state = new Map(previous.state);
-        const landed = new Set(previous.landed);
+        const landed = new Map(previous.landed);
+        /* A stamp that has finished landing is dropped, so it is not replayed
+           when the row is recycled by the virtualised window. */
+        for (const [id, at] of landed) {
+          if (now - at > STAMP_MS) {
+            landed.delete(id);
+          }
+        }
         for (const [id, next] of batch) {
           if (next === "settled" && state.get(id) !== "settled") {
-            landed.add(id);
+            landed.set(id, now);
           }
           state.set(id, next);
         }
@@ -240,7 +255,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
   const streamed = patches.state.size;
   /* The run's own counts are the floor: a figure never goes backwards because
      this screen opened late. */
-  const settled = Math.max(run.counts.settled, counts.settled);
+  const settled = Math.max(settledOf(run), counts.settled + counts.unconfirmed);
   const failed = Math.max(run.counts.failed, counts.failed);
   const inFlight = counts.in_flight;
 
@@ -297,22 +312,19 @@ export function LiveRun({ run, first }: LiveRunProps) {
           <div className="run-count">
             <dt className="eyebrow">In flight</dt>
             <dd className="record-cell" data-count="in_flight">
-              {formatCount(inFlight)}
-              {inFlight > 0 ? (
-                <span className={`queue-underline ${PRIMITIVE_CLASS.queuePulse}`} />
-              ) : null}
+              {formatCount(inFlight)} of {formatCount(run.rosterSize)}
             </dd>
           </div>
           <div className="run-count">
             <dt className="eyebrow">Failed</dt>
             <dd className="record-cell" data-count="failed">
-              {formatCount(failed)}
+              {formatCount(failed)} of {formatCount(run.rosterSize)}
             </dd>
           </div>
           <div className="run-count">
             <dt className="eyebrow">Received by this screen</dt>
             <dd className="record-cell" data-count="streamed">
-              {formatCount(streamed)}
+              {formatCount(streamed)} of {formatCount(run.rosterSize)}
             </dd>
           </div>
         </dl>
@@ -335,7 +347,9 @@ export function LiveRun({ run, first }: LiveRunProps) {
                 >
                   <div className="stack-tight">
                     <p className="eyebrow">{formatCount(failure.count)} transfers</p>
-                    <p className="h3-display">{copy?.heading ?? failure.class}</p>
+                    <p className="h3-display">
+                      {copy?.heading ?? headingFor(failure.class, "This class of failure")}
+                    </p>
                     <p className="note">{copy?.remediation ?? ""}</p>
                   </div>
                   {copy?.retryable ? (
@@ -370,7 +384,9 @@ export function LiveRun({ run, first }: LiveRunProps) {
           <Notice title="Retry queued">
             <p>
               {formatCount(retried.count)} transfers in{" "}
-              {FAILURE_COPY[retried.failureClass]?.heading ?? retried.failureClass} were
+              {FAILURE_COPY[retried.failureClass]?.heading ??
+                headingFor(retried.failureClass, "that class")}{" "}
+              were
               queued again. Nothing already settled was resent.
             </p>
           </Notice>

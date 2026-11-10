@@ -36,29 +36,33 @@ export function LiveRunStrip({
         </div>
         <div className="run-count">
           <dt className="eyebrow">In flight</dt>
-          <dd className="record-cell">
-            {formatCount(inFlight)}
-            {inFlight > 0 ? (
-              <span
-                className={`queue-underline ${PRIMITIVE_CLASS.queuePulse}`}
-                data-in-flight="true"
-              />
-            ) : null}
+          <dd className="record-cell" data-in-flight={inFlight}>
+            {formatCount(inFlight)} of {formatCount(rosterSize)}
           </dd>
         </div>
         <div className="run-count">
           <dt className="eyebrow">Queued</dt>
-          <dd className="record-cell">{formatCount(queued)}</dd>
+          <dd className="record-cell">
+            {formatCount(queued)} of {formatCount(rosterSize)}
+          </dd>
         </div>
         <div className="run-count">
           <dt className="eyebrow">Failed</dt>
-          <dd className="record-cell">{formatCount(failed)}</dd>
+          <dd className="record-cell">
+            {formatCount(failed)} of {formatCount(rosterSize)}
+          </dd>
         </div>
       </dl>
+      {/* The one permitted loop, on the bar's in-flight segment: it marks
+          transfers that genuinely have not resolved, which is what §2.6 says
+          it is for. A count is not a row and does not take it. */}
       <div className="run-bar" role="img" aria-label={`${formatCount(resolved)} of ${formatCount(rosterSize)} transfers resolved`}>
         <span className="run-bar-settled" style={{ width: share(settled) }} />
         <span className="run-bar-failed" style={{ width: share(failed) }} />
-        <span className="run-bar-flight" style={{ width: share(inFlight) }} />
+        <span
+          className={`run-bar-flight${inFlight > 0 ? ` ${PRIMITIVE_CLASS.queuePulse}` : ""}`}
+          style={{ width: share(inFlight) }}
+        />
       </div>
     </div>
   );

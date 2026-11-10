@@ -36,7 +36,11 @@ export function ConsoleUsers({
 
   async function invite(): Promise<void> {
     setRefused(null);
-    const result = await api.inviteConsoleUser(projectId, { name, email, role });
+    const result = await api.inviteConsoleUser(
+      projectId,
+      { name, email, role },
+      `invite-user:${email}`,
+    );
     if (!result.ok) {
       setRefused(result.message);
       return;
@@ -48,7 +52,11 @@ export function ConsoleUsers({
 
   async function changeRole(user: ConsoleUser, next: ConsoleRole): Promise<void> {
     setRefused(null);
-    const result = await api.changeConsoleRole(user.id, { role: next });
+    const result = await api.changeConsoleRole(
+      user.id,
+      { role: next },
+      `change-role:${user.id}:${next}`,
+    );
     if (!result.ok) {
       setRefused(
         user.self && user.role === "admin" && admins.length === 1
@@ -66,7 +74,7 @@ export function ConsoleUsers({
 
   async function remove(user: ConsoleUser): Promise<void> {
     setRefused(null);
-    const result = await api.removeConsoleUser(user.id);
+    const result = await api.removeConsoleUser(user.id, `revoke-user:${user.id}`);
     if (!result.ok) {
       setRefused(
         user.role === "admin" && admins.length === 1

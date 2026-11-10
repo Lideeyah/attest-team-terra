@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Participant } from "@/lib/api/contract";
-import { ROSTER_COPY } from "@/lib/copy/console";
+import { ROSTER_COPY, WALLET_STATE_LABEL } from "@/lib/copy/console";
 import { formatCount, formatDate, orUnknown } from "@/lib/record";
 
 const PAGE = 100;
@@ -15,6 +15,8 @@ type Query = {
   agent?: string;
   tier?: string;
   flagged?: string;
+  wallet?: string;
+  enrolled_from?: string;
   q?: string;
 };
 
@@ -178,7 +180,7 @@ export function RosterTable({ projectId, total, first, query }: RosterTableProps
                       {participant.phoneMasked}
                     </span>
                     <span className="record-cell" role="gridcell">
-                      {participant.walletState}
+                      {WALLET_STATE_LABEL[participant.walletState] ?? participant.walletState}
                     </span>
                     <span className="record-cell" role="gridcell">
                       Tier {participant.tier}

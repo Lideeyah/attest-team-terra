@@ -85,12 +85,12 @@ const ARRANGED: { label: string; href: string; expect: RegExp }[] = [
   { label: "agent suspended", href: "/app/agents/agt_0004", expect: /suspended/i },
   { label: "agent with no enrolments", href: "/app/agents/agt_0005", expect: /no enrolments yet/i },
   { label: "run draft", href: "/app/runs/run_draft", expect: /draft/i },
-  { label: "run complete clean", href: "/app/runs/run_hadejia_q2", expect: /complete/i },
+  { label: "run complete clean", href: "/app/runs/run_2026q1", expect: /complete/i },
   { label: "run complete with failures", href: "/app/runs/run_2026q3", expect: /failed|outstanding/i },
   { label: "attestation correction", href: "/app/attestations", expect: /correction/i },
   { label: "dispute awaiting participant", href: "/app/disputes/dsp_0002", expect: /awaiting the participant|responded/i },
   { label: "dispute escalated", href: "/app/disputes/dsp_0003", expect: /escalated/i },
-  { label: "dispute substantiated", href: "/app/disputes/dsp_0004", expect: /substantiated/i },
+  { label: "dispute substantiated", href: "/app/disputes/dsp_0006", expect: /substantiated/i },
   { label: "dispute unsubstantiated", href: "/app/disputes/dsp_0005", expect: /unsubstantiated/i },
   { label: "api key shown once", href: "/app/settings?tab=keys", expect: /shown once/i },
   { label: "notification preferences", href: "/app/settings?tab=notifications", expect: /notif/i },
@@ -163,6 +163,19 @@ export async function f5(): Promise<void> {
   /* Patch item 9: the import format is stated where the operator uploads. */
   importFormatIsStated();
 
+  /* What F-5's independent verification found, each asserted rather than
+     fixed and hoped for. */
+  await transfersAreGenuinelyInFlight();
+  await figuresAgreeAcrossScreens();
+  await preflightCanPassAndBlocks();
+  await suspensionReachesTheRunBuilder();
+  await recordsAreScopedToThisProject();
+  await noEnumReachesAReader();
+  await aMismatchShowsTheRecord();
+  await theClosingStatesAreReachable();
+  consoleEndpointsRefuseWhatTheySay();
+  noDeleteCallExists();
+
   await a11y("/app");
   await a11y("/app/roster");
   await a11y("/app/runs/new");
@@ -175,6 +188,273 @@ export async function f5(): Promise<void> {
   for (const state of ARRANGED) {
     await screenshot("F-5", state.href, `state-${state.label.replace(/\s+/g, "-")}`);
   }
+}
+
+/* ---- what the verification found ------------------------------------------ */
+
+/** The stream resolved every transfer in the tick that queued it, so nothing
+    was ever in flight and the pulse could not render. */
+async function transfersAreGenuinelyInFlight(): Promise<void> {
+  await configureStream({ transfers: 300, rate: 60 });
+  const seen = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}${RUN_LIVE}`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-transfer-row]", { timeout: 30_000 });
+    let inFlight = 0;
+    let pulses = 0;
+    for (let sample = 0; sample < 25; sample += 1) {
+      await page.waitForTimeout(200);
+      inFlight = Math.max(
+        inFlight,
+        await page.locator('[data-transfer-row][data-state="in_flight"]').count(),
+      );
+      pulses = Math.max(pulses, await page.locator(".anim-queue-pulse").count());
+    }
+    return { inFlight, pulses };
+  });
+  await configureStream({ transfers: 40, rate: 8 });
+  record(
+    "transfers are concurrently in flight, and the queue pulse renders on them",
+    seen.inFlight > 0 && seen.pulses > 0,
+    `${seen.inFlight} rows in flight, ${seen.pulses} pulsing`,
+  );
+}
+
+/** The home screen counted a closed period's failures into the open one. */
+async function figuresAgreeAcrossScreens(): Promise<void> {
+  const figures = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
+    const home = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    const failures = /([\d,]+) transfers failed/.exec(home)?.[1] ?? "";
+    await page.goto(`${baseUrl}${RUN_LIVE}`, { waitUntil: "networkidle" });
+    const run = await page.locator('[data-count="failed"]').first().innerText();
+    return { failures, run: run.replace(/\s+/g, " ") };
+  });
+  const onTheRun = figures.run.split(" of ")[0];
+  record(
+    "the home screen's failure count is the run's own",
+    figures.failures === "" || figures.failures === onTheRun,
+    `home ${figures.failures}, run ${figures.run}`,
+  );
+}
+
+/** Pre-flight always failed, and the next step executed anyway. */
+async function preflightCanPassAndBlocks(): Promise<void> {
+  const outcome = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}/app/runs/new?step=confirm`, { waitUntil: "networkidle" });
+    const blockedBefore = await page.locator("[data-execute-blocked]").count();
+
+    await page.goto(`${baseUrl}/app/runs/new?step=preflight`, { waitUntil: "networkidle" });
+    const controls = await page.locator("[data-exclude]").count();
+    for (let round = 0; round < 6; round += 1) {
+      const next = page.locator("[data-exclude]").first();
+      if ((await next.count()) === 0) {
+        break;
+      }
+      const id = (await next.getAttribute("data-exclude")) ?? "";
+      await page.locator(`[data-exclusion-reason="${id}"]`).fill(
+        "The account resolves to another holder and the household is correcting it at the branch.",
+      );
+      await next.click();
+      await page.waitForTimeout(600);
+    }
+    const passed = await page.locator('[data-preflight="passed"]').count();
+
+    await page.goto(`${baseUrl}/app/runs/new?step=confirm`, { waitUntil: "networkidle" });
+    const blockedAfter = await page.locator("[data-execute-blocked]").count();
+    const execute = await page.locator("[data-execute]").count();
+    return { blockedBefore, controls, passed, blockedAfter, execute };
+  });
+
+  record(
+    "pre-flight offers a control for each exclusion it found",
+    outcome.controls > 0,
+    `${outcome.controls} controls`,
+  );
+  record(
+    "a run does not execute while pre-flight has not passed",
+    outcome.blockedBefore > 0,
+    `${outcome.blockedBefore} blocks before, ${outcome.execute} execute controls after`,
+  );
+  record(
+    "pre-flight passes once every exclusion is recorded with a reason",
+    outcome.passed > 0 && outcome.blockedAfter === 0 && outcome.execute > 0,
+    `passed ${outcome.passed}, blocked after ${outcome.blockedAfter}`,
+  );
+}
+
+/** Home said no run could be created; the builder offered to execute one. */
+async function suspensionReachesTheRunBuilder(): Promise<void> {
+  const { baseUrl } = await server();
+  const status = async (value: string | null) => {
+    await fetch(`${baseUrl}/api/dev/project-status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: "proj_ekuri", status: value }),
+    });
+  };
+  await status("suspended");
+  const outcome = await withBrowser(async (page) => {
+    await page.goto(`${baseUrl}/app/runs/new?step=confirm`, { waitUntil: "networkidle" });
+    return {
+      blocked: await page.locator("[data-run-blocked]").count(),
+      execute: await page.locator("[data-execute]").count(),
+    };
+  });
+  await status(null);
+  record(
+    "a suspended project cannot create a run from the builder either",
+    outcome.blocked > 0 && outcome.execute === 0,
+    `${outcome.blocked} notices, ${outcome.execute} execute controls`,
+  );
+}
+
+/** Another project's dispute and run rendered inside this console. */
+async function recordsAreScopedToThisProject(): Promise<void> {
+  const statuses = await withBrowser(async (page, baseUrl) => {
+    const read = async (path: string) => {
+      const response = await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+      const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+      return { status: response?.status() ?? 0, body };
+    };
+    return {
+      dispute: await read("/app/disputes/dsp_0004"),
+      run: await read("/app/runs/run_delta_q3"),
+    };
+  });
+  const refused = (outcome: { body: string }) =>
+    /does not have access|not found/i.test(outcome.body) &&
+    !/Akassa|Mangrove/i.test(outcome.body);
+  record(
+    "a record belonging to another project is not readable in this console",
+    refused(statuses.dispute) && refused(statuses.run),
+    `${statuses.dispute.body.slice(0, 60)} | ${statuses.run.body.slice(0, 60)}`,
+  );
+}
+
+/** A household's payment read REVERSED, and a wallet read dormant. */
+async function noEnumReachesAReader(): Promise<void> {
+  const found: string[] = [];
+  const enums = [
+    "in_flight",
+    "duplicate-blocked",
+    "awaiting-participant",
+    "developer-responded",
+    "preflight-failed",
+    "partially-complete",
+  ];
+  await withBrowser(async (page, baseUrl) => {
+    for (const path of [
+      "/app/roster/ptc_000174",
+      "/app/roster/ptc_000614",
+      "/app/roster",
+      "/app/runs",
+      "/app/disputes",
+      "/app/disputes/dsp_0002",
+      RUN_LIVE,
+    ]) {
+      await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+      const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+      for (const token of enums) {
+        if (body.includes(token)) {
+          found.push(`${path}: ${token}`);
+        }
+      }
+      /* A stamp's own capitals are the stylesheet's, not a code's: the test
+         is the contract's spelling, which carries an underscore or a hyphen
+         no sentence does. */
+      for (const token of ["IN_FLIGHT", "NOT_PERMITTED", "LOW_CONFIDENCE"]) {
+        if (body.includes(token)) {
+          found.push(`${path}: ${token}`);
+        }
+      }
+    }
+  });
+  record(
+    "no contract enum is shown to a reader in the console",
+    found.length === 0,
+    found.join(" | "),
+  );
+}
+
+/** The mismatch collapsed the screen it was about. */
+async function aMismatchShowsTheRecord(): Promise<void> {
+  await forceCode("RECONCILIATION_MISMATCH", "/api/projects");
+  const body = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}/app/funding`, { waitUntil: "networkidle" });
+    return (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  });
+  await forceCode(null);
+  record(
+    "a period that does not reconcile still shows the account and the figures",
+    /does not reconcile/i.test(body) &&
+      /account number/i.test(body) &&
+      /₦/.test(body),
+    body.slice(0, 160),
+  );
+}
+
+/** Neither period state could be reached: the clock was the only way in. */
+async function theClosingStatesAreReachable(): Promise<void> {
+  const { baseUrl } = await server();
+  const period = async (change: Record<string, unknown>) => {
+    await fetch(`${baseUrl}/api/dev/period`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: "proj_ekuri", ...change }),
+    });
+  };
+
+  await period({ closesOn: "2026-11-12T23:59:59Z" });
+  const closing = await withBrowser(async (page) => {
+    await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
+    return (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  });
+
+  await period({ closesOn: null, state: "closed" });
+  const closed = await withBrowser(async (page) => {
+    await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
+    return (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  });
+  await period({ closesOn: null, state: null });
+
+  record(
+    "a period closing within 72 hours is marked",
+    /closes (today|tomorrow|in [123] days)/i.test(closing) && /closing/i.test(closing),
+    closing.slice(0, 160),
+  );
+  record(
+    "a closed period says so",
+    /is closed/i.test(closed),
+    closed.slice(0, 120),
+  );
+}
+
+/** The console's own endpoints claimed refusals they did not make. */
+function consoleEndpointsRefuseWhatTheySay(): void {
+  const router = readFileSync(join(ROOT, "lib/mock/router.ts"), "utf8");
+  const checks: [string, boolean][] = [
+    ["an invited user is held, so a second invite is a duplicate", /CONSOLE_USERS\.push\(user\)/.test(router)],
+    ["a key's secret is its own", /randomHex\(32\)/.test(router)],
+    ["an unknown project is not answered with another project's users", /if \(!projectById\(segments\[2\]\)\) \{\n        return notFound\(\);/.test(router)],
+    ["the last administrator is told what the constraint is", /function lastAdmin/.test(router)],
+    ["a scheme is matched case-insensitively", /\^https:\\\/\\\/\/i/.test(router)],
+  ];
+  const broken = checks.filter(([, passed]) => !passed).map(([name]) => name);
+  record(
+    "the console's own endpoints refuse what they say they refuse",
+    broken.length === 0,
+    broken.join(" | "),
+  );
+}
+
+/** The typed client offered the one call the product must never make. */
+function noDeleteCallExists(): void {
+  const client = readFileSync(join(ROOT, "lib/api/client.ts"), "utf8");
+  record(
+    "the typed client carries no participant delete call at all",
+    !/deleteParticipant/.test(client),
+    "",
+  );
 }
 
 /* ---- the assertions the helpers do not cover ------------------------------ */
@@ -275,17 +555,22 @@ async function noDeleteControl(): Promise<void> {
 }
 
 function noCodePathDeletes(): void {
-  /* The client carries the refused call so the refusal is loud rather than a
-     silent absence. Nothing else may reach it. */
-  const output = execFileSync(
-    "git",
-    ["grep", "-n", "deleteParticipant", "--", "app", "components", "lib", "dev-tools"],
-    { cwd: ROOT, stdio: "pipe" },
-  )
-    .toString()
-    .trim()
-    .split("\n")
-    .filter(Boolean);
+  /* Nothing in the product may call the endpoint, and git grep exits
+     non-zero when there is nothing to find, which is the answer we want. */
+  let output: string[] = [];
+  try {
+    output = execFileSync(
+      "git",
+      ["grep", "-n", "deleteParticipant", "--", "app", "components", "lib", "dev-tools"],
+      { cwd: ROOT, stdio: "pipe" },
+    )
+      .toString()
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+  } catch {
+    output = [];
+  }
   /* The client carries the call and one test asserts that it is refused.
      Nothing else may reach it. */
   const callers = output.filter(
@@ -544,9 +829,13 @@ async function shortfallProceedsAndIsRecorded(): Promise<void> {
       waitUntil: "networkidle",
     });
     const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
-    const execute = page.locator("[data-execute]");
-    const blocked = (await execute.count()) === 0 || (await execute.first().isDisabled());
-    return { body, blocked };
+    /* What blocks a run is pre-flight, never the shortfall: a run short of
+       what the commitment requires proceeds and records the shortfall. */
+    const blocker =
+      (await page.locator("[data-execute-blocked]").count()) > 0
+        ? await page.locator("[data-execute-blocked]").first().getAttribute("data-execute-blocked")
+        : null;
+    return { body, blocked: blocker === "shortfall" };
   });
 
   record(

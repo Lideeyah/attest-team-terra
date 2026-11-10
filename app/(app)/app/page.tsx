@@ -9,6 +9,7 @@ import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { LiveRunStrip } from "@/components/console/LiveRunStrip";
 import { consoleContext } from "@/lib/console";
+import { settledOf } from "@/lib/console-format";
 import { CONSOLE_COPY, RUN_STATE_LABEL } from "@/lib/copy/console";
 import { headingFor } from "@/lib/copy/codes";
 import type { ErrorCode } from "@/lib/api/contract";
@@ -55,7 +56,7 @@ export default async function ConsoleHome() {
   ).length;
   const shortfall = openPeriod?.shortfall ?? lastClosedPeriod?.shortfall ?? "0.00";
   const coveragePeriod = openPeriod ?? lastClosedPeriod;
-  const target = enrolled;
+  const target = project.enrolmentTarget;
   const closing = period.state === "open" && period.daysToClose <= 3;
 
   return (
@@ -84,7 +85,16 @@ export default async function ConsoleHome() {
       ) : null}
 
       {closing ? (
-        <Notice tone="review" title={`${formatPeriod(period.label)} closes in ${period.daysToClose} days`}>
+        <Notice
+          tone="review"
+          title={`${formatPeriod(period.label)} closes ${
+            period.daysToClose === 0
+              ? "today"
+              : period.daysToClose === 1
+                ? "tomorrow"
+                : `in ${period.daysToClose} days`
+          }`}
+        >
           <p>
             Enrolments after the close are counted in the next period. The
             figures for this one are sealed at close.
@@ -109,8 +119,8 @@ export default async function ConsoleHome() {
               }
               denominator={
                 coveragePeriod
-                  ? `${formatCount(coveragePeriod.paid)} of ${formatCount(coveragePeriod.enrolled)} households settled`
-                  : "No period open"
+                  ? `households settled in ${formatPeriod(coveragePeriod.period)}, confirmed or not`
+                  : "no period open"
               }
               tally={coveragePeriod?.paid}
               formatAs="coverage"
@@ -126,9 +136,13 @@ export default async function ConsoleHome() {
               }
             />
             <Figure
-              label="Enrolled"
+              label="Enrolled against target"
               value={formatCount(enrolled)}
-              denominator={`households on the roster of ${formatCount(target)}`}
+              denominator={
+                target > 0
+                  ? `of ${formatCount(target)} households the project undertook to enrol`
+                  : "no target recorded for this project"
+              }
               tally={enrolled}
             />
             <Figure
@@ -157,7 +171,7 @@ export default async function ConsoleHome() {
                 runId={openRun.id}
                 queued={openRun.counts.queued}
                 inFlight={openRun.counts.in_flight}
-                settled={openRun.counts.settled}
+                settled={settledOf(openRun)}
                 failed={openRun.counts.failed}
                 rosterSize={openRun.rosterSize}
               />
@@ -192,7 +206,9 @@ export default async function ConsoleHome() {
             <Rule />
             <p className="prose">
               {openPeriod
-                ? `${formatPeriod(openPeriod.period)} closes on ${period.closesOn}, which is ${period.daysToClose} days from today.`
+                ? `${formatPeriod(openPeriod.period)} closes on ${period.closesOn}, which is ${
+                    period.daysToClose === 1 ? "one day" : `${period.daysToClose} days`
+                  } from today.`
                 : "No period is open."}
             </p>
             {lastClosedPeriod ? (

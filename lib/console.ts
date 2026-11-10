@@ -22,6 +22,9 @@ export type ConsoleContext = {
   actions: ConsoleAction[];
 };
 
+/* The two states a report ends in. Everything else is outstanding. */
+export const RESOLVED = new Set(["substantiated", "unsubstantiated"]);
+
 export type ConsoleAction = {
   id: string;
   line: string;
@@ -29,20 +32,6 @@ export type ConsoleAction = {
   /** Blocking work takes the mark; the rest is outstanding but not blocking. */
   blocking: boolean;
 };
-
-/** The close date a quarterly period ends on. The period label is its own
-    source of truth, so nothing here is entered by hand. */
-export function periodCloses(period: string): string {
-  const match = /^(\d{4})-Q([1-4])$/.exec(period);
-  if (!match) {
-    return period;
-  }
-  const year = Number(match[1]);
-  const quarter = Number(match[2]);
-  const endMonth = quarter * 3; /* 3, 6, 9, 12 */
-  const lastDay = new Date(Date.UTC(year, endMonth, 0));
-  return lastDay.toISOString();
-}
 
 export function daysBetween(fromIso: string, toIso: string): number {
   const from = Date.parse(fromIso);
@@ -99,14 +88,23 @@ export async function consoleContext(): Promise<ConsoleContext | ConsoleRefusal>
   const openRun =
     runs.find((run) => run.state === "executing" || run.state === "preflight-running") ?? null;
 
-  const closesOn = openPeriod ? periodCloses(openPeriod.period) : null;
+  const current = openPeriod ?? lastClosedPeriod;
+  const closesOn = current?.closesOn ?? null;
   const daysToClose = closesOn ? daysBetween(NOW, closesOn) : 0;
 
-  const openDisputes = disputes.filter(
-    (dispute) => dispute.state === "open" || dispute.state === "developer-responded",
-  ).length;
-  const failures = runs
-    .filter((run) => run.state === "partially-complete" || run.state === "executing")
+  /* Open means unresolved. A report that has been responded to, is waiting on
+     the household, or has gone to the platform is unresolved, and this is the
+     screen whose job is naming what is unresolved. */
+  const openDisputes = disputes.filter((dispute) => !RESOLVED.has(dispute.state)).length;
+  /* The failures that block the next payment are the open period's. Summing
+     every unfinished run folds a closed, published period into the figure and
+     puts a number on the home screen that no run on it carries. */
+  const openRuns = runs.filter(
+    (run) =>
+      run.period === openPeriod?.period &&
+      (run.state === "partially-complete" || run.state === "executing"),
+  );
+  const failures = openRuns
     .flatMap((run) => run.failures)
     .reduce((sum, failure) => sum + failure.count, 0);
   const shortfall = openPeriod?.shortfall ?? "0.00";

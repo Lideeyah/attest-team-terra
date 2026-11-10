@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lockup } from "@/components/Mark";
+import { UNKNOWN, formatPeriod } from "@/lib/record";
 
 type Section = {
   href: string;
@@ -51,12 +52,9 @@ export function DeveloperShell({
     organisation: "Ekuri Initiative Limited",
     email: "operations@ekuri-initiative.ng",
   },
-  period = {
-    label: "2026-Q4",
-    daysToClose: 9,
-    closesOn: "31 December 2026",
-    state: "open",
-  },
+  /* No default figures: a shell that invents a period would put a date on
+     every screen that no record supports. Without a period it says so. */
+  period,
 }: DeveloperShellProps) {
   const pathname = usePathname();
 
@@ -66,15 +64,32 @@ export function DeveloperShell({
         <div className="console-rail-head">
           <Lockup size={17} />
         </div>
-        <div className="period-indicator" data-period-indicator={period.label}>
-          <p className="eyebrow">{period.state === "closed" ? "Period" : "Open period"}</p>
-          <p className="record-cell">{period.label}</p>
-          <p className="record-cell">
-            {period.state === "closed"
-              ? `Closed · ${period.closesOn}`
-              : `${period.daysToClose} days to close · ${period.closesOn}`}
+        <div
+          className="period-indicator"
+          data-period-indicator={period ? period.label : "none"}
+        >
+          <p className="eyebrow">
+            {period === undefined
+              ? "Period"
+              : period.state === "closed"
+                ? "Period"
+                : "Open period"}
           </p>
-          {period.state !== "closed" && period.daysToClose <= 3 ? (
+          <p className="record-cell">
+            {period ? formatPeriod(period.label) : UNKNOWN}
+          </p>
+          <p className="record-cell">
+            {period === undefined
+              ? "No period is open"
+              : period.state === "closed"
+                ? `Closed · ${period.closesOn}`
+                : `${
+                    period.daysToClose === 1
+                      ? "1 day to close"
+                      : `${period.daysToClose} days to close`
+                  } · ${period.closesOn}`}
+          </p>
+          {period !== undefined && period.state !== "closed" && period.daysToClose <= 3 ? (
             <p className="record-cell console-closing" data-closing="true">
               Closing
             </p>

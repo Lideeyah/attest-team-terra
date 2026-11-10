@@ -34,6 +34,33 @@ export const ACTION_COPY = {
     "The account does not reconcile against the transfers recorded for this period.",
 } as const;
 
+/* The words a reader sees for a transfer's state and a wallet's. The enum is
+   the contract's spelling, not a reader's. */
+export const TRANSFER_STATE_LABEL: Record<string, string> = {
+  queued: "Queued",
+  in_flight: "In flight",
+  settled: "Settled",
+  failed: "Failed",
+  reversed: "Reversed after settling",
+  unconfirmed: "Settled, not confirmed",
+};
+
+export const WALLET_STATE_LABEL: Record<string, string> = {
+  active: "Active",
+  dormant: "Dormant",
+  restricted: "Restricted",
+  unopened: "Not opened",
+};
+
+export const PARTICIPANT_STATE_LABEL: Record<string, string> = {
+  active: "Active",
+  flagged: "Flagged",
+  excluded: "Excluded from the current run",
+  disputed: "Disputed",
+  "duplicate-blocked": "Blocked as a duplicate",
+  removed: "Removed from the roster",
+};
+
 export const RUN_STATE_LABEL: Record<RunState, string> = {
   draft: "Draft",
   "awaiting-funding": "Awaiting funding",
@@ -114,6 +141,8 @@ export const PARTICIPANT_COPY = {
   phoneReason: "Why it is being corrected",
   statusChange: "Change this household's status",
   statusReason: "Why the status is changing",
+  disputedNote:
+    "A payment to this household is reported. The report is below, and it closes on the household's confirmation or on a reversal.",
   removedNote: (reason: string, date: string) =>
     `Removed on ${date}. ${reason}`,
   excludedNote: (reason: string) => `Excluded from the current run. ${reason}`,
@@ -198,7 +227,7 @@ export const RUN_COPY = {
 export const AGENT_COPY = {
   heading: "Agents",
   aboveThreshold:
-    "This agent's flag rate is above the threshold. It is stated rather than hidden, because the enrolments behind it are what coverage is computed from.",
+    "A flag rate above the threshold is stated rather than hidden, because the enrolments behind it are what coverage is computed from.",
   noEnrolments: "No enrolments yet. The invite has been sent and the device is not bound.",
   suspended: "Suspended. Existing enrolments stand; no new enrolment is accepted.",
 } as const;

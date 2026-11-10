@@ -201,7 +201,6 @@ export default async function DisputePage({
             ))}
           </ul>
         )}
-        <p className="note">{DISPUTE_COPY.basis}</p>
       </section>
 
       {closed || dispute.state === "escalated" ? null : (

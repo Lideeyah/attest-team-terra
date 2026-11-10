@@ -8,7 +8,12 @@ import { Stamp } from "@/components/Stamp";
 import { ParticipantActions } from "@/components/console/ParticipantActions";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
-import { PARTICIPANT_COPY } from "@/lib/copy/console";
+import {
+  PARTICIPANT_COPY,
+  PARTICIPANT_STATE_LABEL,
+  TRANSFER_STATE_LABEL,
+  WALLET_STATE_LABEL,
+} from "@/lib/copy/console";
 import {
   formatDate,
   formatDateTime,
@@ -28,15 +33,6 @@ export async function generateMetadata({
   const result = await api.participant(participantId);
   return { title: result.ok ? result.data.name : "Household not found" };
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  active: "Active",
-  flagged: "Flagged",
-  excluded: "Excluded from the current run",
-  disputed: "Disputed",
-  "duplicate-blocked": "Duplicate blocked",
-  removed: "Removed",
-};
 
 function minutes(seconds: number): string {
   if (seconds < 60) {
@@ -92,7 +88,7 @@ export default async function ParticipantPage({
                     ? "review"
                     : "sealed"
             }
-            label={STATUS_LABEL[participant.status]}
+            label={PARTICIPANT_STATE_LABEL[participant.status]}
             recordId={participant.id}
           />
         </div>
@@ -118,9 +114,7 @@ export default async function ParticipantPage({
       {participant.status === "excluded" ? (
         <Notice tone="flagged" title="Excluded from the current run">
           <p data-status-note="excluded">
-            {PARTICIPANT_COPY.excludedNote(
-              participant.statusReason ?? "No reason was recorded.",
-            )}
+            {participant.statusReason ?? "No reason was recorded."}
           </p>
         </Notice>
       ) : null}
@@ -135,7 +129,14 @@ export default async function ParticipantPage({
       ) : null}
 
       {participant.flags.length > 0 ? (
-        <Notice tone="flagged" title={`${participant.flags.length} flags on this enrolment`}>
+        <Notice
+          tone="flagged"
+          title={
+            participant.flags.length === 1
+              ? "One flag on this enrolment"
+              : `${participant.flags.length} flags on this enrolment`
+          }
+        >
           <ul className="flag-list" data-flags={participant.flags.length}>
             {participant.flags.map((flag) => (
               <li key={flag} className="record-cell">
@@ -146,8 +147,14 @@ export default async function ParticipantPage({
         </Notice>
       ) : null}
 
+      {participant.status === "disputed" && disputed.length === 0 ? (
+        <Notice tone="review" title="A payment to this household is reported">
+          <p data-status-note="disputed">{PARTICIPANT_COPY.disputedNote}</p>
+        </Notice>
+      ) : null}
+
       {disputed.length > 0 ? (
-        <Notice tone="review" title="A payment to this household is disputed">
+        <Notice tone="review" title="A payment to this household is reported">
           <ul className="stack">
             {disputed.map((payment) => (
               <li key={payment.transferId}>
@@ -197,7 +204,9 @@ export default async function ParticipantPage({
           </div>
           <div>
             <dt className="eyebrow">Wallet</dt>
-            <dd className="record-cell">{participant.walletState}</dd>
+            <dd className="record-cell">
+              {WALLET_STATE_LABEL[participant.walletState] ?? participant.walletState}
+            </dd>
           </div>
           <div>
             <dt className="eyebrow">Name enquiry</dt>
@@ -268,7 +277,7 @@ export default async function ParticipantPage({
                           ? "flagged"
                           : "review"
                   }
-                  label={payment.state === "settled" ? "Settled" : payment.state}
+                  label={TRANSFER_STATE_LABEL[payment.state] ?? "Settled"}
                   recordId={payment.transferId}
                 />
               </li>
