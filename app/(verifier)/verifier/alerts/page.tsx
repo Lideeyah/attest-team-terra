@@ -71,7 +71,12 @@ export default async function AlertsPage({
                   <span className="record-cell">
                     {ALERT_COPY.conditions[alert.condition]}
                   </span>
-                  <span className="record-cell">{orUnknown(alert.projectId)}</span>
+                  <span className="record-cell">
+                    {orUnknown(
+                      projects.find((project) => project.id === alert.projectId)?.name ??
+                        null,
+                    )}
+                  </span>
                   <span className="record-cell">
                     {alert.condition === "coverage-below"
                       ? `below ${Math.round(alert.threshold * 100)}%`

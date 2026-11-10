@@ -93,6 +93,12 @@ export async function f7(): Promise<void> {
 
   /* No participant is identifiable at any granularity. */
   await noParticipantIsIdentifiable();
+
+  /* What F-7's independent verification found. */
+  await figuresAreTheOnesTheyClaim();
+  await noVerdictArrivesByColour();
+  await everyFormatDeliversWhatItNames();
+  await theKeyIsIssuedOnce();
   await refusalsCarryNoVerdict();
 
   await a11y("/verifier");
@@ -105,6 +111,129 @@ export async function f7(): Promise<void> {
   for (const state of STATES) {
     await screenshot("F-7", state.href, `state-${state.label.replace(/[^a-z0-9]+/gi, "-")}`);
   }
+}
+
+/* A confirmation rate is a fraction in the contract, and three screens
+   rendered 0.72 as "1%". The figures on this surface are the ones it claims:
+   the closed period's own, not the open period's, and in the unit a reader
+   reads. */
+async function figuresAreTheOnesTheyClaim(): Promise<void> {
+  const { baseUrl } = await server();
+  const api = (await (await fetch(`${baseUrl}/api/verifier/projects/proj_ekuri`)).json()) as {
+    data?: { project: { periods: { period: string; paid: number; enrolled: number; confirmationRate: number }[] } };
+  };
+  const closed = (api.data?.project.periods ?? []).filter(
+    (period) => period.period === "2026-Q3",
+  )[0];
+
+  const outcome = await withBrowser(async (page, baseUrl2) => {
+    await page.goto(`${baseUrl2}/verifier/projects/proj_ekuri`, { waitUntil: "networkidle" });
+    const detail = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    await page.goto(`${baseUrl2}/verifier`, { waitUntil: "networkidle" });
+    const home = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    return { detail, home };
+  });
+
+  const expected = Math.round((closed?.confirmationRate ?? 0) * 100);
+  record(
+    "the confirmation rate is a percentage a reader can read",
+    expected > 1 && new RegExp(`\\b${expected}%`).test(outcome.detail),
+    `expected ${expected}% · ${outcome.detail.slice(0, 120)}`,
+  );
+  record(
+    "the watchlist states the closed period's own figures under its own label",
+    closed !== undefined &&
+      outcome.home.includes(`${closed.paid.toLocaleString("en-NG")} of ${closed.enrolled.toLocaleString("en-NG")}`),
+    `expected ${closed?.paid} of ${closed?.enrolled} · ${outcome.home.slice(0, 140)}`,
+  );
+}
+
+/* A verdict can arrive by colour as easily as by word: an edge that appears
+   for one project and not another is a traffic light. */
+async function noVerdictArrivesByColour(): Promise<void> {
+  const found: string[] = [];
+  await withBrowser(async (page, baseUrl) => {
+    for (const path of ["/verifier", "/verifier/projects", "/verifier/compare?ids=proj_ekuri,proj_oban"]) {
+      await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+      const coloured = JSON.parse(
+        (await page.evaluate(
+          `JSON.stringify(Array.from(document.querySelectorAll(".strip-flagged, .strip-blocked, .notice-flagged, .notice-blocked")).map(function (node) {
+            return node.className;
+          }))`,
+        )) as string,
+      ) as string[];
+      for (const className of coloured) {
+        found.push(`${path}: ${className}`);
+      }
+    }
+  });
+  record(
+    "nothing on the verifier surface is marked adversely by colour",
+    found.length === 0,
+    found.slice(0, 3).join(" | "),
+  );
+}
+
+/* Two formats behind one URL meant the CSV was the record with a different
+   name on it, and for three of the four projects the link 404ed. */
+async function everyFormatDeliversWhatItNames(): Promise<void> {
+  const { baseUrl } = await server();
+  const broken: string[] = [];
+  for (const projectId of ["proj_ekuri", "proj_hadejia"]) {
+    for (const format of ["record", "csv"]) {
+      const response = await fetch(`${baseUrl}/api/verifier/export`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "Idempotency-Key": `gate-f7-${projectId}-${format}`,
+        },
+        body: JSON.stringify({ projectId, period: "2026-Q3", format }),
+      });
+      const payload = (await response.json()) as { data?: { url?: string } };
+      const url = payload.data?.url;
+      if (!url) {
+        broken.push(`${projectId} ${format}: no file`);
+        continue;
+      }
+      const file = await fetch(`${baseUrl}${url}`);
+      const type = file.headers.get("content-type") ?? "";
+      if (file.status !== 200) {
+        broken.push(`${projectId} ${format}: ${file.status}`);
+      } else if (format === "csv" && !type.includes("text/csv")) {
+        broken.push(`${projectId} csv: served ${type}`);
+      } else if (format === "record" && !type.includes("json")) {
+        broken.push(`${projectId} record: served ${type}`);
+      }
+    }
+  }
+  record(
+    "every export format delivers the file it names, for every project",
+    broken.length === 0,
+    broken.join(" | "),
+  );
+}
+
+/* "A key issued once then masked" is one of the three things the export
+   screen is for, and it did not exist. */
+async function theKeyIsIssuedOnce(): Promise<void> {
+  const outcome = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}/verifier/export`, { waitUntil: "networkidle" });
+    await page.locator("#verifier-key-label").fill("Quarterly pull");
+    await page.locator("[data-key-issue]").click();
+    await page.waitForTimeout(1200);
+    const secret = await page.locator("[data-key-secret]").first().innerText();
+    await page.locator("[data-key-dismiss]").click();
+    await page.waitForTimeout(400);
+    const afterwards = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    return { secret: secret.trim(), afterwards };
+  });
+  record(
+    "a key is issued once and is not on the screen afterwards",
+    outcome.secret.startsWith("att_read_") &&
+      outcome.secret.length > 20 &&
+      !outcome.afterwards.includes(outcome.secret),
+    `${outcome.secret.slice(0, 16)}…`,
+  );
 }
 
 async function withBrowser<T>(

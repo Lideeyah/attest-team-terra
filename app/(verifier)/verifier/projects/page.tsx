@@ -5,11 +5,18 @@ import { EmptyState } from "@/components/EmptyState";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Strip } from "@/components/Strip";
+import { SavedSearches } from "@/components/verifier/SavedSearches";
 import { WatchToggle } from "@/components/verifier/WatchToggle";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
 import { PROJECTS_COPY } from "@/lib/copy/verifier";
-import { formatCount, formatCoverage, formatPeriod, orUnknown } from "@/lib/record";
+import {
+  coveragePercent,
+  formatCount,
+  formatCoverage,
+  formatPeriod,
+  orUnknown,
+} from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "Projects",
@@ -45,6 +52,7 @@ export default async function VerifierProjects({
   }
 
   const watched = new Set(watchlist.ok ? watchlist.data.map((row) => row.id) : []);
+  const countries = [...new Set(rows.data.map((row) => row.country))].sort();
   const filtered = Boolean(search.q || search.country);
 
   return (
@@ -70,10 +78,30 @@ export default async function VerifierProjects({
             placeholder="Ekuri, GS-10342, Hadejia"
           />
         </div>
+        <div className="field" style={{ minWidth: "180px" }}>
+          <label className="label" htmlFor="verifier-country">
+            Country
+          </label>
+          <select
+            id="verifier-country"
+            className="select"
+            name="country"
+            defaultValue={search.country ?? ""}
+          >
+            <option value="">Any country</option>
+            {countries.map((country) => (
+              <option key={country} value={country}>
+                {country}
+              </option>
+            ))}
+          </select>
+        </div>
         <button type="submit" className="btn-outline btn-sm">
           Search
         </button>
       </form>
+
+      <SavedSearches current={search.q ?? ""} />
 
       {rows.data.length === 0 ? (
         <EmptyState line={filtered ? PROJECTS_COPY.filteredEmpty : "No project has published a period yet."} />
@@ -90,7 +118,9 @@ export default async function VerifierProjects({
                   </span>
                   <span className="record-cell">{row.developerName}</span>
                   <span className="record-cell">
-                    {formatCoverage(row.paid, row.enrolled)} households paid
+                    {row.lastClosedPeriod
+                      ? `${formatCoverage(row.lastClosedPaid, row.lastClosedEnrolled)} paid · ${coveragePercent(row.lastClosedPaid, row.lastClosedEnrolled)}%`
+                      : "No period closed"}
                   </span>
                   <span className="record-cell">
                     {row.lastClosedPeriod

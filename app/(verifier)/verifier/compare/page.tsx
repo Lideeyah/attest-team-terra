@@ -7,13 +7,7 @@ import { ComparePicker } from "@/components/verifier/ComparePicker";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
 import { COMPARE_COPY } from "@/lib/copy/verifier";
-import {
-  formatCount,
-  formatCoverage,
-  formatNaira,
-  formatPeriod,
-  orUnknown,
-} from "@/lib/record";
+import { confirmationPercent, formatCount, formatCoverage, formatNaira, formatPeriod, orUnknown } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "Compare",
@@ -51,6 +45,25 @@ export default async function ComparePage({
 
   const projects = compared && compared.ok ? compared.data.projects : [];
   const shared = compared && compared.ok ? compared.data.comparablePeriods : [];
+  const unknown = compared && compared.ok ? compared.data.unknown : [];
+
+  /* The dispute rate the phase asks for, per project per shared period, read
+     from each project's own reports. */
+  const disputeResults = await Promise.all(
+    projects.map((project) => api.disputes(project.id, { per_page: 100 })),
+  );
+  const disputeCounts: Record<string, Record<string, number>> = {};
+  projects.forEach((project, index) => {
+    const rows = disputeResults[index];
+    disputeCounts[project.id] = {};
+    if (!rows.ok) {
+      return;
+    }
+    for (const dispute of rows.data) {
+      disputeCounts[project.id][dispute.period] =
+        (disputeCounts[project.id][dispute.period] ?? 0) + 1;
+    }
+  });
 
   return (
     <div className="measure section-tight stack-lg">
@@ -67,10 +80,22 @@ export default async function ComparePage({
 
       <ComparePicker options={options} selected={ids} />
 
+      {unknown.length > 0 ? (
+        <Notice tone="flagged" title="One of these is not a project on the register">
+          <p data-unknown={unknown.join(",")}>
+            {unknown.join(", ")} {unknown.length === 1 ? "is" : "are"} not on the
+            register, so {unknown.length === 1 ? "it is" : "they are"} not in
+            the comparison below.
+          </p>
+        </Notice>
+      ) : null}
+
       {projects.length === 0 ? (
         <EmptyState line={COMPARE_COPY.nothing} />
       ) : shared.length === 0 ? (
-        <Notice tone="flagged" title="There is no period to compare these on">
+        /* A calendar fact, not a flag: these projects simply have not closed
+           the same period. */
+        <Notice title="There is no period to compare these on">
           <p data-incomparable="true">
             {COMPARE_COPY.incomparable(projects.map((project) => project.name))}
           </p>
@@ -78,7 +103,9 @@ export default async function ComparePage({
       ) : (
         <section className="stack" aria-label="Comparison">
           <p className="note">
-            Compared on {formatCount(shared.length)} periods both closed:{" "}
+            Compared on {formatCount(shared.length)}{" "}
+            {shared.length === 1 ? "period" : "periods"} every one of them
+            closed:{" "}
             {shared.map((period) => formatPeriod(period)).join(", ")}.
           </p>
           <Rule />
@@ -112,10 +139,15 @@ export default async function ComparePage({
                         {own ? (
                           <>
                             {formatCoverage(own.paid, own.enrolled)} paid ·{" "}
-                            {Math.round(own.confirmationRate)}% confirmed ·{" "}
+                            {confirmationPercent(own.confirmationRate)}% of
+                            those confirmed ·{" "}
+                            {formatCount(
+                              disputeCounts[project.id]?.[period] ?? 0,
+                            )}{" "}
+                            reports of {formatCount(own.paid)} paid ·{" "}
                             {Number(own.shortfall) > 0
-                              ? `${formatNaira(own.shortfall)} short`
-                              : "no shortfall"}
+                              ? `${formatNaira(own.shortfall)} short of ${formatNaira(own.required)}`
+                              : `no shortfall against ${formatNaira(own.required)}`}
                           </>
                         ) : (
                           orUnknown(null)
@@ -129,8 +161,9 @@ export default async function ComparePage({
           </table>
           <p className="note">
             {COMPARE_COPY.columns.coverage}; {COMPARE_COPY.columns.confirmation};{" "}
-            {COMPARE_COPY.columns.shortfall}. Nothing here ranks these projects
-            and no figure is weighed against another project&rsquo;s.
+            {COMPARE_COPY.columns.disputes}; {COMPARE_COPY.columns.shortfall}.
+            Nothing here ranks these projects and no figure is weighed against
+            another project&rsquo;s.
           </p>
         </section>
       )}

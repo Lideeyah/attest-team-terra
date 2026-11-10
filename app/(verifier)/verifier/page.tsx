@@ -10,6 +10,8 @@ import { headingFor } from "@/lib/copy/codes";
 import { VERIFIER_COPY } from "@/lib/copy/verifier";
 import { ALERT_COPY } from "@/lib/copy/verifier";
 import {
+  confirmationPercent,
+  coveragePercent,
   formatCount,
   formatCoverage,
   formatDate,
@@ -57,8 +59,11 @@ export default async function VerifierHome({
       projectId: row.id,
       projectName: row.name,
       period: row.lastClosedPeriod as string,
-      paid: row.paid,
-      enrolled: row.enrolled,
+      /* The figures for the period named, not the project's current ones:
+         those belong to the period still open. */
+      paid: row.lastClosedPaid,
+      enrolled: row.lastClosedEnrolled,
+      confirmed: row.lastClosedConfirmationRate,
     }));
 
   return (
@@ -94,7 +99,12 @@ export default async function VerifierHome({
                     </span>
                     <span className="record-cell">{formatPeriod(close.period)}</span>
                     <span className="record-cell">
-                      {formatCoverage(close.paid, close.enrolled)} households paid
+                      {formatCoverage(close.paid, close.enrolled)} households paid ·{" "}
+                      {coveragePercent(close.paid, close.enrolled)}%
+                    </span>
+                    <span className="record-cell">
+                      {confirmationPercent(close.confirmed)}% of those confirmed
+                      receiving it
                     </span>
                   </div>
                 </Strip>
@@ -111,12 +121,15 @@ export default async function VerifierHome({
           <ul className="stack-tight">
             {rows.map((row) => (
               <li key={row.id}>
-                <Strip state={row.openDisputes > 0 ? "flagged" : undefined}>
+                {/* No edge colour here: a project with an open report is not
+                    a project in a worse state, and an edge that appears for
+                    one project and not another is a traffic light. */}
+                <Strip>
                   <div className="verifier-row" data-disputes={row.id}>
                     <span className="record-cell">{row.name}</span>
                     <span className="record-cell">
-                      {formatCount(row.openDisputes)} open of{" "}
-                      {formatCount(row.paid)} households paid
+                      {formatCount(row.openDisputes)} reports open on this
+                      project
                     </span>
                     <span className="record-cell">
                       <Link href={`/verifier/projects/${row.id}`} prefetch={false}>
@@ -151,7 +164,7 @@ export default async function VerifierHome({
                     <span className="record-cell">
                       {alert.record ? (
                         <Link href={`/attestation/${alert.record}`} prefetch={false}>
-                          {orUnknown(alert.record)}
+                          The record that fired it
                         </Link>
                       ) : (
                         orUnknown(null)

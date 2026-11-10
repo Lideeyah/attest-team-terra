@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { CoverageChart, type CoverageBar } from "@/components/CoverageChart";
 import { Notice } from "@/components/Notice";
@@ -9,15 +10,17 @@ import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
 import { DETAIL_COPY, VERIFIER_COPY } from "@/lib/copy/verifier";
 import { flagRate } from "@/lib/console-format";
-import {
-  coveragePercent,
-  formatCount,
-  formatCoverage,
-  formatDate,
-  formatNaira,
-  formatPeriod,
-  orUnknown,
-} from "@/lib/record";
+import { confirmationPercent, coveragePercent, formatCount, formatCoverage, formatDate, formatNaira, formatPeriod, orUnknown } from "@/lib/record";
+
+/* A resolution basis is published so a reader can see a report closed on
+   something. The session identifier and the exact amount in it belong to one
+   household's transfer, and this surface publishes no household at any
+   granularity, so they are masked here rather than on the record itself. */
+function maskRecordIdentifiers(basis: string): string {
+  return basis
+    .replace(/\b\d{12,}\b/g, "a settlement session")
+    .replace(/₦[\d,]+\.\d{2}/g, "the amount on the record");
+}
 
 export async function generateMetadata({
   params,
@@ -47,6 +50,11 @@ export default async function VerifierProject({
   ]);
 
   if (!result.ok) {
+    if (result.code === "NOT_FOUND") {
+      /* A record that does not exist answers 404, here as everywhere else:
+         a 200 carrying "not found" is a lie told in the status line. */
+      notFound();
+    }
     return (
       <div className="measure section-tight stack-lg">
         <Notice tone="blocked" title={headingFor(result.code, "This project could not be read")}>
@@ -57,7 +65,7 @@ export default async function VerifierProject({
     );
   }
 
-  const { project, attestations, signalsByClass, agentFlagRates, geography } = result.data;
+  const { project, attestations, signals, agentFlagRates, geography } = result.data;
   const closed = project.periods.filter((period) => period.state !== "open");
   const latest = closed[closed.length - 1] ?? null;
   const history = closed.slice(0, -1);
@@ -65,11 +73,11 @@ export default async function VerifierProject({
      acknowledged at. Compared only with itself, never with another project. */
   const historicalConfirmation =
     history.length > 0
-      ? Math.round(
+      ? confirmationPercent(
           history.reduce((sum, period) => sum + period.confirmationRate, 0) / history.length,
         )
       : null;
-  const latestConfirmation = latest ? Math.round(latest.confirmationRate) : null;
+  const latestConfirmation = latest ? confirmationPercent(latest.confirmationRate) : null;
   const materiallyBelow =
     historicalConfirmation !== null &&
     latestConfirmation !== null &&
@@ -81,12 +89,31 @@ export default async function VerifierProject({
     enrolled: period.enrolled,
   }));
 
-  const signals = Object.entries(signalsByClass);
   const resolved = disputes.ok ? disputes.data : [];
+
+  /* Weighted by what each agent enrolled, and stated against the enrolments
+     it was computed from: an agent who enrolled nobody does not count the
+     same as one who enrolled seven hundred. */
+  const totalEnrolments = agentFlagRates.reduce(
+    (sum, agent) => sum + (agent.enrolments ?? 0),
+    0,
+  );
+  const flaggedEnrolments =
+    agentFlagRates.length === 0
+      ? null
+      : Math.round(
+          agentFlagRates.reduce(
+            (sum, agent) => sum + agent.flagRate * (agent.enrolments ?? 0),
+            0,
+          ),
+        );
 
   return (
     <div className="measure section-tight stack-lg">
       <header className="stack">
+        <Link href="/verifier/projects" className="btn-quiet btn-sm back-link" prefetch={false}>
+          ← Projects
+        </Link>
         <p className="eyebrow">
           {VERIFIER_COPY.surface} · {project.registry} {project.registryId}
         </p>
@@ -98,8 +125,11 @@ export default async function VerifierProject({
         <Rule weight="heavy" />
       </header>
 
+      {/* A status is a fact about the project's standing with the platform,
+          not a finding against it, so it takes the review tone rather than
+          the one reserved for a failure. */}
       {project.status !== "active" ? (
-        <Notice tone={project.status === "withdrawn" ? "blocked" : "flagged"} title={`This project is ${project.status}`}>
+        <Notice tone="review" title={`This project is ${project.status}`}>
           <p data-project-status={project.status}>
             Everything it published stays published. A project that is{" "}
             {project.status} makes no new payment, and its closed periods are
@@ -107,6 +137,22 @@ export default async function VerifierProject({
           </p>
         </Notice>
       ) : null}
+
+      <section className="stack" aria-label="The commitment">
+        <h2 className="h3-display">What this project committed to</h2>
+        <Rule />
+        <p className="quotation">{project.commitment.sourceQuote}</p>
+        <p className="note">
+          Project design document, page {project.commitment.page}.{" "}
+          {project.commitment.corrected
+            ? `Read as ${project.commitment.originalPercentage}% and corrected to ${project.commitment.percentage}%: ${project.commitment.correctionReason ?? ""}`
+            : `Read as ${project.commitment.percentage}% of ${project.commitment.basis} revenue, ${project.commitment.cadence}.`}
+        </p>
+        <p className="note">
+          Every shortfall below is measured against this, and against nothing
+          else.
+        </p>
+      </section>
 
       <section className="stack" aria-label={DETAIL_COPY.transfers}>
         <h2 className="h3-display">{DETAIL_COPY.transfers}</h2>
@@ -122,18 +168,22 @@ export default async function VerifierProject({
                   <div className="verifier-row wide" data-period={period.period}>
                     <span className="record-cell">{formatPeriod(period.period)}</span>
                     <span className="record-cell">
-                      {formatCoverage(period.paid, period.enrolled)} households paid
+                      {formatCoverage(period.paid, period.enrolled)} households paid ·{" "}
+                      {coveragePercent(period.paid, period.enrolled)}%
                     </span>
                     <span className="record-cell">
                       {formatNaira(period.amountToHouseholds)} to households
                     </span>
                     <span className="record-cell">
                       {Number(period.shortfall) > 0
-                        ? `${formatNaira(period.shortfall)} short of the commitment`
-                        : "No shortfall"}
+                        ? `${formatNaira(period.shortfall)} short of the ${formatNaira(period.required)} the commitment required`
+                        : `No shortfall against the ${formatNaira(period.required)} required`}
                     </span>
                     <span className="record-cell">
                       {period.closedAt ? formatDate(period.closedAt) : orUnknown(null)}
+                      {period.state === "closed-late"
+                        ? ` · closed after ${formatDate(period.closesOn)}`
+                        : ""}
                     </span>
                   </div>
                 </li>
@@ -157,12 +207,13 @@ export default async function VerifierProject({
             </div>
             <div className="stack-tight">
               <p className="eyebrow">
-                This project&rsquo;s earlier periods, {formatCount(history.length)} of them
+                The mean across its {formatCount(history.length)} earlier
+                periods
               </p>
               <p className="figure-inline">
                 {historicalConfirmation === null
                   ? orUnknown(null)
-                  : `${historicalConfirmation}%`}
+                  : `${historicalConfirmation}% of the households each period paid`}
               </p>
             </div>
           </div>
@@ -202,7 +253,11 @@ export default async function VerifierProject({
                           ? "With the platform"
                           : "Open"}
                   </span>
-                  <span className="note">{orUnknown(dispute.resolutionBasis)}</span>
+                  <span className="note">
+                    {dispute.resolutionBasis
+                      ? maskRecordIdentifiers(dispute.resolutionBasis)
+                      : orUnknown(null)}
+                  </span>
                 </div>
               </li>
             ))}
@@ -214,22 +269,22 @@ export default async function VerifierProject({
         <h2 className="h3-display">{DETAIL_COPY.signals}</h2>
         <Rule />
         <p className="note">{DETAIL_COPY.signalNote}</p>
-        {signals.length === 0 ? (
-          <p className="note">No signal has been raised on this project&rsquo;s accounts.</p>
-        ) : (
-          <ul className="stack-tight">
-            {signals.map(([signalClass, count]) => (
-              <li key={signalClass}>
-                <div className="verifier-row" data-signal-class={signalClass}>
-                  <span className="record-cell">{signalClass.replace(/-/g, " ")}</span>
-                  <span className="record-cell">
-                    {formatCount(count)} of {formatCount(project.signalCount)} on this project
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="verifier-pair">
+          <div className="stack-tight">
+            <p className="eyebrow">Signals raised on this project</p>
+            <p className="figure-inline" data-signals={signals}>
+              {formatCount(signals)}
+            </p>
+          </div>
+          <div className="stack-tight">
+            <p className="eyebrow">Periods published</p>
+            <p className="figure-inline">{formatCount(closed.length)}</p>
+          </div>
+        </div>
+        <p className="note">
+          What each signal is about is the bank&rsquo;s to investigate and is
+          not published here: the count is the published form.
+        </p>
       </section>
 
       <section className="stack" aria-label={DETAIL_COPY.agents}>
@@ -242,15 +297,13 @@ export default async function VerifierProject({
             <p className="figure-inline">{formatCount(agentFlagRates.length)}</p>
           </div>
           <div className="stack-tight">
-            <p className="eyebrow">Flag rate across them</p>
+            <p className="eyebrow">Enrolments carrying a flag</p>
             <p className="figure-inline" data-aggregate-flag-rate>
-              {agentFlagRates.length === 0
+              {flaggedEnrolments === null
                 ? orUnknown(null)
-                : flagRate(
-                    agentFlagRates.reduce((sum, agent) => sum + agent.flagRate, 0) /
-                      agentFlagRates.length,
-                  )}{" "}
-              of {formatCount(project.enrolled)} enrolments
+                : `${formatCount(flaggedEnrolments)} of ${formatCount(totalEnrolments)} · ${flagRate(
+                    totalEnrolments === 0 ? 0 : flaggedEnrolments / totalEnrolments,
+                  )}`}
             </p>
           </div>
         </div>
@@ -308,11 +361,9 @@ export default async function VerifierProject({
                 <span>
                   <Stamp
                     state={
-                      attestation.supersededBy !== null
-                        ? "flagged"
-                        : attestation.anchorState === "anchored"
-                          ? "sealed"
-                          : "review"
+                      /* A correction is the record working as designed, so it
+                         is sealed like any other published record. */
+                      attestation.anchorState === "anchored" ? "sealed" : "review"
                     }
                     label={
                       attestation.supersededBy !== null

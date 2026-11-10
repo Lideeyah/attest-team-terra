@@ -15,13 +15,7 @@ import { Table, type Column } from "@/components/Table";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
 import type { PeriodSummary } from "@/lib/api/contract";
-import {
-  formatCount,
-  formatCoverage,
-  formatNaira,
-  formatPeriod,
-  formatSettlement,
-} from "@/lib/record";
+import { confirmationPercent, formatCount, formatCoverage, formatNaira, formatPeriod, formatSettlement } from "@/lib/record";
 
 export async function generateMetadata({
   params,
@@ -115,7 +109,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
       key: "confirmed",
       header: "Confirmed",
       numeric: true,
-      cell: (period) => `${Math.round(period.confirmationRate * 100)}%`,
+      cell: (period) => `${confirmationPercent(period.confirmationRate)}%`,
     },
     {
       key: "state",
@@ -184,7 +178,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
         </div>
         <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>
           <p className="eyebrow">Confirmed by the household</p>
-          <p className="figure-value">{Math.round(project.confirmationRate * 100)}%</p>
+          <p className="figure-value">{confirmationPercent(project.confirmationRate)}%</p>
           <p className="figure-denominator">of payments that settled</p>
         </div>
         <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>

@@ -49,7 +49,7 @@ export const DETAIL_COPY = {
     "Flag rates are shown across the project's agents and never against a named person on this surface.",
   enrolment: "Where households are enrolled",
   noPii:
-    "No household appears on this surface at any granularity. The contract returns none, so there is nothing here that has been hidden.",
+    "No household appears on this surface at any granularity. The endpoints behind it do return household detail to the project that owns it, and this surface renders none of it: enrolment is published in cells about a kilometre across, and a report is published as its category and its basis.",
 } as const;
 
 export const COMPARE_COPY = {

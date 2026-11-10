@@ -36,12 +36,19 @@ function groupDigits(digits: string): string {
 }
 
 export function formatNaira(amount: string): string {
-  const [major = "0", minor = "00"] = amount.split(".");
-  return `₦${groupDigits(major)}.${minor.padEnd(2, "0").slice(0, 2)}`;
+  /* A negative amount is a real fact — a period that spent more than arrived
+     — and it reads as one rather than as a figure with a stray character in
+     front of the currency. */
+  const negative = amount.startsWith("-");
+  const [major = "0", minor = "00"] = amount.replace("-", "").split(".");
+  return `${negative ? "−" : ""}₦${groupDigits(major)}.${minor.padEnd(2, "0").slice(0, 2)}`;
 }
 
-/** A compact figure, for a chart axis label and nowhere else. A figure being
-    audited is never abbreviated: ₦48.2m is not a number anyone can check. */
+/* The one place an abbreviated amount is allowed is a chart axis label, where
+   the figure is a tick mark rather than a figure being audited. Spec patch 01
+   item 10. Nothing else in the product calls this, and the component
+   reference does not either: the reference is where the console was built
+   from, and an example that abbreviates money teaches the wrong thing. */
 export function formatNairaCompact(amount: string): string {
   const [major = "0"] = amount.split(".");
   const naira = Number(major);
@@ -76,6 +83,13 @@ export function coveragePercent(paid: number, enrolled: number): number {
     return 0;
   }
   return Math.round((paid / enrolled) * 100);
+}
+
+/* A confirmation rate is a fraction in the contract, and a percentage to a
+   reader. One helper, because the verifier surface rendered 0.72 as "1%" on
+   three screens by forgetting which it had. */
+export function confirmationPercent(rate: number): number {
+  return Math.round(rate * 100);
 }
 
 const MONTHS = [

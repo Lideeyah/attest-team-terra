@@ -19,15 +19,20 @@ export default async function ExportPage({
   await connection();
   const search = await searchParams;
   const register = await api.register({ per_page: 50 });
-  const projects = register.ok
-    ? register.data
-        .filter((row) => row.lastClosedPeriod !== null)
-        .map((row) => ({
-          id: row.id,
-          name: row.name,
-          period: row.lastClosedPeriod as string,
-        }))
-    : [];
+  /* Every period a project has closed, because an export of only the latest
+     is an export of one period. */
+  const rows = register.ok ? register.data.filter((row) => row.lastClosedPeriod) : [];
+  const detailed = await Promise.all(rows.map((row) => api.publicProject(row.id)));
+  const projects = rows.map((row, index) => {
+    const detail = detailed[index];
+    const periods =
+      detail.ok
+        ? detail.data.project.periods
+            .filter((period) => period.state !== "open")
+            .map((period) => period.period)
+        : [row.lastClosedPeriod as string];
+    return { id: row.id, name: row.name, periods };
+  });
 
   return (
     <div className="measure section-tight stack-lg">
