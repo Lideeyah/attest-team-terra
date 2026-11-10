@@ -933,6 +933,76 @@ come from the fixture's run, so the builder reads rather than writes them. The
 screens are built for the write; the endpoint that takes it is
 `POST /api/projects/:id/runs`, which the contract has.
 
+### F-5 — what the verification found, and what was done about it
+
+Thirty-one findings, all addressed. The gate goes from 99 assertions to 112.
+The verifier could not forge a disclosure bundle, which was the first thing it
+was asked to attack; the console's own endpoints did not hold, which was the
+second.
+
+**Money and identity, the findings that misreported something to a reader.**
+The home screen summed every unfinished run's failures, so it read "477
+transfers failed" beside a run card reading 233 — a closed, published period
+folded into the open one. Failures are now the open period's. An unknown run
+identifier fell back to another run's arithmetic and rendered a confident,
+fully-worked panel about the wrong money; it answers `NOT_FOUND`. A dispute and
+a run belonging to another project rendered inside this console; detail routes
+are scoped to the session's project. A household's payment history printed
+`REVERSED` and a wallet printed `dormant`; every contract enum a reader sees is
+prose now, and the gate asserts no enum reaches a screen. The builder and the
+funding screen disagreed about the same period because one figure was per-run
+and labelled per-period; the label says what the figure is.
+
+**The console's own endpoints.** Every created API key carried one hardcoded
+secret, so "shown once" was a guarantee around a constant. An invited user was
+never held, so the duplicate refusal caught only the three seeded addresses and
+every created user collided on one identifier. Three list endpoints ignored the
+project in their own path and answered for an unknown project with this
+project's users. The last-administrator refusal returned `FORBIDDEN`'s generic
+copy — "ask an administrator to grant access" — told to the only administrator.
+The https check was case-sensitive. The deletes returned success and removed
+nothing. Idempotency keys were minted inside the client, so the header was
+present and the protection was not; each mutation takes the key its caller
+chose.
+
+**The exit-checklist items that failed.** The stream sent a transfer's queued,
+in-flight and settled events in one tick, so nothing was ever concurrently in
+flight and `queuePulse` — the screen's whole point under load — could never
+render. A transfer is in flight for several ticks now and resolves after them,
+and the gate asserts both the concurrency and the pulse. `stampLand` was
+applied to every settled row for the life of the page and replayed whenever the
+virtualised window recycled a row; a stamp lands once. Pre-flight returned
+`passed: false` always and the step had no exclusion control, while the next
+step offered to execute anyway: each exclusion is now recorded with a reason,
+pre-flight passes when none is outstanding, and the confirm step refuses while
+any is. The typed client no longer carries a participant delete call at all.
+
+**States that could not be reached, or rendered wrongly.** The "closing within
+72 hours" and "period closed" states needed the quarter to end, so a period
+carries its own close date and `/api/dev/period` moves it. A report waiting on
+the participant was unreachable because responding set "responded" and nothing
+else; responding now puts the report with the household, which is who closes
+it. A substantiated report existed only on a project this session cannot read,
+so there is one here. A reconciliation mismatch collapsed the screen it was
+about; it is a fact about the period and is answered with the period. The
+correction attestation carried figures identical to the record it superseded
+under copy saying it states what changed; it restates coverage and the amount,
+says what it changed and why, and its disclosure bundles resolve. A bundle
+verifying against a record that has since been corrected says so.
+
+**Display conventions.** The rail printed `2026-Q4`; percentages carried a
+decimal; coverage was printed twice in one figure; counts were shown without
+denominators; a real zero and an unknown both read as an em dash; plurals were
+unguarded ("1 agents", "1 flags", "closes in 1 days"); the pre-flight list
+printed each reason twice. All corrected. The roster heading kept the filter's
+count as though it were the roster's size, and now states both.
+
+**Still open, recorded rather than fixed.** `formatNairaCompact` has three call
+sites, none of them a chart axis label, all in the developer reference screens
+under `/dev`. They are excluded from a production build, so no reader reaches
+them, but the component reference is where the console was built from and the
+abbreviation should not be the example it sets.
+
 ---
 
 ## F-4 — what the verification found, and what was done about it

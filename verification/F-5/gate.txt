@@ -1,4 +1,4 @@
-FAIL  typecheck: tsc --noEmit
+PASS  typecheck: tsc --noEmit
 PASS  typecheck: no any
 PASS  route renders /app
 PASS  route renders /app/roster
@@ -51,6 +51,19 @@ PASS  money is not abbreviated on /app/funding
 PASS  money is not abbreviated on /app/attestations
 PASS  money is not abbreviated on /app/runs/run_2026q4
 PASS  the import format is the one the patch specifies, and the failure download appends its two columns
+PASS  transfers are concurrently in flight, and the queue pulse renders on them
+PASS  the home screen's failure count is the run's own
+PASS  pre-flight offers a control for each exclusion it found
+PASS  a run does not execute while pre-flight has not passed
+PASS  pre-flight passes once every exclusion is recorded with a reason
+PASS  a suspended project cannot create a run from the builder either
+PASS  a record belonging to another project is not readable in this console
+PASS  no contract enum is shown to a reader in the console
+PASS  a period that does not reconcile still shows the account and the figures
+PASS  a period closing within 72 hours is marked
+PASS  a closed period says so
+PASS  the console's own endpoints refuse what they say they refuse
+PASS  the typed client carries no participant delete call at all
 PASS  accessibility on /app
 PASS  keyboard reachability on /app
 PASS  accessibility on /app/roster
@@ -97,4 +110,4 @@ PASS  screenshot F-5/state-dispute-substantiated
 PASS  screenshot F-5/state-dispute-unsubstantiated
 PASS  screenshot F-5/state-api-key-shown-once
 PASS  screenshot F-5/state-notification-preferences
-98 passed, 1 failed in 127.4s
+112 passed, 0 failed in 150.1s
