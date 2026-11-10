@@ -1,0 +1,45 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /ops
+PASS  route renders /ops/signals
+PASS  route renders /ops/signals/sig_0231
+PASS  route renders /ops/cases
+PASS  route renders /ops/exceptions
+PASS  route renders /ops/reconciliation
+PASS  every state the operations console lists is reachable and says what it is
+PASS  all five signal classes render, each with its own words
+PASS  no signal class is shown to a reader as its contract name
+PASS  the account graph draws the sweep: hundreds of wallets into a few accounts
+PASS  the graph is legible rather than a single blot
+PASS  the graph states the amounts and the window it covers
+PASS  the graph holds 60fps while it is panned
+PASS  a sampled graph says it is sampled, and says of how many
+PASS  the signals queue describes accounts and patterns, not people
+PASS  an action this account may not take is refused and says so
+PASS  accessibility on /ops
+PASS  keyboard reachability on /ops
+PASS  accessibility on /ops/signals
+PASS  keyboard reachability on /ops/signals
+PASS  accessibility on /ops/cases
+PASS  keyboard reachability on /ops/cases
+PASS  screenshot F-8/ops
+PASS  screenshot F-8/ops-signals
+PASS  screenshot F-8/ops-signals-sig_0231
+PASS  screenshot F-8/ops-cases
+PASS  screenshot F-8/ops-exceptions
+PASS  screenshot F-8/ops-reconciliation
+PASS  screenshot F-8/state-signals-filtered-by-class
+PASS  screenshot F-8/state-signals-filtered-by-severity
+PASS  screenshot F-8/state-signals-none-open
+PASS  screenshot F-8/state-a-signal-already-on-a-case
+PASS  screenshot F-8/state-cases
+PASS  screenshot F-8/state-an-action-waiting-for-authorisation
+PASS  screenshot F-8/state-an-action-refused
+PASS  screenshot F-8/state-exceptions
+PASS  screenshot F-8/state-exceptions-none
+PASS  screenshot F-8/state-reconciliation
+PASS  screenshot F-8/state-a-period-not-yet-closed
+PASS  screenshot F-8/state-the-graph-still-loading
+PASS  screenshot F-8/state-no-onward-movement-yet
+PASS  screenshot F-8/state-onward-movement-entirely-ordinary
+44 passed, 0 failed in 60.4s

@@ -18,7 +18,14 @@ PASS  a submitted enrolment carries no control that would edit it
 PASS  a submitted enrolment says it is a record rather than looking disabled
 PASS  a phone that is not bound captures nothing and can ask to be bound
 PASS  a screen working from the cached session says so, with when it stops being good
+PASS  the worker caches the application, not only its pages
+PASS  the app still runs offline once the browser's own cache is gone
+PASS  an enrolment stranded mid-sync is recovered and sent rather than left forever
+PASS  every line in the queue's log reads as a time
+PASS  the identity number itself is not written to the device
+PASS  the same client UUID enrols a household once, however many times it is sent
 PASS  the field app's own JavaScript is under 40KB
+PASS  the field app imports neither the animation library nor the typed client
 PASS  first load is measured against the 150KB the phase asks for
 PASS  every tap target is at least 44px on a phone
 PASS  the field app does not use the dim ink, which is unreadable in sunlight
@@ -35,4 +42,4 @@ PASS  screenshot F-6/field-enrol
 PASS  screenshot F-6/field-queue
 PASS  screenshot F-6/field-me
 PASS  screenshot F-6/field-enrolment-enr_000001
-37 passed, 0 failed in 79.4s
+44 passed, 0 failed in 100.1s

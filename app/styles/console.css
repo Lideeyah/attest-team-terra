@@ -520,3 +520,111 @@
     gap: calc(var(--stack) / 3);
   }
 }
+
+/* ---- Bank operations ------------------------------------------------------
+
+   The account graph. Ink and rules on the sunken surface, and one colour in
+   the whole drawing: the accounts the money concentrated into, which are the
+   thing the drawing is about. Everything else — households, intermediaries,
+   every edge — is ink at a weight. */
+
+.signal-row {
+  display: grid;
+  grid-template-columns: minmax(300px, 2fr) minmax(200px, 1fr);
+  gap: var(--stack-lg);
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+  align-items: start;
+}
+
+.graph-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--stack);
+}
+
+.graph-surface {
+  background: var(--surface-sunken);
+  border: var(--hairline) solid var(--rule-contrast);
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+.graph-surface:active {
+  cursor: grabbing;
+}
+
+.graph-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.graph-edge {
+  stroke: var(--rule-contrast);
+  stroke-width: var(--hairline);
+  opacity: 0.5;
+}
+
+/* A second hop is the money moving again, and it is drawn heavier because it
+   is the part that is hard to explain. */
+.graph-edge-hop {
+  stroke: var(--ink-muted);
+  stroke-width: var(--stroke-tick);
+  opacity: 1;
+}
+
+.graph-node {
+  fill: var(--canvas-paper);
+  stroke: var(--ink-primary);
+  stroke-width: var(--hairline);
+}
+
+.graph-node-household {
+  fill: var(--ink-muted);
+  stroke: none;
+}
+
+.graph-node-intermediary {
+  fill: var(--surface-elevated);
+  stroke: var(--ink-primary);
+  stroke-width: var(--stroke-tick);
+}
+
+.graph-node-concentrator {
+  fill: var(--stamp-blocked-ink);
+  stroke: var(--stamp-blocked-ink);
+  stroke-width: var(--stroke-tick);
+}
+
+.graph-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--stack-lg);
+  margin: 0;
+  border-top: var(--hairline) solid var(--rule-hairline);
+  padding-top: var(--stack);
+}
+
+.graph-legend dd {
+  margin: 0;
+}
+
+.case-action {
+  display: grid;
+  grid-template-columns: 170px 150px 1fr 180px;
+  gap: var(--stack);
+  align-items: baseline;
+  padding-block: calc(var(--pad-cell-y) / 2);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+@media (max-width: 1080px) {
+  .signal-row,
+  .case-action {
+    grid-template-columns: 1fr;
+    gap: calc(var(--stack) / 3);
+  }
+}
