@@ -1,0 +1,12 @@
+:HL["/_next/static/chunks/23-tpj-kkmj8t.css","style"]
+:HL["/_next/static/chunks/3c-862g-9fivy.css","style"]
+:HL["/_next/static/media/47b83403a34d3b52-s.p.0egz9rzqpsqjk.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/7172132ea3483a1a.p.1xmps1tcyqv34.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/75cb990346c55dc4-s.p.40bho2kviej2o.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/7d2dd58e31d7c0b6.p.3a10o7es2neby.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/CabinetGrotesk_Extrabold-s.p.27o7s6nm2qdr6.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+4:[["children",{"s":"__PAGE__","h":16546}]]
+3:[["children",{"s":{"n":"attestationId","t":"d","k":null,"s":[]},"h":16482,"c":"$Q4"}]]
+2:[["children",{"s":"attestation","h":16482,"c":"$Q3"}]]
+1:[["children",{"s":"(public)","h":16482,"c":"$Q2"}]]
+0:{"b":"eATOIK7_wx8WYIqEQ_kco","t":{"t":{"s":"","h":16470,"c":"$Q1"}}}

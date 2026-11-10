@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "headers": {
+    "link": "</_next/static/media/47b83403a34d3b52-s.p.0egz9rzqpsqjk.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/7172132ea3483a1a.p.1xmps1tcyqv34.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/75cb990346c55dc4-s.p.40bho2kviej2o.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/7d2dd58e31d7c0b6.p.3a10o7es2neby.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/CabinetGrotesk_Extrabold-s.p.27o7s6nm2qdr6.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\"",
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(public)/layout,_N_T_/(public)/page,_N_T_/,_N_T_/index"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHB1YmxpYyk/__PAGE__"
+  ],
+  "prefetchHints": {
+    "hints": 49216,
+    "slots": {
+      "children": {
+        "hints": 49248,
+        "slots": {
+          "children": {
+            "hints": 49312,
+            "slots": null
+          }
+        }
+      }
+    }
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/0487e325442c48c2c0dcbf234601f571e8d501d519ba05a15f3f8a9bf7d00844/$/index",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(public)/page"
+    },
+    "isFallback": false
+  }
+}

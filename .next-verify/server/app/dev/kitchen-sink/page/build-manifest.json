@@ -1,0 +1,21 @@
+{
+  "devFiles": [],
+  "ampDevFiles": [],
+  "polyfillFiles": [
+    "static/chunks/0cz1d0mv5g_q7.js"
+  ],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [
+    "static/chunks/41o_1cb0sipne.js",
+    "static/chunks/1r0ux2nutw9uh.js",
+    "static/chunks/09hd0mc7dg0-0.js",
+    "static/chunks/turbopack-2u1d16houkiyo.js"
+  ],
+  "pages": {},
+  "ampFirstPages": [],
+  "rootMainFilesTree": {},
+  "pagesChunkGroupBootstrapParams": {
+    "/dev/kitchen-sink/page": {"otherChunks":["static/chunks/41o_1cb0sipne.js","static/chunks/1r0ux2nutw9uh.js","static/chunks/09hd0mc7dg0-0.js"],"runtimeModuleIds":[94553]}
+  },
+  "chunkLoadingGlobal": "TURBOPACK"
+}

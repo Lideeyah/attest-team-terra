@@ -1,0 +1,54 @@
+1:"/_next/static/chunks/1qjrsp_gj1rjz.js"
+2:"LoadingBoundaryProvider"
+3:I[39756,["$1"],"$2"]
+4:"$Sreact.fragment"
+5:I[39756,["$1"],"default"]
+6:"/_next/static/chunks/2d718wlor-qc_.js"
+7:I[8821,["$1","$6"],"default"]
+8:I[37457,["$1"],"default"]
+9:"/_next/static/chunks/0gg0o-v-pzv8x.js"
+a:"/_next/static/chunks/1elud1o77e445.js"
+b:I[22016,["$1","$9","$a"],""]
+e:I[58184,["$1","$9"],"MotionProvider"]
+f:I[93610,["$1","$9"],"ToastProvider"]
+16:I[97367,["$1"],"OutletBoundary"]
+17:"$Sreact.suspense"
+1a:"ViewportBoundary"
+1b:I[97367,["$1"],"$1a"]
+1d:"MetadataBoundary"
+1e:I[97367,["$1"],"$1d"]
+21:"/_next/static/chunks/27orxh-6r1yyl.js"
+22:I[53348,["$1","$21"],"default"]
+:HL["/_next/static/chunks/23-tpj-kkmj8t.css","style"]
+:HL["/_next/static/chunks/3c-862g-9fivy.css","style"]
+:HL["/_next/static/media/47b83403a34d3b52-s.p.0egz9rzqpsqjk.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/7172132ea3483a1a.p.1xmps1tcyqv34.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/75cb990346c55dc4-s.p.40bho2kviej2o.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/7d2dd58e31d7c0b6.p.3a10o7es2neby.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/CabinetGrotesk_Extrabold-s.p.27o7s6nm2qdr6.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+c:X
+10:X
+12:X
+19:X
+14:[["children",{"s":"__PAGE__","h":514,"d":{"r":["$","$4","c",{"children":["$L15",[["$","script","script-0",{"src":"/_next/static/chunks/1elud1o77e445.js","async":true,"nonce":"$undefined"}]],["$","$L16",null,{"children":["$","$17",null,{"name":"Next.MetadataOutlet","children":"$@18"}]}]]}],"p":true,"v":"$19"}}]]
+13:[["children",{"s":{"n":"developerId","t":"d","k":"%%drp:developerId:c43e53ebb683c8%%","s":[]},"h":514,"d":{"r":["$","$4","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L8",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":true,"v":"$12"},"c":"$Q14"}]]
+11:[["children",{"s":"developers","h":514,"d":{"r":["$","$4","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L8",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":true,"v":"$12"},"c":"$Q13"}]]
+d:[["children",{"s":"(public)","h":514,"d":{"r":["$","$4","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/3c-862g-9fivy.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/_next/static/chunks/0gg0o-v-pzv8x.js","async":true,"nonce":"$undefined"}]],["$","div",null,{"className":"XOokva_variable cx3dna_variable vQPwRq_variable tKGO0a_variable","children":["$","$Le",null,{"children":["$","$Lf",null,{"children":["$","main",null,{"children":["$","$L5",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L8",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","div",null,{"className":"measure section","children":["$","div",null,{"className":"stack-lg","children":[["$","p",null,{"className":"eyebrow","children":"Not found"}],["$","h1",null,{"className":"h2-display","children":"There is no record at this address"}],["$","p",null,{"className":"prose-muted","children":"The page may have been a project, an attestation or a receipt that no longer resolves. The public register lists every project that has closed a period."}],["$","div",null,{"className":"row","children":["$","$Lb",null,{"href":"/register","prefetch":"$undefined","className":"btn","children":"Open the register"}]}]]}]}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]}]}]]}],"p":true,"v":"$10"},"c":"$Q11"}]]
+20:X
+23:X
+24:X
+0:{"P":null,"c":["","developers","[developerId]"],"q":"","i":false,"t":{"t":{"s":"","h":534,"d":{"r":["$","$L3",null,{"loading":[["$","div","l",{"className":"measure section","children":["$","div",null,{"className":"skeleton","aria-busy":"true","aria-live":"polite","children":[["$","p",null,{"className":"eyebrow","children":"Loading"}],[["$","span","0",{"className":"skeleton-bar","style":{"width":"100%"}}],["$","span","1",{"className":"skeleton-bar","style":{"width":"89%"}}],["$","span","2",{"className":"skeleton-bar","style":{"width":"78%"}}],["$","span","3",{"className":"skeleton-bar","style":{"width":"67%"}}]]]}]}],[],null],"children":["$","$4","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/23-tpj-kkmj8t.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/_next/static/chunks/1qjrsp_gj1rjz.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","children":["$","body",null,{"children":["$","$L5",null,{"parallelRouterKey":"children","error":"$7","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/2d718wlor-qc_.js","async":true,"nonce":"$undefined"}]],"template":["$","$L8",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","div",null,{"className":"measure section","children":["$","div",null,{"className":"stack-lg","children":[["$","p",null,{"className":"eyebrow","children":"Not found"}],["$","h1",null,{"className":"h2-display","children":"There is no record at this address"}],["$","p",null,{"className":"prose-muted","children":"The page may have been a project, an attestation or a receipt that no longer resolves. The public register lists every project that has closed a period."}],["$","div",null,{"className":"row","children":["$","$Lb",null,{"href":"/register","prefetch":"$undefined","className":"btn","children":"Open the register"}]}]]}]}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]]}]}],"p":true,"v":"$c"},"c":"$Qd"},"h":{"r":["$","$4","h",{"children":[null,["$","$L1b",null,{"children":"$L1c"}],["$","$L1e",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$17",null,{"name":"Next.Metadata","children":"$L1f"}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":true,"v":"$20"}},"m":"$undefined","G":["$22",[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/23-tpj-kkmj8t.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]]],"S":true,"r":"$23","s":"$24","a":"$@25","l":"$undefined","p":"$undefined","d":"$undefined","b":"eATOIK7_wx8WYIqEQ_kco","u":"$@26"}
+12:C
+24:300
+1c:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+27:I[27201,["$1"],"IconMark"]
+18:null
+1f:[["$","title","0",{"children":"Operator record — Attest"}],["$","meta","1",{"name":"description","content":"Every project under one operator, what each committed to, and how many households each paid."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.117ezoe8m31dk.ico","sizes":"48x48","type":"image/x-icon"}],["$","$L27","3",{}]]
+26:true
+24:C
+20:C
+23:C
+19:C
+10:C
+c:C
+25:7284

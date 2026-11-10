@@ -11,12 +11,14 @@ import { f0 } from "./gate/phases/f0";
 import { f1 } from "./gate/phases/f1";
 import { f2 } from "./gate/phases/f2";
 import { f3 } from "./gate/phases/f3";
+import { f4 } from "./gate/phases/f4";
 
 const PHASES: Record<string, () => Promise<void>> = {
   "F-0": f0,
   "F-1": f1,
   "F-2": f2,
   "F-3": f3,
+  "F-4": f4,
 };
 
 async function main(): Promise<void> {
