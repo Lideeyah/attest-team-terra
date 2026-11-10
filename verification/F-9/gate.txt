@@ -16,7 +16,9 @@ PASS  reduced motion resting on /field/enrol
 PASS  reduced motion resting on /ops/signals/sig_0231
 PASS  the state panel covers every surface in the product
 PASS  the state panel lists states rather than screens
+PASS  every state in the panel can be clicked to, and its arrangement holds
 PASS  no exclamation mark, apology, congratulation or verdict anywhere in the product
+PASS  no apology or congratulation anywhere the product can say, shown or not
 PASS  accessibility on /
 PASS  keyboard reachability on /
 PASS  accessibility on /register
@@ -31,12 +33,16 @@ PASS  accessibility on /ops
 PASS  keyboard reachability on /ops
 PASS  accessibility on /admin
 PASS  keyboard reachability on /admin
-PASS  no state is signalled by colour alone: every stamp carries its words
+PASS  no state is signalled by colour alone: every stamp carries its words and glyph, every coloured strip says its state in the row
 PASS  focus is visible on every interactive element
+PASS  every admin decision works end to end and its effect is on the screen afterwards
+PASS  a dialog holds the caret while a reason is typed
 PASS  the developer tooling is not in a production build at all
 PASS  no NEXT_PUBLIC_ variable carries a key, secret or token
-PASS  the platform team key is never read in client code
+PASS  the platform team key is never read in client code — 42 client modules checked
+PASS  nothing a browser downloads — chunk, document or flight payload — carries a key, secret or token
 PASS  npm audit reports no critical or high finding
+PASS  every advisory npm audit reports is named in BUILD_LOG.md with the reason it is carried
 PASS  every commit is authored by Lydia Solomon
 PASS  no commit message carries an agent trailer
 PASS  nothing the build produced mentions an agent
@@ -48,4 +54,14 @@ PASS  screenshot F-9/admin-registry
 PASS  screenshot F-9/admin-extraction
 PASS  screenshot F-9/admin-escalations
 PASS  screenshot F-9/admin-chain
-50 passed, 0 failed in 162.7s
+PASS  forcing CHAIN_DISCONTINUITY reaches /admin/chain — [data-chain="broken"]
+PASS  screenshot F-9/admin-chain-discontinuity
+PASS  forcing ANCHOR_PENDING reaches /admin/chain — [data-chain="pending"]
+PASS  screenshot F-9/admin-chain-anchor-pending
+PASS  forcing ANCHOR_UNREACHABLE reaches /admin/chain — [data-chain="unreachable"]
+PASS  screenshot F-9/admin-chain-anchor-unreachable
+PASS  forcing REGISTRY_UNREACHABLE reaches /admin — [data-admin-unread]
+PASS  screenshot F-9/admin-nothing-was-read
+PASS  forcing MODEL_UNAVAILABLE reaches /admin — [data-admin-unread]
+PASS  screenshot F-9/admin-one-queue-unread
+66 passed, 0 failed in 214.0s

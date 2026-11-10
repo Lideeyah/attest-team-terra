@@ -62,8 +62,22 @@ end.
   code. Under 150 means a different stack for that one surface.
 - **The field app at desktop width** renders as a phone-width column rather
   than refusing outright. The phase says "never rendered on desktop".
-- **`--ink-dim` at 2.9:1**, the Farm Africa citation, the synthetic Gold
-  Standard reference, and the Privacy and Terms text.
+- **The Farm Africa citation**, the synthetic Gold Standard reference, and
+  the Privacy and Terms text. (`--ink-dim` was on this list as a contrast
+  decision; the second F-9 verification measured it at 2.38:1 on the sunken
+  fill and it is now `#5E5A52`, 4.62:1 — see below. If the lighter tone
+  mattered to you, that is the one visual change made without you.)
+- **Seven moderate advisories, all one package.** `npm audit` reports seven
+  moderate findings, every one of them GHSA-g3hv-75wg-m249 in `minimatch`
+  3.1.5. It reaches the tree only through `eslint` and `eslint-config-next`,
+  both of them devDependencies: the package is not in any build output and no
+  browser downloads it. The advisory is a regular-expression denial of
+  service against a caller that passes an attacker-controlled glob, and
+  nothing here passes a glob from outside the repository. It is carried
+  rather than fixed because the fix is an `eslint` major bump that would be
+  made for this reason alone, mid-build. The `f9` gate fails if an advisory
+  `npm audit` reports is not named here, and fails outright on anything
+  critical or high.
 - **Deployment, the backend swap and the demo recording**, all three waiting
   on the sandbox.
 
@@ -1564,3 +1578,148 @@ developer; every detail route in the product now carries the back control spec
 patch item 12 asks for; raw record identifiers and action codes are no longer
 reader-facing text; an unresolved exception reads as unresolved rather than as
 unknown; and the plurals hold.
+## F-9 — what the verification found, and what was done about it
+
+Fourteen findings. The gate had passed 50 of 50 and the verification failed
+the phase, which by now is the pattern: a gate asserts what a screen does and
+is blind to what it leaves out.
+
+**The admin surface was a set of lists.** Five queues an operator could read
+and not one control to decide anything: no way to approve a project or send it
+back, no way to accept or correct an extraction, no way to close an escalated
+report. The decisions exist now — `components/admin/ReviewDecision.tsx`, three
+endpoints behind them — and each is refused without its reason: twelve
+characters on a review, twenty-four on the basis a report closes on, which is
+what `DISPUTE_RESOLUTION_BASIS_REQUIRED` was always for. The queues moved to
+module scope in the mock so a decision survives the refresh that follows it; a
+corrected extraction keeps what the model read beside the correction, because
+that reading is the thing the queue exists to make checkable.
+
+**`/admin` reported an all-clear it had no basis for.** Every queue that
+refused was counted as zero, so five refusals rendered as a screen saying
+nothing is waiting — on the one screen whose whole job is to say whether
+anything is. Each figure now stands at an em rule where its queue did not
+answer, the screen says which queues those were, and the empty state
+distinguishes "nothing is waiting" from "nothing is listed, and some queues
+did not answer". "Reports escalated" had no denominator; it reads as open of
+escalated now.
+
+**The chain monitor could not show a break.** `/api/admin/chain` never read
+the forced state, so the one condition the screen exists to alert on was
+unreachable — and `/admin` was absent from `/dev/states` altogether, which is
+why nobody had noticed. The route honours it, the state panel carries twelve
+admin states, and the forced ones are photographed in `verification/F-9/`.
+
+**The sweeps were weaker than they read.**
+
+- The motion sweep could not see seconds. A stylesheet writing `0.25s` wrote
+  six frames in a unit the check had no pattern for, so the frame rule held
+  only over whichever half of the product happened to write milliseconds. It
+  also read `animation-iteration-count` for `infinite` alone, and a count of
+  three is a loop.
+- The copy sweep covered forty-five of the product's sixty-two routes and read
+  only rendered text, so an exclamation mark in an `aria-label` was outside
+  it. All sixty-two now, attributes included, and the verdict test requires
+  its negation within sixty characters of the word it negates rather than
+  anywhere in the sentence.
+- The state sweep counted buttons. It now reads each entry's own href and
+  checks the screen answers — a 404 only where the state is about something
+  missing.
+- The colour-only check read each stamp's glyph into a variable and never
+  looked at it, and never looked at strips at all. Both now. It found a
+  hand-rolled stamp in the live run grid carrying no glyph, and an agent above
+  the flag threshold whose row read "Active".
+- The demo path waited for one server-rendered settled row and called the
+  stream proven, and accepted the word "anchor" appearing anywhere on the
+  record — which the boilerplate below the figures satisfies. It clicks
+  through from the register now, waits for the settled count to rise, forces
+  the period closed, and reads the anchor's state and sequence from the record
+  itself.
+
+**And the smaller ones.** The modal announced itself with `aria-modal` and
+then let the tab key walk out into the page behind it: it moves the focus in,
+holds it, and gives it back now. The account graph had two hundred and
+twenty-five nodes and no tab stop, so the accounts the money moved into are a
+row of buttons beneath the drawing. The seven moderate advisories `npm audit`
+reports are written up under "What is waiting on you", and the gate fails if
+an advisory it reports is not named there. There is a check on the live
+build's own client chunks, because the source grep is a rule about what the
+code says and the bundle is what a browser downloads. And `tsconfig.json` —
+which every build with a custom `distDir` rewrites, and which has broken
+`tsc --noEmit` once per phase for most of this build — is restored by the
+gate after each build.
+
+Gate green, 58 of 58.
+
+## F-9 — the second verification, which failed the remediation
+
+A fresh verifier was pointed at the remediation and found eighteen things,
+four of them the kind that make the first remediation look like what it was:
+work checked by the person who did it.
+
+**The modal focus trap swallowed typed input.** The focus management added in
+the first remediation keyed its effect on an inline callback and a value that
+flips on the first keystroke, so it tore down and re-ran on every keystroke —
+and each re-run moved the focus back to the Close button. An operator
+freezing an account could type exactly one character of the reason. The
+effect is keyed on `open` alone now, reads its callbacks through refs, and
+puts the caret in the first field rather than on Close. The gate now opens a
+dialog, types a sentence, and checks the caret held.
+
+**"Axe-clean" was axe-filtered.** The gate kept only critical violations, and
+under that filter sat forty-odd serious contrast failures — every eyebrow and
+figure denominator in the product, at 2.38:1 on the sunken fill. `--ink-dim`
+is `#5E5A52` now (4.62:1 there, 6.24:1 on paper), sealed labels recede to it
+rather than to a rule colour at 1.9:1, the field shell's content is a `main`
+landmark, and the gate fails on serious as well as critical.
+
+**Ten of the 58 assertions asserted nothing.** `screenshot()` records an
+unconditional pass, so the four forced-state screenshots would have passed
+with the force broken. Each forced screenshot now asserts the marker the
+force exists to show — the break notice, the unread notice — before taking
+the picture.
+
+**The decisions had the right shape and the wrong plumbing.**
+
+- The approval's reason was required, recorded, shipped to the browser — and
+  shown nowhere; two copy strings pointed at each other instead. The reason
+  is on the row now, verbatim, with its date, and the contract declares the
+  fields it was leaking.
+- A returned project went back to "awaiting-review", stamping a submission
+  the platform had just read as one nobody had read. There is a `returned`
+  state.
+- Closing an escalation removed it from the screen in the same breath, so
+  the basis the operator was made to write was unreadable from the surface
+  that wrote it. Decided reports stay listed, closed, basis published.
+- The three controls used constant idempotency keys, so deciding again with
+  a different reason was refused as a duplicate forever. Keys are minted per
+  click, like every other mutating control in the product.
+- Extraction decisions were addressed by project alone; two uncertain
+  extractions on one project would have collided. The field is in the path.
+- Registry sync and the chain had no controls at all — "a screen an operator
+  can act on" was unasserted and false for two of five surfaces. Registry
+  sync has a read-now control; the chain states its own rationale for having
+  none. The gate now drives every decision end to end and reads its effect
+  back off the screen.
+
+**The sweeps, a second time.** The colour-only vocabulary was pooled, so a
+red-edged row reading "Cleared" passed; it is per-state now, and a word that
+asserts the opposite no longer vouches. The state sweep fetched each entry's
+href without running its arrangement; it now clicks all 195 entries the way
+a person would, and a failed arrangement refuses to navigate and says so.
+The bundle check read only static chunks when a secret's likeliest route to
+a browser is the flight payload inlined in the HTML; every route's served
+document is read too. The client-code grep was a hand-fitted glob; client
+code is now whatever declares `"use client"`. The focus check accepted any
+resting box-shadow as a focus ring; it now requires something to change when
+focus arrives. And the admin home and the registry screen gave different
+numbers for the same thing — "not in sync" there, "failing" here — which is
+one predicate now, with stale counted out loud.
+
+**Still true, rechecked:** one author, no trailers, one loop, 0 critical and
+0 high from `npm audit`, the seven moderates carried with their reason, and
+the demo path green ten times.
+
+Gate green, 66 of 66. The count is now 130 assertions heavier than the day
+the phases first passed it, and every one of the additions is a check that an
+earlier version only appeared to make.

@@ -19,7 +19,9 @@ Phase complete: F-8 — the bank operations console. Gate green, 54 of 54,
 verified and corrected after a verification that failed it.
 Phase complete: F-9's cluster-free portion — platform admin, the motion, state,
 copy and accessibility sweeps, the hardening checks and the demo path. Gate
-green, 50 of 50.
+green, 66 of 66, verified twice and corrected after each verification failed
+it — the second found the first remediation's own defects, including a focus
+trap it had introduced.
 
 The front-end lane is built. What is left needs the sandbox: deployment, the
 swap from the mock to the real backend, and the demo recording. All three are
@@ -27,7 +29,19 @@ written up in BUILD_LOG.md under F-9.
 
 F-4's verification found fourteen things and all are fixed; its gate went from
 51 assertions to 86. F-5's verification found thirty-one and all are
-addressed; its gate went from 99 to 112.
+addressed; its gate went from 99 to 112. F-9's found fourteen — chief among
+them an admin surface with no controls on it, a home screen that read a
+refusal as an all-clear, and four sweeps weaker than they read — and all are
+addressed; a second verification of the remediation found eighteen more,
+including a focus trap the remediation itself introduced and an axe filter
+that had hidden forty serious contrast failures for nine phases; its gate
+went from 50 to 66, and most of the additions are checks the earlier ones
+only appeared to be.
+
+Every phase that has been independently verified has passed its own gate and
+then failed the verification. The gates now carry roughly 130 assertions
+written in response to that, and the pattern behind every one of them is the
+same: a gate asserts what a screen does, and is blind to what it leaves out.
 
 Spec patch 01 is applied in full.
 

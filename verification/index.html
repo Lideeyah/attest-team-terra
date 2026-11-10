@@ -23,7 +23,10 @@
   /* ---- Ink -------------------------------------------------------------- */
   --ink-primary: #181816;
   --ink-muted: #5C5A55;
-  --ink-dim: #8C887E;
+  /* Dim ink that still reads: 4.62:1 on the sunken fill, 6.24:1 on paper.
+     The previous #8C887E sat at 2.38:1 on the sunken fill, which failed WCAG
+     on every eyebrow and every figure's denominator in the product. */
+  --ink-dim: #5E5A52;
   --ink-paper: #F7F4EB; /* ink reversed out on bottle */
 
   /* ---- Bottle green, the anchor tone ------------------------------------ */
@@ -887,12 +890,24 @@ header.sheet { padding-block: var(--section); }
           <h2>Platform admin and hardening</h2>
         </div>
         <p class="gate gate-passed">
-          50 passed, 0 failed in 162.7s
+          66 passed, 0 failed in 214.0s
         </p>
       </div>
       <hr class="heavy" />
 
       <div class="grid">
+        <figure>
+          <a href="F-9/admin-chain-anchor-pending.png"><img src="F-9/admin-chain-anchor-pending.png" alt="/admin/chain/anchor/pending" loading="lazy" /></a>
+          <figcaption>/admin/chain/anchor/pending</figcaption>
+        </figure>
+        <figure>
+          <a href="F-9/admin-chain-anchor-unreachable.png"><img src="F-9/admin-chain-anchor-unreachable.png" alt="/admin/chain/anchor/unreachable" loading="lazy" /></a>
+          <figcaption>/admin/chain/anchor/unreachable</figcaption>
+        </figure>
+        <figure>
+          <a href="F-9/admin-chain-discontinuity.png"><img src="F-9/admin-chain-discontinuity.png" alt="/admin/chain/discontinuity" loading="lazy" /></a>
+          <figcaption>/admin/chain/discontinuity</figcaption>
+        </figure>
         <figure>
           <a href="F-9/admin-chain.png"><img src="F-9/admin-chain.png" alt="/admin/chain" loading="lazy" /></a>
           <figcaption>/admin/chain</figcaption>
@@ -906,8 +921,16 @@ header.sheet { padding-block: var(--section); }
           <figcaption>/admin/extraction</figcaption>
         </figure>
         <figure>
+          <a href="F-9/admin-nothing-was-read.png"><img src="F-9/admin-nothing-was-read.png" alt="/admin/nothing/was/read" loading="lazy" /></a>
+          <figcaption>/admin/nothing/was/read</figcaption>
+        </figure>
+        <figure>
           <a href="F-9/admin-onboarding.png"><img src="F-9/admin-onboarding.png" alt="/admin/onboarding" loading="lazy" /></a>
           <figcaption>/admin/onboarding</figcaption>
+        </figure>
+        <figure>
+          <a href="F-9/admin-one-queue-unread.png"><img src="F-9/admin-one-queue-unread.png" alt="/admin/one/queue/unread" loading="lazy" /></a>
+          <figcaption>/admin/one/queue/unread</figcaption>
         </figure>
         <figure>
           <a href="F-9/admin-registry.png"><img src="F-9/admin-registry.png" alt="/admin/registry" loading="lazy" /></a>
