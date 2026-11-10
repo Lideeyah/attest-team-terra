@@ -5,7 +5,7 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 
 export const metadata: Metadata = {
-  title: "Privacy · Attest",
+  title: "Privacy",
   description: "Privacy for attest.ng.",
 };
 

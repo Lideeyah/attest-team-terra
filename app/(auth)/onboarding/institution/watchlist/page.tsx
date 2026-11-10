@@ -16,7 +16,7 @@ import {
 } from "@/lib/onboarding";
 
 export const metadata: Metadata = {
-  title: "Your watchlist — Attest",
+  title: "Your watchlist",
   description: "Choose the projects you want to follow. The register is searchable here.",
 };
 

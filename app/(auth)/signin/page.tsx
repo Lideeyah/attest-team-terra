@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm, Field } from "@/components/auth/AuthForm";
+import { Submit } from "@/components/auth/Submit";
+import { Notice } from "@/components/Notice";
 import { api } from "@/lib/api/client";
 
 export const metadata: Metadata = {
@@ -10,6 +12,12 @@ export const metadata: Metadata = {
 };
 
 type Search = { state?: string; code?: string; next?: string; email?: string };
+
+async function resendLink(formData: FormData) {
+  "use server";
+  const email = String(formData.get("email") ?? "").trim();
+  redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+}
 
 async function signIn(formData: FormData) {
   "use server";
@@ -35,13 +43,7 @@ export default async function SignInPage({
   const search = await searchParams;
 
   const problem =
-    search.state === "unverified"
-      ? {
-          tone: "flagged" as const,
-          title: "This address has not been verified",
-          body: "A new verification link has been sent to it. The link expires in twenty-four hours.",
-        }
-      : search.state === "error" && search.code === "FORBIDDEN"
+    search.state === "error" && search.code === "FORBIDDEN"
         ? {
             tone: "blocked" as const,
             title: "This account is locked",
@@ -61,6 +63,11 @@ export default async function SignInPage({
               }
             : undefined;
 
+  /* Unverified is not a refusal: the account exists and the address is what
+     is outstanding, so the screen offers the link rather than asserting one
+     was sent. */
+  const unverified = search.state === "unverified";
+
   return (
     <AuthForm
       eyebrow="Sign in"
@@ -69,10 +76,29 @@ export default async function SignInPage({
       submit="Sign in"
       problem={problem}
       footer={
-        <p className="prose-muted">
-          <Link href="/signin/reset">Reset a password</Link> ·{" "}
-          <Link href="/get-started">Create an account</Link>
-        </p>
+        <>
+          {unverified ? (
+            <Notice tone="flagged" title="This address has not been verified">
+              <p data-signin-state="unverified">
+                Nothing is set up under an address until it is verified, because
+                the register publishes who operates a project.
+              </p>
+              <form action={resendLink} className="row">
+                <input type="hidden" name="email" value={search.email ?? ""} />
+                <Submit
+                  label="Send a new verification link"
+                  pending="Sending"
+                  variant="outline"
+                  marker="data-resend"
+                />
+              </form>
+            </Notice>
+          ) : null}
+          <p className="prose-muted">
+            <Link href="/signin/reset">Reset a password</Link> ·{" "}
+            <Link href="/get-started">Create an account</Link>
+          </p>
+        </>
       }
     >
       <input type="hidden" name="next" value={search.next ?? ""} />

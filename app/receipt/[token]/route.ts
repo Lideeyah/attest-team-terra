@@ -1,6 +1,6 @@
 import { api } from "@/lib/api/client";
 import { RECEIPT_COPY } from "@/lib/copy/participant";
-import { formatNaira, formatSettlement } from "@/lib/record";
+import { formatNaira, formatPeriod, formatSettlement } from "@/lib/record";
 import { receiptDocument } from "@/lib/receipt-html";
 
 /* The participant receipt is served as a document rather than as an
@@ -63,7 +63,7 @@ export async function GET(
     .map(
       (payment) => `
       <div class="payment">
-        <span class="eyebrow">${escape(payment.period)}</span>
+        <span class="eyebrow">${escape(formatPeriod(payment.period, true))}</span>
         <span class="amount">${escape(formatNaira(payment.amount))}</span>
         <span class="record">${escape(copy.settled(formatSettlement(payment.settledAt)))}</span>
         <span class="record">${escape(copy.reference(payment.sessionId))}</span>

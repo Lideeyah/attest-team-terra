@@ -1140,25 +1140,25 @@ th[aria-sort] .sort-caret {
   margin-inline-start: auto;
 }
 
-.public-masthead-narrow {
-  display: none;
-}
-
+/* At phone width the context label goes and the buttons tighten, but every
+   destination keeps its own link: Register, Sign in and Get started are all
+   one tap from any scroll position. */
 @media (max-width: 720px) {
   .public-masthead-context {
     display: none;
   }
 
-  .public-masthead-wide {
-    display: none;
-  }
-
-  .public-masthead-narrow {
-    display: inline-flex;
-  }
-
   .public-masthead-row {
     gap: var(--stack);
+  }
+
+  .public-masthead-nav {
+    gap: calc(var(--stack) / 3);
+  }
+
+  .public-masthead-nav .btn-sm,
+  .public-masthead-nav .btn-quiet {
+    padding-inline: calc(var(--pad-btn-sm-x) / 2);
   }
 }
 

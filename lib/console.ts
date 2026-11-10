@@ -54,10 +54,15 @@ export function daysBetween(fromIso: string, toIso: string): number {
     moment, so a screenshot taken twice says the same thing. */
 export const NOW = "2026-11-10T09:00:00Z";
 
-export async function consoleContext(): Promise<ConsoleContext | { error: string; code: string }> {
+export type ConsoleRefusal = { error: string; code: string; sessionEnded?: boolean };
+
+export async function consoleContext(): Promise<ConsoleContext | ConsoleRefusal> {
   const session = await api.session();
   if (!session.ok) {
-    return { error: session.message, code: session.code };
+    /* A session the server will not answer for has ended, whatever the code
+       says about why. The console sends the reader to sign in rather than
+       rendering a refusal they cannot act on. */
+    return { error: session.message, code: session.code, sessionEnded: true };
   }
   const projectId = session.data.projectId;
   if (projectId === null) {

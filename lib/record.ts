@@ -68,11 +68,14 @@ export function formatCoverage(paid: number, enrolled: number): string {
   return `${formatCount(paid)} of ${formatCount(enrolled)}`;
 }
 
+/* A whole number. A tenth of a percentage point on a coverage figure is
+   precision nobody has and nobody acts on, and it reads as though the figure
+   were measured rather than counted. */
 export function coveragePercent(paid: number, enrolled: number): number {
   if (enrolled === 0) {
     return 0;
   }
-  return Number(((paid / enrolled) * 100).toFixed(1));
+  return Math.round((paid / enrolled) * 100);
 }
 
 const MONTHS = [

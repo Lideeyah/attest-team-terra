@@ -4,7 +4,7 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { Rule } from "@/components/Rule";
 
 export const metadata: Metadata = {
-  title: "About · Attest",
+  title: "About",
   description:
     "What Attest is: a settlement record for the money carbon projects promise communities.",
 };

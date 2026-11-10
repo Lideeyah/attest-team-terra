@@ -111,11 +111,11 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
     <>
       <div className="stack">
         <p className="eyebrow">
-          Attestation · {record.period} ·{" "}
+          Attestation · {formatPeriod(record.period)} ·{" "}
           <Link href={`/register/${record.projectId}`}>{record.projectName}</Link>
         </p>
         <div className="row-between" style={{ alignItems: "flex-start" }}>
-          <h1 className="h2-display">The record for {record.period}</h1>
+          <h1 className="h2-display">The record for {formatPeriod(record.period, true)}</h1>
           <span className="row">
             {record.closedLate ? (
               <Stamp state="flagged" label="Closed late" recordId={`${record.id}-late`} />
@@ -179,7 +179,7 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
           </div>
 
           <div className="definition">
-            <Row label="Period">{record.period}</Row>
+            <Row label="Period">{formatPeriod(record.period, true)}</Row>
             <Row label="Closed">{formatSettlement(record.closedAt)}</Row>
             <Row label="Hash">
               <Hash value={record.hash} full />
@@ -227,7 +227,6 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
           Back to the project
         </Link>
       </div>
-      <PublicFooter />
     </>
   );
 }

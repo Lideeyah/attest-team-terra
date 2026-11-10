@@ -6,23 +6,51 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Steps } from "@/components/auth/Steps";
 import { api } from "@/lib/api/client";
-import { DEVELOPER_STEPS, readDeveloperWizard, writeDeveloperWizard } from "@/lib/onboarding";
+import {
+  DEVELOPER_STEPS,
+  advanceDeveloperWizard,
+  readDeveloperWizard,
+} from "@/lib/onboarding";
 import { formatCount } from "@/lib/record";
+import { headingFor } from "@/lib/copy/codes";
+import type { ErrorCode } from "@/lib/api/contract";
 
 export const metadata: Metadata = {
-  title: "Verify the project — Attest",
+  title: "Verify the project",
   description: "The registry's own record, shown back for confirmation.",
 };
 
 async function confirmRecord() {
   "use server";
   const wizard = await readDeveloperWizard();
-  await writeDeveloperWizard({ ...wizard, step: "commitment" });
+
+  /* Confirming the registry's record is what creates the project, and its id
+     is what every later step reads: the commitment is corrected against it and
+     step five frames its real public page. Without this the wizard has no
+     project and the last step shows somebody else's. */
+  const lookup = await api.lookupProject({ registryId: wizard.registryId ?? "GS-10342" });
+  if (!lookup.ok) {
+    redirect(`/onboarding/developer/verify?state=error&code=${lookup.code}`);
+  }
+  const created = await api.createProject({ registryRecord: lookup.data });
+  if (!created.ok) {
+    redirect(`/onboarding/developer/verify?state=error&code=${created.code}`);
+  }
+
+  await advanceDeveloperWizard(wizard, "verify", {
+    projectId: created.data.id,
+    projectName: created.data.name,
+  });
   redirect("/onboarding/developer/commitment");
 }
 
-export default async function VerifyStep() {
+export default async function VerifyStep({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string; code?: string }>;
+}) {
   await connection();
+  const search = await searchParams;
   const wizard = await readDeveloperWizard();
   const result = await api.lookupProject({ registryId: wizard.registryId ?? "GS-10342" });
 
@@ -31,6 +59,7 @@ export default async function VerifyStep() {
       <Steps
         steps={DEVELOPER_STEPS}
         current="verify"
+        reached={wizard.reached}
         hrefFor={(key) => `/onboarding/developer/${key}`}
       />
       <div className="stack">
@@ -43,8 +72,18 @@ export default async function VerifyStep() {
         <Rule weight="heavy" />
       </div>
 
+      {search.state === "error" && search.code ? (
+        <Notice
+          tone="blocked"
+          title={headingFor(search.code as ErrorCode, "The project was not created")}
+        >
+          Nothing was saved. The registry record above is unchanged, so
+          confirming it again is safe.
+        </Notice>
+      ) : null}
+
       {!result.ok ? (
-        <Notice tone="blocked" title={result.code}>
+        <Notice tone="blocked" title={headingFor(result.code, "The registry record could not be read")}>
           {result.message} {result.remediation}
         </Notice>
       ) : (

@@ -11,7 +11,7 @@ import {
 } from "@/lib/onboarding";
 
 export const metadata: Metadata = {
-  title: "Your organisation — Attest",
+  title: "Your organisation",
   description: "Who you are and what you assess.",
 };
 

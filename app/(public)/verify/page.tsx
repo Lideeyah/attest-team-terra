@@ -10,7 +10,7 @@ import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
 import { parseJson } from "@/lib/json";
-import { formatCoverage, formatNaira, formatTimestamp } from "@/lib/record";
+import { formatCoverage, formatDateTime, formatNaira, formatPeriod } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "Verify a record",
@@ -221,7 +221,7 @@ async function VerifyOutcome({
         </div>
         <p className="prose-muted">
           {matched
-            ? `This transfer belongs to ${search.period} of ${search.project}. The bundle proves that and nothing else: no household, no amount for anyone else, no part of the roster.`
+            ? `This transfer belongs to ${formatPeriod(search.period ?? "")} of ${search.project}. The bundle proves that and nothing else: no household, no amount for anyone else, no part of the roster.`
             : "This bundle does not resolve to any period on the register. Nothing about it is disputed; it simply does not verify."}
         </p>
       </div>
@@ -258,7 +258,7 @@ async function VerifyOutcome({
           </div>
           <div className="definition-row">
             <span className="eyebrow">Period</span>
-            <span className="record-cell">{record.period}</span>
+            <span className="record-cell">{formatPeriod(record.period)}</span>
           </div>
           <div className="definition-row">
             <span className="eyebrow">Households paid</span>
@@ -272,7 +272,7 @@ async function VerifyOutcome({
           </div>
           <div className="definition-row">
             <span className="eyebrow">Closed</span>
-            <span className="record-cell">{formatTimestamp(record.closedAt)}</span>
+            <span className="record-cell">{formatDateTime(record.closedAt)}</span>
           </div>
           <div className="definition-row">
             <span className="eyebrow">Hash</span>

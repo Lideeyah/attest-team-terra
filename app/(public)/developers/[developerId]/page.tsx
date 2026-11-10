@@ -215,7 +215,6 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
           </div>
         )}
       </div>
-      <PublicFooter />
     </>
   );
 }

@@ -13,7 +13,7 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
-import { formatCount } from "@/lib/record";
+import { formatCount, formatPeriod, orUnknown } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "Register",
@@ -212,7 +212,9 @@ async function RegisterRows({ search }: { search: Search }) {
                   {row.registry} {row.registryId}
                 </td>
                 <td className="numeric">{row.commitmentPct}% of revenue</td>
-                <td>{row.lastClosedPeriod ?? "None closed"}</td>
+                <td>
+                  {row.lastClosedPeriod ? formatPeriod(row.lastClosedPeriod) : orUnknown(null)}
+                </td>
                 <td className="numeric">{formatCount(row.openDisputes)}</td>
                 <td>
                   {row.status === "active" ? (
