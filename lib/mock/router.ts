@@ -20,6 +20,7 @@ import type {
   Session,
 } from "@/lib/api/contract";
 import { ERROR_COPY } from "@/lib/mock/errors";
+import { maskPhone } from "@/lib/record";
 import {
   readForced,
   projectStatusFor,
@@ -455,7 +456,22 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "POST",
     pattern: "/api/auth/signin",
-    handler: () => success(SESSION, null, "Signed in"),
+    handler: ({ body }) => {
+      /* An address that has not been verified signs in and is told so, rather
+         than being refused: the account exists and the address is the thing
+         outstanding. The trigger is the address itself, so the state is
+         reachable by typing one. */
+      const email = String(body.email ?? SESSION.email);
+      return success(
+        {
+          ...SESSION,
+          email,
+          emailVerified: !/^unverified/i.test(email),
+        },
+        null,
+        "Signed in",
+      );
+    },
   },
   {
     method: "POST",
@@ -470,7 +486,34 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "POST",
     pattern: "/api/auth/verify-email",
-    handler: () => success({ verified: true }, null, "Email verified"),
+    handler: ({ body }) => {
+      const token = String(body.token ?? "");
+      if (token.length === 0) {
+        return failure("INVALID_REQUEST", "token");
+      }
+      /* A link older than a day is expired, which is a different answer from
+         a link that was never valid. */
+      if (/expired/i.test(token)) {
+        return failure("TOKEN_EXPIRED", "token");
+      }
+      if (/unknown|invalid/i.test(token)) {
+        return failure("NOT_FOUND", "token");
+      }
+      return success({ verified: true }, null, "Email verified");
+    },
+  },
+  {
+    /* Not in backend 4.3: a verification link expires and the reader needs
+       another without an account to sign in to. Recorded in BUILD_LOG.md. */
+    method: "POST",
+    pattern: "/api/auth/resend-verification",
+    handler: ({ body }) => {
+      const email = String(body.email ?? "");
+      if (!/.+@.+\..+/.test(email)) {
+        return failure("INVALID_REQUEST", "email");
+      }
+      return success({ sent: true, email }, null, "Verification link sent");
+    },
   },
   {
     method: "POST",
@@ -482,12 +525,51 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/auth/reset/confirm",
     handler: () => success({ reset: true }, null, "Password reset"),
   },
-  { method: "GET", pattern: "/api/invites/:code", handler: ({ segments }) => success({ ...INVITE, code: segments[2] }) },
+  {
+    method: "GET",
+    pattern: "/api/invites/:code",
+    handler: ({ segments }) => {
+      const code = segments[2];
+      /* An invitation's state is a fact about the code, so the code carries
+         it: the real backend reads it from the row, and here it is read from
+         the identifier, which keeps every state reachable by opening a link
+         rather than by editing a fixture. */
+      const state: Invite["state"] = /expired/i.test(code)
+        ? "expired"
+        : /redeemed|used/i.test(code)
+          ? "redeemed"
+          : /revoked/i.test(code)
+            ? "revoked"
+            : "valid";
+      return success({
+        ...INVITE,
+        code,
+        state,
+        expiresAt:
+          state === "expired" ? "2026-10-19T23:59:59Z" : INVITE.expiresAt,
+      });
+    },
+  },
   {
     method: "POST",
     pattern: "/api/invites/:code/redeem",
-    handler: ({ segments }) =>
-      success({ ...INVITE, code: segments[2], state: "redeemed" as const }, null, "Invite redeemed"),
+    handler: ({ segments, body }) => {
+      /* Identity verification does not always answer inside the request. A
+         number beginning 0000 is held pending, in the style of section 2.5's
+         trigger values, so the waiting state is reachable with a number
+         rather than by editing a fixture. */
+      const identity = String(body.identity ?? "");
+      const pending = identity.startsWith("0000");
+      return success(
+        {
+          ...INVITE,
+          code: segments[2],
+          state: pending ? ("valid" as const) : ("redeemed" as const),
+        },
+        null,
+        pending ? "Identity verification queued" : "Invite redeemed",
+      );
+    },
   },
 
   { method: "POST", pattern: "/api/projects/lookup", handler: () => success(REGISTRY_RECORD) },
@@ -579,7 +661,9 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       return success(
         {
           ...participant,
-          phoneMasked: body.phone ? String(body.phone) : participant.phoneMasked,
+          /* A corrected number comes back masked like every other: the
+             full number never leaves the record it was corrected on. */
+          phoneMasked: body.phone ? maskPhone(String(body.phone)) : participant.phoneMasked,
           status: (body.status as Participant["status"]) ?? participant.status,
           statusReason: String(body.reason ?? participant.statusReason ?? ""),
         },

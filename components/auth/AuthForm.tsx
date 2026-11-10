@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
+import { Submit } from "@/components/auth/Submit";
 
 /* The sign-up and sign-in surfaces are deliberately clean: the mark, the
    fields and nothing else. No marketing copy, no feature list, no social
@@ -13,6 +13,7 @@ export function AuthForm({
   action,
   children,
   submit,
+  submitPending,
   footer,
   problem,
 }: {
@@ -22,6 +23,8 @@ export function AuthForm({
   action: (formData: FormData) => Promise<void>;
   children: ReactNode;
   submit: string;
+  /** What the button says while the request is in flight. */
+  submitPending?: string;
   footer?: ReactNode;
   problem?: { tone?: "flagged" | "blocked"; title: string; body: string };
 }) {
@@ -43,7 +46,7 @@ export function AuthForm({
       <form action={action} className="stack-lg">
         {children}
         <div className="row">
-          <Button type="submit">{submit}</Button>
+          <Submit label={submit} pending={submitPending ?? "Checking"} />
         </div>
       </form>
 
