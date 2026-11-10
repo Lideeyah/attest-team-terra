@@ -20,6 +20,10 @@ PASS  a project with no closed period shows its commitment and explicit zeros
 PASS  coverage is always shown with its denominator
 PASS  single-transfer verification handles each outcome distinctly
 PASS  a transfer from another period is told apart from an invalid proof
+PASS  the period's own published root does not verify as a payment
+PASS  an internal node of the tree does not verify as a leaf
+PASS  a bundle naming a root that does not exist is not found rather than refuted
+PASS  a proof path that is not hashes is refused as malformed
 PASS  bundle under 50KB on /receipt/rct_ngozi_eyo_2026q4
 PASS  the receipt requests no web font and uses the system stack
 PASS  the geography endpoint returns coarse buckets, never a household
@@ -43,4 +47,4 @@ PASS  screenshot F-3/attestation-att_ekuri_2026q3
 PASS  screenshot F-3/verify
 PASS  screenshot F-3/report
 PASS  screenshot F-3/receipt-rct_ngozi_eyo_2026q4
-45 passed, 0 failed in 60.1s
+49 passed, 0 failed in 61.8s

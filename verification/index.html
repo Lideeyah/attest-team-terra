@@ -138,6 +138,11 @@
   --field-width: 390px;
   --field-width-max: 430px;
   --tap-target: 56px;
+  /* The fixed height of a virtualised row. The roster reads this value rather
+     than holding a number of its own, so the window and the rows cannot
+     disagree about where a row is. */
+  --row-height: 44px;
+  --roster-viewport: 620px;
   --sheet-width: 480px;
   --modal-width: 520px;
   --mark-size: 17px;
@@ -208,10 +213,13 @@ h2 { font-size: var(--fs-h3); }
 .lede { font-size: var(--fs-lede); color: var(--ink-muted); max-width: 65ch; }
 hr { border: 0; height: var(--hairline); background: var(--rule-hairline); margin: 0; }
 hr.heavy { height: var(--rule-weight-heavy); background: var(--rule-heavy); }
+.contents { display: flex; flex-wrap: wrap; gap: var(--stack); padding-block: var(--stack); font-family: var(--font-record), monospace; font-size: var(--fs-record-cell); }
+.contents a { text-decoration: none; border-bottom: var(--hairline) solid var(--rule-contrast); }
 .phase { padding-block: var(--section-tight); }
 .phase-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--stack); padding-block-end: var(--stack); }
-.gate { font-family: var(--font-record), monospace; font-size: var(--fs-record-cell); margin: 0; padding: 5px 11px; border: var(--hairline) solid var(--stamp-sealed-border); background: var(--stamp-sealed-wash); text-transform: uppercase; letter-spacing: var(--tr-stamp); }
+.gate { font-family: var(--font-record), monospace; font-size: var(--fs-record-cell); margin: 0; padding: var(--pad-stamp-y) var(--pad-stamp-x); border: var(--hairline) solid var(--stamp-sealed-border); background: var(--stamp-sealed-wash); text-transform: uppercase; letter-spacing: var(--tr-stamp); white-space: nowrap; }
 .gate-failed { color: var(--stamp-blocked-ink); background: var(--stamp-blocked-wash); border-color: var(--stamp-blocked-border); }
+.failures { font-family: var(--font-record), monospace; font-size: var(--fs-record-cell); color: var(--stamp-blocked-ink); border-left: var(--edge-strip) solid var(--stamp-blocked-ink); margin: var(--stack) 0 0; padding: var(--stack) var(--pad-cell-x); background: var(--stamp-blocked-wash); list-style: none; }
 .grid { display: grid; gap: var(--grid-rule); background: var(--rule-hairline); border: var(--hairline) solid var(--rule-hairline); grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-block-start: var(--stack-lg); }
 figure { margin: 0; background: var(--surface-reading); padding: var(--pad-cell-x); }
 img { width: 100%; height: 260px; object-fit: cover; object-position: top; border: var(--hairline) solid var(--rule-hairline); }
@@ -228,199 +236,361 @@ header.sheet { padding-block: var(--section); }
     <p class="lede">
       Every screen each phase built, in the states its prompt lists, with that
       phase's gate result beside it. Open an image for the full capture. The
-      decisions taken during the build and the items needing judgement are in
-      BUILD_LOG.md.
+      decisions taken during the build, and the items waiting on your
+      judgement, are in BUILD_LOG.md.
     </p>
+    <nav class="contents">
+      <a href="#F-0">F-0 Foundation</a>
+      <a href="#F-1">F-1 Mock server, typed client and state control</a>
+      <a href="#F-2">F-2 Landing page</a>
+      <a href="#F-3">F-3 Public surfaces</a>
+      <a href="#F-4">F-4 Role selection, auth and onboarding</a>
+      <a href="#F-5">F-5 Developer console</a>
+    </nav>
     <hr class="heavy" />
   </header>
-  
-    <section class="phase">
+    <section class="phase" id="F-0">
       <div class="phase-head">
         <div>
           <p class="eyebrow">F-0</p>
           <h2>Foundation</h2>
         </div>
         <p class="gate gate-passed">
-          34 passed, 0 failed in 28.1s
+          34 passed, 0 failed in 32.5s
         </p>
       </div>
       <hr class="heavy" />
+
       <div class="grid">
-        
-          <figure>
-            <a href="F-0/kitchen-sink.png"><img src="F-0/kitchen-sink.png" alt="Kitchen sink" loading="lazy" /></a>
-            <figcaption>Kitchen sink</figcaption>
-          </figure>
-          <figure>
-            <a href="F-0/public-masthead.png"><img src="F-0/public-masthead.png" alt="Public masthead" loading="lazy" /></a>
-            <figcaption>Public masthead</figcaption>
-          </figure>
-          <figure>
-            <a href="F-0/shell-developer.png"><img src="F-0/shell-developer.png" alt="Shell developer" loading="lazy" /></a>
-            <figcaption>Shell developer</figcaption>
-          </figure>
-          <figure>
-            <a href="F-0/shell-field.png"><img src="F-0/shell-field.png" alt="Shell field" loading="lazy" /></a>
-            <figcaption>Shell field</figcaption>
-          </figure>
-          <figure>
-            <a href="F-0/shell-masthead.png"><img src="F-0/shell-masthead.png" alt="Shell masthead" loading="lazy" /></a>
-            <figcaption>Shell masthead</figcaption>
-          </figure>
+        <figure>
+          <a href="F-0/kitchen-sink.png"><img src="F-0/kitchen-sink.png" alt="/kitchen/sink" loading="lazy" /></a>
+          <figcaption>/kitchen/sink</figcaption>
+        </figure>
+        <figure>
+          <a href="F-0/public-masthead.png"><img src="F-0/public-masthead.png" alt="/public/masthead" loading="lazy" /></a>
+          <figcaption>/public/masthead</figcaption>
+        </figure>
+        <figure>
+          <a href="F-0/shell-developer.png"><img src="F-0/shell-developer.png" alt="/shell/developer" loading="lazy" /></a>
+          <figcaption>/shell/developer</figcaption>
+        </figure>
+        <figure>
+          <a href="F-0/shell-field.png"><img src="F-0/shell-field.png" alt="/shell/field" loading="lazy" /></a>
+          <figcaption>/shell/field</figcaption>
+        </figure>
+        <figure>
+          <a href="F-0/shell-masthead.png"><img src="F-0/shell-masthead.png" alt="/shell/masthead" loading="lazy" /></a>
+          <figcaption>/shell/masthead</figcaption>
+        </figure>
       </div>
     </section>
-    <section class="phase">
+    <section class="phase" id="F-1">
       <div class="phase-head">
         <div>
           <p class="eyebrow">F-1</p>
           <h2>Mock server, typed client and state control</h2>
         </div>
         <p class="gate gate-passed">
-          42 passed, 0 failed in 39.5s
+          42 passed, 0 failed in 37.5s
         </p>
       </div>
       <hr class="heavy" />
+
       <div class="grid">
-        
-          <figure>
-            <a href="F-1/dev-states.png"><img src="F-1/dev-states.png" alt="Dev states" loading="lazy" /></a>
-            <figcaption>Dev states</figcaption>
-          </figure>
+        <figure>
+          <a href="F-1/dev-states.png"><img src="F-1/dev-states.png" alt="/dev/states" loading="lazy" /></a>
+          <figcaption>/dev/states</figcaption>
+        </figure>
       </div>
     </section>
-    <section class="phase">
+    <section class="phase" id="F-2">
       <div class="phase-head">
         <div>
           <p class="eyebrow">F-2</p>
           <h2>Landing page</h2>
         </div>
         <p class="gate gate-passed">
-          45 passed, 0 failed in 70.1s
+          45 passed, 0 failed in 73.6s
         </p>
       </div>
       <hr class="heavy" />
+
       <div class="grid">
-        
-          <figure>
-            <a href="F-2/landing.png"><img src="F-2/landing.png" alt="Landing" loading="lazy" /></a>
-            <figcaption>Landing</figcaption>
-          </figure>
+        <figure>
+          <a href="F-2/landing.png"><img src="F-2/landing.png" alt="/landing" loading="lazy" /></a>
+          <figcaption>/landing</figcaption>
+        </figure>
       </div>
     </section>
-    <section class="phase">
+    <section class="phase" id="F-3">
       <div class="phase-head">
         <div>
           <p class="eyebrow">F-3</p>
-          <h2>Public register and verification</h2>
+          <h2>Public surfaces</h2>
         </div>
         <p class="gate gate-passed">
-          45 passed, 0 failed in 60.1s
+          49 passed, 0 failed in 61.8s
         </p>
       </div>
       <hr class="heavy" />
+
       <div class="grid">
-        
-          <figure>
-            <a href="F-3/attestation-att_ekuri_2026q3.png"><img src="F-3/attestation-att_ekuri_2026q3.png" alt="Attestation att_ekuri_2026q3" loading="lazy" /></a>
-            <figcaption>Attestation att_ekuri_2026q3</figcaption>
-          </figure>
-          <figure>
-            <a href="F-3/developers-dev_ekuri.png"><img src="F-3/developers-dev_ekuri.png" alt="Developers dev_ekuri" loading="lazy" /></a>
-            <figcaption>Developers dev_ekuri</figcaption>
-          </figure>
-          <figure>
-            <a href="F-3/receipt-rct_ngozi_eyo_2026q4.png"><img src="F-3/receipt-rct_ngozi_eyo_2026q4.png" alt="Receipt rct_ngozi_eyo_2026q4" loading="lazy" /></a>
-            <figcaption>Receipt rct_ngozi_eyo_2026q4</figcaption>
-          </figure>
-          <figure>
-            <a href="F-3/register-proj_ekuri.png"><img src="F-3/register-proj_ekuri.png" alt="Register proj_ekuri" loading="lazy" /></a>
-            <figcaption>Register proj_ekuri</figcaption>
-          </figure>
-          <figure>
-            <a href="F-3/register.png"><img src="F-3/register.png" alt="Register" loading="lazy" /></a>
-            <figcaption>Register</figcaption>
-          </figure>
-          <figure>
-            <a href="F-3/report.png"><img src="F-3/report.png" alt="Report" loading="lazy" /></a>
-            <figcaption>Report</figcaption>
-          </figure>
-          <figure>
-            <a href="F-3/verify.png"><img src="F-3/verify.png" alt="Verify" loading="lazy" /></a>
-            <figcaption>Verify</figcaption>
-          </figure>
+        <figure>
+          <a href="F-3/attestation-att_ekuri_2026q3.png"><img src="F-3/attestation-att_ekuri_2026q3.png" alt="/attestation/att_ekuri_2026q3" loading="lazy" /></a>
+          <figcaption>/attestation/att_ekuri_2026q3</figcaption>
+        </figure>
+        <figure>
+          <a href="F-3/developers-dev_ekuri.png"><img src="F-3/developers-dev_ekuri.png" alt="/developers/dev_ekuri" loading="lazy" /></a>
+          <figcaption>/developers/dev_ekuri</figcaption>
+        </figure>
+        <figure>
+          <a href="F-3/receipt-rct_ngozi_eyo_2026q4.png"><img src="F-3/receipt-rct_ngozi_eyo_2026q4.png" alt="/receipt/rct_ngozi_eyo_2026q4" loading="lazy" /></a>
+          <figcaption>/receipt/rct_ngozi_eyo_2026q4</figcaption>
+        </figure>
+        <figure>
+          <a href="F-3/register-proj_ekuri.png"><img src="F-3/register-proj_ekuri.png" alt="/register/proj_ekuri" loading="lazy" /></a>
+          <figcaption>/register/proj_ekuri</figcaption>
+        </figure>
+        <figure>
+          <a href="F-3/register.png"><img src="F-3/register.png" alt="/register" loading="lazy" /></a>
+          <figcaption>/register</figcaption>
+        </figure>
+        <figure>
+          <a href="F-3/report.png"><img src="F-3/report.png" alt="/report" loading="lazy" /></a>
+          <figcaption>/report</figcaption>
+        </figure>
+        <figure>
+          <a href="F-3/verify.png"><img src="F-3/verify.png" alt="/verify" loading="lazy" /></a>
+          <figcaption>/verify</figcaption>
+        </figure>
       </div>
     </section>
-    <section class="phase">
+    <section class="phase" id="F-4">
       <div class="phase-head">
         <div>
           <p class="eyebrow">F-4</p>
-          <h2>Auth, role selection and onboarding</h2>
+          <h2>Role selection, auth and onboarding</h2>
         </div>
         <p class="gate gate-passed">
-          51 passed, 0 failed in 63.2s
+          51 passed, 0 failed in 54.3s
         </p>
       </div>
       <hr class="heavy" />
+
       <div class="grid">
-        
-          <figure>
-            <a href="F-4/get-started.png"><img src="F-4/get-started.png" alt="Get started" loading="lazy" /></a>
-            <figcaption>Get started</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/invite-inv_7KQ2M4.png"><img src="F-4/invite-inv_7KQ2M4.png" alt="Invite inv_7KQ2M4" loading="lazy" /></a>
-            <figcaption>Invite inv_7KQ2M4</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-developer-account.png"><img src="F-4/onboarding-developer-account.png" alt="Onboarding developer account" loading="lazy" /></a>
-            <figcaption>Onboarding developer account</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-developer-commitment.png"><img src="F-4/onboarding-developer-commitment.png" alt="Onboarding developer commitment" loading="lazy" /></a>
-            <figcaption>Onboarding developer commitment</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-developer-live.png"><img src="F-4/onboarding-developer-live.png" alt="Onboarding developer live" loading="lazy" /></a>
-            <figcaption>Onboarding developer live</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-developer-project.png"><img src="F-4/onboarding-developer-project.png" alt="Onboarding developer project" loading="lazy" /></a>
-            <figcaption>Onboarding developer project</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-developer-verify.png"><img src="F-4/onboarding-developer-verify.png" alt="Onboarding developer verify" loading="lazy" /></a>
-            <figcaption>Onboarding developer verify</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-institution-organisation.png"><img src="F-4/onboarding-institution-organisation.png" alt="Onboarding institution organisation" loading="lazy" /></a>
-            <figcaption>Onboarding institution organisation</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/onboarding-institution-watchlist.png"><img src="F-4/onboarding-institution-watchlist.png" alt="Onboarding institution watchlist" loading="lazy" /></a>
-            <figcaption>Onboarding institution watchlist</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/signin-reset.png"><img src="F-4/signin-reset.png" alt="Signin reset" loading="lazy" /></a>
-            <figcaption>Signin reset</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/signin.png"><img src="F-4/signin.png" alt="Signin" loading="lazy" /></a>
-            <figcaption>Signin</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/signup-developer.png"><img src="F-4/signup-developer.png" alt="Signup developer" loading="lazy" /></a>
-            <figcaption>Signup developer</figcaption>
-          </figure>
-          <figure>
-            <a href="F-4/signup-institution.png"><img src="F-4/signup-institution.png" alt="Signup institution" loading="lazy" /></a>
-            <figcaption>Signup institution</figcaption>
-          </figure>
+        <figure>
+          <a href="F-4/get-started.png"><img src="F-4/get-started.png" alt="/get/started" loading="lazy" /></a>
+          <figcaption>/get/started</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/invite-inv_7KQ2M4.png"><img src="F-4/invite-inv_7KQ2M4.png" alt="/invite/inv_7KQ2M4" loading="lazy" /></a>
+          <figcaption>/invite/inv_7KQ2M4</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-developer-account.png"><img src="F-4/onboarding-developer-account.png" alt="/onboarding/developer/account" loading="lazy" /></a>
+          <figcaption>/onboarding/developer/account</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-developer-commitment.png"><img src="F-4/onboarding-developer-commitment.png" alt="/onboarding/developer/commitment" loading="lazy" /></a>
+          <figcaption>/onboarding/developer/commitment</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-developer-live.png"><img src="F-4/onboarding-developer-live.png" alt="/onboarding/developer/live" loading="lazy" /></a>
+          <figcaption>/onboarding/developer/live</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-developer-project.png"><img src="F-4/onboarding-developer-project.png" alt="/onboarding/developer/project" loading="lazy" /></a>
+          <figcaption>/onboarding/developer/project</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-developer-verify.png"><img src="F-4/onboarding-developer-verify.png" alt="/onboarding/developer/verify" loading="lazy" /></a>
+          <figcaption>/onboarding/developer/verify</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-institution-organisation.png"><img src="F-4/onboarding-institution-organisation.png" alt="/onboarding/institution/organisation" loading="lazy" /></a>
+          <figcaption>/onboarding/institution/organisation</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/onboarding-institution-watchlist.png"><img src="F-4/onboarding-institution-watchlist.png" alt="/onboarding/institution/watchlist" loading="lazy" /></a>
+          <figcaption>/onboarding/institution/watchlist</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/signin-reset.png"><img src="F-4/signin-reset.png" alt="/signin/reset" loading="lazy" /></a>
+          <figcaption>/signin/reset</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/signin.png"><img src="F-4/signin.png" alt="/signin" loading="lazy" /></a>
+          <figcaption>/signin</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/signup-developer.png"><img src="F-4/signup-developer.png" alt="/signup/developer" loading="lazy" /></a>
+          <figcaption>/signup/developer</figcaption>
+        </figure>
+        <figure>
+          <a href="F-4/signup-institution.png"><img src="F-4/signup-institution.png" alt="/signup/institution" loading="lazy" /></a>
+          <figcaption>/signup/institution</figcaption>
+        </figure>
       </div>
     </section>
-  <footer class="phase">
-    <hr class="heavy" />
-    <p class="eyebrow">Generated from verification/ by scripts/contact-sheet.mjs</p>
-  </footer>
+    <section class="phase" id="F-5">
+      <div class="phase-head">
+        <div>
+          <p class="eyebrow">F-5</p>
+          <h2>Developer console</h2>
+        </div>
+        <p class="gate gate-passed">
+          99 passed, 0 failed in 124.8s
+        </p>
+      </div>
+      <hr class="heavy" />
+
+      <div class="grid">
+        <figure>
+          <a href="F-5/app-agents-agt_0001.png"><img src="F-5/app-agents-agt_0001.png" alt="/app/agents/agt_0001" loading="lazy" /></a>
+          <figcaption>/app/agents/agt_0001</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-agents.png"><img src="F-5/app-agents.png" alt="/app/agents" loading="lazy" /></a>
+          <figcaption>/app/agents</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-attestations.png"><img src="F-5/app-attestations.png" alt="/app/attestations" loading="lazy" /></a>
+          <figcaption>/app/attestations</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-disputes-dsp_0001.png"><img src="F-5/app-disputes-dsp_0001.png" alt="/app/disputes/dsp_0001" loading="lazy" /></a>
+          <figcaption>/app/disputes/dsp_0001</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-disputes.png"><img src="F-5/app-disputes.png" alt="/app/disputes" loading="lazy" /></a>
+          <figcaption>/app/disputes</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-funding.png"><img src="F-5/app-funding.png" alt="/app/funding" loading="lazy" /></a>
+          <figcaption>/app/funding</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-roster-ptc_000331.png"><img src="F-5/app-roster-ptc_000331.png" alt="/app/roster/ptc_000331" loading="lazy" /></a>
+          <figcaption>/app/roster/ptc_000331</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-roster.png"><img src="F-5/app-roster.png" alt="/app/roster" loading="lazy" /></a>
+          <figcaption>/app/roster</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-runs-new.png"><img src="F-5/app-runs-new.png" alt="/app/runs/new" loading="lazy" /></a>
+          <figcaption>/app/runs/new</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-runs-run_2026q1.png"><img src="F-5/app-runs-run_2026q1.png" alt="/app/runs/run_2026q1" loading="lazy" /></a>
+          <figcaption>/app/runs/run_2026q1</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-runs-run_2026q4.png"><img src="F-5/app-runs-run_2026q4.png" alt="/app/runs/run_2026q4" loading="lazy" /></a>
+          <figcaption>/app/runs/run_2026q4</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-runs.png"><img src="F-5/app-runs.png" alt="/app/runs" loading="lazy" /></a>
+          <figcaption>/app/runs</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app-settings.png"><img src="F-5/app-settings.png" alt="/app/settings" loading="lazy" /></a>
+          <figcaption>/app/settings</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/app.png"><img src="F-5/app.png" alt="/app" loading="lazy" /></a>
+          <figcaption>/app</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-agent-above-threshold.png"><img src="F-5/state-agent-above-threshold.png" alt="State · agent above threshold" loading="lazy" /></a>
+          <figcaption>State · agent above threshold</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-agent-suspended.png"><img src="F-5/state-agent-suspended.png" alt="State · agent suspended" loading="lazy" /></a>
+          <figcaption>State · agent suspended</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-agent-with-no-enrolments.png"><img src="F-5/state-agent-with-no-enrolments.png" alt="State · agent with no enrolments" loading="lazy" /></a>
+          <figcaption>State · agent with no enrolments</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-api-key-shown-once.png"><img src="F-5/state-api-key-shown-once.png" alt="State · api key shown once" loading="lazy" /></a>
+          <figcaption>State · api key shown once</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-attestation-correction.png"><img src="F-5/state-attestation-correction.png" alt="State · attestation correction" loading="lazy" /></a>
+          <figcaption>State · attestation correction</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-dispute-awaiting-participant.png"><img src="F-5/state-dispute-awaiting-participant.png" alt="State · dispute awaiting participant" loading="lazy" /></a>
+          <figcaption>State · dispute awaiting participant</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-dispute-escalated.png"><img src="F-5/state-dispute-escalated.png" alt="State · dispute escalated" loading="lazy" /></a>
+          <figcaption>State · dispute escalated</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-dispute-substantiated.png"><img src="F-5/state-dispute-substantiated.png" alt="State · dispute substantiated" loading="lazy" /></a>
+          <figcaption>State · dispute substantiated</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-dispute-unsubstantiated.png"><img src="F-5/state-dispute-unsubstantiated.png" alt="State · dispute unsubstantiated" loading="lazy" /></a>
+          <figcaption>State · dispute unsubstantiated</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-import-in-progress.png"><img src="F-5/state-import-in-progress.png" alt="State · import in progress" loading="lazy" /></a>
+          <figcaption>State · import in progress</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-import-partially-failed.png"><img src="F-5/state-import-partially-failed.png" alt="State · import partially failed" loading="lazy" /></a>
+          <figcaption>State · import partially failed</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-notification-preferences.png"><img src="F-5/state-notification-preferences.png" alt="State · notification preferences" loading="lazy" /></a>
+          <figcaption>State · notification preferences</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-participant-disputed.png"><img src="F-5/state-participant-disputed.png" alt="State · participant disputed" loading="lazy" /></a>
+          <figcaption>State · participant disputed</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-participant-duplicate-blocked.png"><img src="F-5/state-participant-duplicate-blocked.png" alt="State · participant duplicate blocked" loading="lazy" /></a>
+          <figcaption>State · participant duplicate blocked</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-participant-excluded.png"><img src="F-5/state-participant-excluded.png" alt="State · participant excluded" loading="lazy" /></a>
+          <figcaption>State · participant excluded</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-participant-flagged.png"><img src="F-5/state-participant-flagged.png" alt="State · participant flagged" loading="lazy" /></a>
+          <figcaption>State · participant flagged</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-participant-removed.png"><img src="F-5/state-participant-removed.png" alt="State · participant removed" loading="lazy" /></a>
+          <figcaption>State · participant removed</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-roster-filtered-to-nothing.png"><img src="F-5/state-roster-filtered-to-nothing.png" alt="State · roster filtered to nothing" loading="lazy" /></a>
+          <figcaption>State · roster filtered to nothing</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-roster-filtered.png"><img src="F-5/state-roster-filtered.png" alt="State · roster filtered" loading="lazy" /></a>
+          <figcaption>State · roster filtered</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-run-complete-clean.png"><img src="F-5/state-run-complete-clean.png" alt="State · run complete clean" loading="lazy" /></a>
+          <figcaption>State · run complete clean</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-run-complete-with-failures.png"><img src="F-5/state-run-complete-with-failures.png" alt="State · run complete with failures" loading="lazy" /></a>
+          <figcaption>State · run complete with failures</figcaption>
+        </figure>
+        <figure>
+          <a href="F-5/state-run-draft.png"><img src="F-5/state-run-draft.png" alt="State · run draft" loading="lazy" /></a>
+          <figcaption>State · run draft</figcaption>
+        </figure>
+      </div>
+    </section>
 </div>
 </body>
 </html>

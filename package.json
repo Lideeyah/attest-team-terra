@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "contact-sheet": "node scripts/contact-sheet.mjs",
     "gate": "tsx scripts/gate.ts",
     "test": "vitest run"
   },

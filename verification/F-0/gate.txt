@@ -32,4 +32,4 @@ PASS  screenshot F-0/shell-developer
 PASS  screenshot F-0/shell-field
 PASS  screenshot F-0/shell-masthead
 PASS  screenshot F-0/public-masthead
-34 passed, 0 failed in 28.1s
+34 passed, 0 failed in 32.5s

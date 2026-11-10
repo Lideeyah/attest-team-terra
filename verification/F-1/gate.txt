@@ -5,7 +5,7 @@ PASS  gitignored: app/api/dev/force/route.ts
 PASS  gitignored: app/api/[[...path]]/route.ts
 PASS  gitignored: app/hooks/forge/route.ts
 PASS  client tests against the mock
-PASS  every contract endpoint answers in the contract envelope (80 probed)
+PASS  every contract endpoint answers in the contract envelope (82 probed)
 PASS  every list endpoint returns a meta block
 PASS  every error code is forceable (47 codes)
 PASS  every forced error carries a message and a remediation
@@ -40,4 +40,4 @@ PASS  /dev/kitchen-sink absent from the production build
 PASS  /api/dev/force absent from the production build
 PASS  /api/dev/stream-config absent from the production build
 PASS  a live build carries no mock server and no developer tooling
-42 passed, 0 failed in 39.5s
+42 passed, 0 failed in 37.5s
