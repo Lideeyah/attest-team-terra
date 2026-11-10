@@ -164,3 +164,16 @@ export function setOpsEmpty(value: boolean): void {
 export function opsEmpty(): boolean {
   return emptyOps;
 }
+
+/* Whether the platform admin queues have nothing in them. Same reasoning:
+   the fixture always carries reviews, so "nothing is waiting" is otherwise a
+   state nobody can click to. */
+let emptyAdmin = false;
+
+export function setAdminEmpty(value: boolean): void {
+  emptyAdmin = value;
+}
+
+export function adminEmpty(): boolean {
+  return emptyAdmin;
+}

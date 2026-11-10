@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { OnboardingDecision } from "@/components/admin/ReviewDecision";
 import { EmptyState } from "@/components/EmptyState";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
@@ -15,6 +16,7 @@ const STATE_LABEL: Record<string, string> = {
   "registry-unverified": "Entered by hand, unverified",
   "kyb-outstanding": "The bank has not answered",
   approved: "Approved",
+  returned: "Returned to the operator",
 };
 
 export default async function OnboardingReviewPage() {
@@ -37,7 +39,14 @@ export default async function OnboardingReviewPage() {
     <div className="measure section-tight stack-lg">
       <header className="stack">
         <p className="eyebrow">Onboarding review</p>
-        <h1 className="h2-display">{formatCount(rows.length)} projects in review</h1>
+        <h1 className="h2-display">
+          {(() => {
+            const undecided = rows.filter((row) => row.state !== "approved").length;
+            return undecided === 1
+              ? `1 of ${formatCount(rows.length)} projects in review`
+              : `${formatCount(undecided)} of ${formatCount(rows.length)} projects in review`;
+          })()}
+        </h1>
         <p className="lede">
           Nothing a project submits is published until it has been read against
           the registry&rsquo;s own record. A project entered by hand is read
@@ -63,9 +72,11 @@ export default async function OnboardingReviewPage() {
                   state={
                     row.state === "approved"
                       ? "sealed"
-                      : row.manualEntry
+                      : row.state === "returned"
                         ? "flagged"
-                        : "review"
+                        : row.manualEntry
+                          ? "flagged"
+                          : "review"
                   }
                   label={STATE_LABEL[row.state]}
                   recordId={row.projectId}
@@ -90,6 +101,28 @@ export default async function OnboardingReviewPage() {
                   </li>
                 ))}
               </ul>
+              {row.decidedNote !== null && row.decidedAt !== null ? (
+                <Notice
+                  title={
+                    row.state === "approved"
+                      ? "Approved, and the page is public"
+                      : "Returned to the operator"
+                  }
+                >
+                  {/* The reason, verbatim. It is required when the decision is
+                      made, so it is shown where the decision is read: a later
+                      reviewer or an auditor sees why this page is public, or
+                      why the submission went back. */}
+                  <p data-review-decided={row.projectId}>{row.decidedNote}</p>
+                  <p className="note">Decided {formatDate(row.decidedAt)}.</p>
+                </Notice>
+              ) : null}
+              {row.state === "approved" ? null : (
+                <>
+                  <Rule />
+                  <OnboardingDecision projectId={row.projectId} />
+                </>
+              )}
             </li>
           ))}
         </ul>

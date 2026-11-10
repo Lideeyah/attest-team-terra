@@ -543,9 +543,18 @@ export type OnboardingReview = {
   registry: string;
   registryId: string;
   /** Where the project is in review, and what is outstanding. */
-  state: "awaiting-review" | "registry-unverified" | "kyb-outstanding" | "approved";
+  state:
+    | "awaiting-review"
+    | "registry-unverified"
+    | "kyb-outstanding"
+    | "approved"
+    | "returned";
   submittedAt: string;
   outstanding: string[];
+  /** The reason the platform decided on, which is the record of why a page
+      is public or why a submission went back. Null until a decision. */
+  decidedNote: string | null;
+  decidedAt: string | null;
   /** True where the registry could not be reached and the details were
       entered by hand, which is the case that needs a person. */
   manualEntry: boolean;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { ExtractionDecision } from "@/components/admin/ReviewDecision";
 import { EmptyState } from "@/components/EmptyState";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
@@ -91,11 +92,19 @@ export default async function ExtractionReviewPage() {
                   original reading stays on the record.
                 </p>
               ) : (
-                <p className="note">
-                  Nobody has read this yet. The project&rsquo;s own register page
-                  carries the figure with the sentence beside it, so a reader
-                  sees what was read and what it was read from.
-                </p>
+                <>
+                  <p className="note">
+                    Nobody has read this yet. The project&rsquo;s own register
+                    page carries the figure with the sentence beside it, so a
+                    reader sees what was read and what it was read from.
+                  </p>
+                  <Rule />
+                  <ExtractionDecision
+                    projectId={row.projectId}
+                    field={row.field}
+                    extracted={row.extracted}
+                  />
+                </>
               )}
             </li>
           ))}

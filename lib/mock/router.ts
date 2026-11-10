@@ -32,8 +32,7 @@ import {
   opsEmpty,
   projectStatusFor,
   registerSizeFor,
-  rosterSizeFor,
-} from "@/lib/mock/forced";
+  rosterSizeFor, adminEmpty} from "@/lib/mock/forced";
 import { depthOf, foldProof, leafFor } from "@/lib/mock/merkle";
 import {
   AGENTS,
@@ -479,7 +478,14 @@ function withRecordState(attestation: Attestation, code: ErrorCode): Attestation
   if (code === "ANCHOR_UNREACHABLE") {
     return { ...attestation, anchorState: "unreachable" };
   }
-  return { ...attestation, chainBreak: true };
+  if (code === "CHAIN_DISCONTINUITY") {
+    return { ...attestation, chainBreak: true };
+  }
+  /* RECONCILIATION_MISMATCH is about the money, not the chain. The earlier
+     fallthrough fabricated a chain break for it, which is a worse record
+     than the one being forced. The reconciliation endpoint reads the code
+     itself; the record passes through unchanged. */
+  return attestation;
 }
 
 type Handler = (context: {
@@ -597,6 +603,173 @@ function notFound(): Envelope<never> {
 
 /* The route table. Each entry matches on method and a path pattern where a
    segment beginning with ":" is a parameter. */
+/* The onboarding queue, held at module scope rather than rebuilt per
+   request: a review that cannot be seen to have happened is a list, not a
+   queue. A decision here mutates these rows, which is what the reviewer sees
+   when the screen refreshes. */
+const ONBOARDING_REVIEWS: (OnboardingReview & {
+  decidedNote: string | null;
+  decidedAt: string | null;
+})[] = [
+
+        {
+          projectId: "proj_oban",
+          projectName: "Oban Hills Community Forest Project",
+          developerName: "Oban Hills Conservation Trust",
+          registry: "Plan Vivo",
+          registryId: "PV-2291",
+          state: "awaiting-review",
+          submittedAt: "2026-11-08T14:20:00Z",
+          outstanding: ["Nothing. The registry record matches and the account is verified."],
+          manualEntry: false,
+          decidedNote: null,
+          decidedAt: null,
+        },
+        {
+          projectId: "proj_hadejia",
+          projectName: "Hadejia Wetlands Restoration",
+          developerName: "Hadejia Basin Trust",
+          registry: "Verra",
+          registryId: "VCS-1842",
+          state: "registry-unverified",
+          submittedAt: "2026-11-06T09:00:00Z",
+          outstanding: [
+            "The registry did not answer and the details were entered by hand.",
+            "Check the name, the country and the methodology against the registry's own page before this is published.",
+          ],
+          manualEntry: true,
+          decidedNote: null,
+          decidedAt: null,
+        },
+        {
+          projectId: "proj_delta",
+          projectName: "Akassa Mangrove Carbon Project",
+          developerName: "Delta Blue Carbon Limited",
+          registry: "Gold Standard",
+          registryId: "GS-11903",
+          state: "kyb-outstanding",
+          submittedAt: "2026-10-30T11:40:00Z",
+          outstanding: ["The bank has not answered on the organisation's verification."],
+          manualEntry: false,
+          decidedNote: null,
+          decidedAt: null,
+        },
+];
+
+/* Likewise the extraction queue. */
+const EXTRACTION_REVIEWS: ExtractionReview[] = [
+
+        {
+          projectId: "proj_hadejia",
+          projectName: "Hadejia Wetlands Restoration",
+          field: "percentage",
+          extracted: "45",
+          confidence: 0.61,
+          sourceQuote:
+            "The project shall distribute not less than forty-five per centum of net proceeds to participating households, assessed annually.",
+          page: 31,
+          decision: null,
+        },
+        {
+          projectId: "proj_delta",
+          projectName: "Akassa Mangrove Carbon Project",
+          field: "basis",
+          extracted: "gross",
+          confidence: 0.58,
+          sourceQuote:
+            "Benefit sharing is calculated on revenue received, before deduction of verification and monitoring costs.",
+          page: 18,
+          decision: {
+            at: "2026-11-02T10:12:00Z",
+            by: "Platform review",
+            accepted: true,
+            corrected: null,
+          },
+        },
+];
+
+/* Registry sync, held at module scope so a re-sync an operator asks for has
+   somewhere to land. */
+const REGISTRY_SYNC: RegistrySync[] = [
+
+        {
+          registry: "Gold Standard",
+          lastSyncedAt: "2026-11-10T06:00:00Z",
+          projects: 2,
+          state: "synced" as const,
+          failures: [],
+        },
+        {
+          registry: "Verra",
+          lastSyncedAt: "2026-11-04T06:00:00Z",
+          projects: 1,
+          state: "failing" as const,
+          failures: [
+            {
+              at: "2026-11-10T06:00:04Z",
+              registryId: "VCS-1842",
+              reason: "The registry answered 503 on four consecutive attempts.",
+            },
+            {
+              at: "2026-11-09T06:00:03Z",
+              registryId: "VCS-1842",
+              reason: "The registry answered 503 on four consecutive attempts.",
+            },
+          ],
+        },
+        {
+          registry: "Plan Vivo",
+          lastSyncedAt: "2026-11-09T06:00:00Z",
+          projects: 1,
+          state: "stale" as const,
+          failures: [],
+        },
+      ];
+
+/* Which escalations the platform decided in this process, so the admin list
+   can keep showing them, and the dev reset can undo them. */
+const DECIDED_ESCALATIONS = new Set<string>();
+
+/* Pristine copies, taken before anything mutates. The admin queues are
+   mutated in place by decisions — which is what makes a decision visible —
+   and without a way back, every state the dev panel names is one-shot: taken
+   once, gone until the process restarts. */
+const PRISTINE_ADMIN = {
+  onboarding: JSON.parse(JSON.stringify(ONBOARDING_REVIEWS)) as typeof ONBOARDING_REVIEWS,
+  extraction: JSON.parse(JSON.stringify(EXTRACTION_REVIEWS)) as typeof EXTRACTION_REVIEWS,
+  registry: JSON.parse(JSON.stringify(REGISTRY_SYNC)) as typeof REGISTRY_SYNC,
+  escalated: JSON.parse(
+    JSON.stringify(DISPUTES.filter((dispute) => dispute.state === "escalated")),
+  ) as typeof DISPUTES,
+};
+
+export function resetAdminQueues(): void {
+  ONBOARDING_REVIEWS.splice(
+    0,
+    ONBOARDING_REVIEWS.length,
+    ...(JSON.parse(JSON.stringify(PRISTINE_ADMIN.onboarding)) as typeof ONBOARDING_REVIEWS),
+  );
+  EXTRACTION_REVIEWS.splice(
+    0,
+    EXTRACTION_REVIEWS.length,
+    ...(JSON.parse(JSON.stringify(PRISTINE_ADMIN.extraction)) as typeof EXTRACTION_REVIEWS),
+  );
+  REGISTRY_SYNC.splice(
+    0,
+    REGISTRY_SYNC.length,
+    ...(JSON.parse(JSON.stringify(PRISTINE_ADMIN.registry)) as typeof REGISTRY_SYNC),
+  );
+  for (const pristine of PRISTINE_ADMIN.escalated) {
+    const live = DISPUTES.find((dispute) => dispute.id === pristine.id);
+    if (live) {
+      live.state = pristine.state;
+      live.resolutionBasis = pristine.resolutionBasis;
+      live.updatedAt = pristine.updatedAt;
+    }
+  }
+  DECIDED_ESCALATIONS.clear();
+}
+
 const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   { method: "GET", pattern: "/api/auth/session", handler: () => success(SESSION) },
   {
@@ -2156,44 +2329,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/admin/onboarding",
     handler: ({ url }) => {
-      const rows: OnboardingReview[] = [
-        {
-          projectId: "proj_oban",
-          projectName: "Oban Hills Community Forest Project",
-          developerName: "Oban Hills Conservation Trust",
-          registry: "Plan Vivo",
-          registryId: "PV-2291",
-          state: "awaiting-review",
-          submittedAt: "2026-11-08T14:20:00Z",
-          outstanding: ["Nothing. The registry record matches and the account is verified."],
-          manualEntry: false,
-        },
-        {
-          projectId: "proj_hadejia",
-          projectName: "Hadejia Wetlands Restoration",
-          developerName: "Hadejia Basin Trust",
-          registry: "Verra",
-          registryId: "VCS-1842",
-          state: "registry-unverified",
-          submittedAt: "2026-11-06T09:00:00Z",
-          outstanding: [
-            "The registry did not answer and the details were entered by hand.",
-            "Check the name, the country and the methodology against the registry's own page before this is published.",
-          ],
-          manualEntry: true,
-        },
-        {
-          projectId: "proj_delta",
-          projectName: "Akassa Mangrove Carbon Project",
-          developerName: "Delta Blue Carbon Limited",
-          registry: "Gold Standard",
-          registryId: "GS-11903",
-          state: "kyb-outstanding",
-          submittedAt: "2026-10-30T11:40:00Z",
-          outstanding: ["The bank has not answered on the organisation's verification."],
-          manualEntry: false,
-        },
-      ];
+      const rows = adminEmpty() ? [] : ONBOARDING_REVIEWS;
       const { page, meta } = paginate(rows, url);
       return success(page, meta);
     },
@@ -2201,75 +2337,44 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/admin/registry",
-    handler: () =>
-      success([
-        {
-          registry: "Gold Standard",
-          lastSyncedAt: "2026-11-10T06:00:00Z",
-          projects: 2,
-          state: "synced" as const,
-          failures: [],
-        },
-        {
-          registry: "Verra",
-          lastSyncedAt: "2026-11-04T06:00:00Z",
-          projects: 1,
-          state: "failing" as const,
-          failures: [
-            {
-              at: "2026-11-10T06:00:04Z",
-              registryId: "VCS-1842",
-              reason: "The registry answered 503 on four consecutive attempts.",
-            },
-            {
-              at: "2026-11-09T06:00:03Z",
-              registryId: "VCS-1842",
-              reason: "The registry answered 503 on four consecutive attempts.",
-            },
-          ],
-        },
-        {
-          registry: "Plan Vivo",
-          lastSyncedAt: "2026-11-09T06:00:00Z",
-          projects: 1,
-          state: "stale" as const,
-          failures: [],
-        },
-      ] satisfies RegistrySync[]),
+    handler: () => success(adminEmpty() ? [] : REGISTRY_SYNC),
+  },
+  {
+    /* A re-sync, asked for from the screen that shows the failure. It reads
+       the registry now rather than at tomorrow's schedule; a registry that
+       is still down fails again, and the failure is appended where the
+       operator can see it is fresh. */
+    method: "POST",
+    pattern: "/api/admin/registry/:registry/sync",
+    handler: ({ segments, forced }) => {
+      const name = decodeURIComponent(segments[3]);
+      const row = REGISTRY_SYNC.find((candidate) => candidate.registry === name);
+      if (!row) {
+        return notFound();
+      }
+      const at = new Date().toISOString();
+      if (forced === "REGISTRY_UNREACHABLE") {
+        row.state = "failing";
+        row.failures = [
+          {
+            at,
+            registryId: row.failures[0]?.registryId ?? "—",
+            reason: "The registry did not answer when asked just now.",
+          },
+          ...row.failures,
+        ];
+        return success(row, null, "The registry still does not answer");
+      }
+      row.state = "synced";
+      row.lastSyncedAt = at;
+      return success(row, null, "Read just now");
+    },
   },
   {
     method: "GET",
     pattern: "/api/admin/extraction",
     handler: ({ url }) => {
-      const rows: ExtractionReview[] = [
-        {
-          projectId: "proj_hadejia",
-          projectName: "Hadejia Wetlands Restoration",
-          field: "percentage",
-          extracted: "45",
-          confidence: 0.61,
-          sourceQuote:
-            "The project shall distribute not less than forty-five per centum of net proceeds to participating households, assessed annually.",
-          page: 31,
-          decision: null,
-        },
-        {
-          projectId: "proj_delta",
-          projectName: "Akassa Mangrove Carbon Project",
-          field: "basis",
-          extracted: "gross",
-          confidence: 0.58,
-          sourceQuote:
-            "Benefit sharing is calculated on revenue received, before deduction of verification and monitoring costs.",
-          page: 18,
-          decision: {
-            at: "2026-11-02T10:12:00Z",
-            by: "Platform review",
-            accepted: true,
-            corrected: null,
-          },
-        },
-      ];
+      const rows = adminEmpty() ? [] : EXTRACTION_REVIEWS;
       const { page, meta } = paginate(rows, url);
       return success(page, meta);
     },
@@ -2277,10 +2382,22 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/admin/chain",
-    handler: () => {
+    handler: ({ forced }) => {
+      if (adminEmpty()) {
+        return success([]);
+      }
       const rows: ChainCheck[] = [];
       for (const project of PROJECTS) {
-        for (const attestation of attestationsFor(project.id)) {
+        const records = attestationsFor(project.id);
+        for (const record of records) {
+          /* A chain state forced from /dev/states is a fact about the
+             record, and this is the screen that monitors it: answering
+             without it made the one thing the monitor exists for
+             unreachable. */
+          const attestation =
+            forced && RECORD_STATES.has(forced) && record === records[records.length - 1]
+              ? withRecordState(record, forced)
+              : record;
           rows.push({
             projectId: project.id,
             projectName: project.name,
@@ -2296,10 +2413,121 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     },
   },
   {
+    /* The platform's decision on an escalated report. The basis is required,
+       which is what DISPUTE_RESOLUTION_BASIS_REQUIRED is for and what makes a
+       closed report checkable. */
+    method: "POST",
+    pattern: "/api/admin/escalations/:id",
+    handler: ({ segments, body }) => {
+      const dispute = DISPUTES.find((candidate) => candidate.id === segments[3]);
+      if (!dispute) {
+        return notFound();
+      }
+      const outcome = String(body.outcome ?? "");
+      if (outcome !== "substantiated" && outcome !== "unsubstantiated") {
+        return failure("INVALID_REQUEST", "outcome");
+      }
+      const basis = String(body.basis ?? "").trim();
+      if (basis.length < 24) {
+        return failure("DISPUTE_RESOLUTION_BASIS_REQUIRED", "basis");
+      }
+      dispute.state = outcome;
+      dispute.resolutionBasis = basis;
+      dispute.updatedAt = new Date().toISOString();
+      DECIDED_ESCALATIONS.add(dispute.id);
+      return success(dispute, null, "The report is closed on its basis");
+    },
+  },
+  {
+    /* A project reviewed, or sent back with what is outstanding. */
+    method: "POST",
+    pattern: "/api/admin/onboarding/:id",
+    handler: ({ segments, body }) => {
+      const decision = String(body.decision ?? "");
+      if (decision !== "approve" && decision !== "return") {
+        return failure("INVALID_REQUEST", "decision");
+      }
+      const note = String(body.note ?? "").trim();
+      if (note.length < 12) {
+        return failure("INVALID_REQUEST", "note");
+      }
+      const review = ONBOARDING_REVIEWS.find(
+        (candidate) => candidate.projectId === segments[3],
+      );
+      if (!review) {
+        return notFound();
+      }
+      const at = new Date().toISOString();
+      /* The decision is written onto the row, so the queue shows what was
+         decided, when, and on what reason rather than forgetting it the
+         moment the screen refreshes. A returned project is returned — the
+         first version put it back to "awaiting-review", which stamped a
+         project the platform had just read as one nobody had read. */
+      review.decidedNote = note;
+      review.decidedAt = at;
+      review.state = decision === "approve" ? "approved" : "returned";
+      review.outstanding = decision === "approve" ? [] : [note];
+      return success(
+        { projectId: segments[3], decision, note, at },
+        null,
+        decision === "approve" ? "The project is approved" : "Returned to the operator",
+      );
+    },
+  },
+  {
+    /* An extraction accepted as read, or corrected. The original stays. */
+    method: "POST",
+    pattern: "/api/admin/extraction/:projectId/:field",
+    handler: ({ segments, body }) => {
+      const accepted = body.accepted === true;
+      const corrected = body.corrected === undefined ? null : String(body.corrected);
+      if (!accepted && (corrected === null || corrected.trim().length === 0)) {
+        return failure("INVALID_REQUEST", "corrected");
+      }
+      /* By project AND field: a queue is keyed by what was read, and a
+         project with two uncertain extractions must not have a decision on
+         one land on the other. */
+      const row = EXTRACTION_REVIEWS.find(
+        (candidate) =>
+          candidate.projectId === segments[3] && candidate.field === segments[4],
+      );
+      if (!row) {
+        return notFound();
+      }
+      /* What the model read stays where it was; the decision is written
+         beside it. A correction that overwrote the reading would destroy the
+         one thing this queue exists to make checkable. */
+      row.decision = {
+        at: new Date().toISOString(),
+        by: "Platform review",
+        accepted,
+        corrected,
+      };
+      return success(
+        {
+          projectId: segments[3],
+          decision: row.decision,
+        },
+        null,
+        accepted ? "Accepted as read" : "Corrected, with the original kept",
+      );
+    },
+  },
+  {
     method: "GET",
     pattern: "/api/admin/escalations",
     handler: ({ url }) => {
-      const rows = DISPUTES.filter((dispute) => dispute.state === "escalated");
+      /* Decided reports stay on the screen. The first version filtered to
+         "escalated" alone, so the operator's own decision removed the row the
+         moment it was made — an irreversible act with nothing left to show
+         for it, and the published basis unreadable from the surface that
+         wrote it. */
+      const rows = adminEmpty()
+        ? []
+        : DISPUTES.filter(
+            (dispute) =>
+              dispute.state === "escalated" || DECIDED_ESCALATIONS.has(dispute.id),
+          );
       const { page, meta } = paginate(rows, url);
       return success(page, meta);
     },

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { EmptyState } from "@/components/EmptyState";
+import { ResyncRegistry } from "@/components/admin/ReviewDecision";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Strip } from "@/components/Strip";
@@ -25,13 +27,19 @@ export default async function RegistrySyncPage() {
 
   const rows = result.data;
   const failing = rows.filter((row) => row.state === "failing");
+  const stale = rows.filter((row) => row.state === "stale");
 
   return (
     <div className="measure section-tight stack-lg">
       <header className="stack">
         <p className="eyebrow">Registry sync</p>
         <h1 className="h2-display">
-          {formatCount(failing.length)} of {formatCount(rows.length)} registries failing
+          {rows.length === 1
+            ? `${formatCount(failing.length)} of 1 registry failing`
+            : `${formatCount(failing.length)} of ${formatCount(rows.length)} registries failing`}
+          {stale.length > 0
+            ? `, ${formatCount(stale.length)} read longer ago than the schedule`
+            : ""}
         </h1>
         <p className="lede">
           Attest reads each registry&rsquo;s own record of a project and never
@@ -41,6 +49,7 @@ export default async function RegistrySyncPage() {
         <Rule weight="heavy" />
       </header>
 
+      {rows.length === 0 ? <EmptyState line="No registry is connected. Nothing can be read against a registry’s own record until one is." /> : null}
       <ul className="stack-lg">
         {rows.map((row) => (
           <li key={row.registry} className="panel stack" data-registry={row.registry}>
@@ -58,6 +67,13 @@ export default async function RegistrySyncPage() {
               </p>
             </div>
             <Rule />
+            {row.state !== "synced" ? (
+              /* The thing an operator can do about a registry that is failing
+                 or late: ask for a read now rather than waiting for
+                 tomorrow's schedule. A screen that shows a failure and offers
+                 nothing is a notice board. */
+              <ResyncRegistry registry={row.registry} />
+            ) : null}
             {row.failures.length === 0 ? (
               <p className="note">Nothing has failed.</p>
             ) : (

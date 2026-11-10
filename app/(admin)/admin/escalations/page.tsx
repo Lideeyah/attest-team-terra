@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
+import { EscalationDecision } from "@/components/admin/ReviewDecision";
 import { EmptyState } from "@/components/EmptyState";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
@@ -31,7 +32,11 @@ export default async function EscalationsPage() {
     <div className="measure section-tight stack-lg">
       <header className="stack">
         <p className="eyebrow">Escalations</p>
-        <h1 className="h2-display">{formatCount(rows.length)} reports with the platform</h1>
+        <h1 className="h2-display">
+          {rows.length === 1
+            ? "1 report with the platform"
+            : `${formatCount(rows.length)} reports with the platform`}
+        </h1>
         <p className="lede">
           A report a project and a household could not settle between them. The
           platform decides on the evidence, and whatever it decides is
@@ -83,6 +88,26 @@ export default async function EscalationsPage() {
                   The project has said nothing about this report, which is part
                   of why it is here.
                 </p>
+              )}
+              {dispute.state === "substantiated" ||
+              dispute.state === "unsubstantiated" ? (
+                <Notice
+                  title={
+                    dispute.state === "substantiated"
+                      ? "Closed as substantiated"
+                      : "Closed as unsubstantiated"
+                  }
+                >
+                  <p data-escalation-basis-published={dispute.id}>
+                    {dispute.resolutionBasis ??
+                      "The basis is not on the record, which is itself a defect: this report cannot be checked."}
+                  </p>
+                </Notice>
+              ) : (
+                <>
+                  <Rule />
+                  <EscalationDecision disputeId={dispute.id} />
+                </>
               )}
               <p className="note">
                 The transfer behind it:{" "}

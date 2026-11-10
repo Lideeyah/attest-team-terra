@@ -473,6 +473,35 @@ export const api = {
   extractionReviews: () => request<ExtractionReview[]>("/api/admin/extraction"),
   chainChecks: () => request<ChainCheck[]>("/api/admin/chain"),
   escalations: () => request<Dispute[]>("/api/admin/escalations"),
+  decideEscalation: (
+    id: string,
+    body: { outcome: "substantiated" | "unsubstantiated"; basis: string },
+    idempotencyKey: string,
+  ) => request<Dispute>(`/api/admin/escalations/${id}`, { method: "POST", body, idempotencyKey }),
+  reviewOnboarding: (
+    projectId: string,
+    body: { decision: "approve" | "return"; note: string },
+    idempotencyKey: string,
+  ) =>
+    request<{ projectId: string; decision: string; note: string; at: string }>(
+      `/api/admin/onboarding/${projectId}`,
+      { method: "POST", body, idempotencyKey },
+    ),
+  reviewExtraction: (
+    projectId: string,
+    field: string,
+    body: { accepted: boolean; corrected?: string },
+    idempotencyKey: string,
+  ) =>
+    request<{ projectId: string; decision: ExtractionReview["decision"] }>(
+      `/api/admin/extraction/${projectId}/${encodeURIComponent(field)}`,
+      { method: "POST", body, idempotencyKey },
+    ),
+  resyncRegistry: (registry: string, idempotencyKey: string) =>
+    request<RegistrySync>(
+      `/api/admin/registry/${encodeURIComponent(registry)}/sync`,
+      { method: "POST", body: {}, idempotencyKey },
+    ),
 
   /* Participant, unauthenticated */
   receipt: (token: string) => request<Receipt>(`/api/receipt/${token}`),

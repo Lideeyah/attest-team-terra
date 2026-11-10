@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
+import { EmptyState } from "@/components/EmptyState";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Strip } from "@/components/Strip";
@@ -30,14 +31,21 @@ export default async function ChainPage() {
 
   const rows = result.data;
   const breaks = rows.filter((row) => !row.chains);
-  const pending = rows.filter((row) => row.anchorState !== "anchored");
+  /* Pending and unreachable are different facts needing different notices: a
+     batch on its way is nothing to do, an anchoring network that cannot be
+     reached is an outage. Folding them together told the operator to wait
+     for a batch that was not coming. */
+  const pending = rows.filter((row) => row.anchorState === "pending");
+  const unreachable = rows.filter((row) => row.anchorState === "unreachable");
 
   return (
     <div className="measure section-tight stack-lg">
       <header className="stack">
         <p className="eyebrow">Chain integrity</p>
         <h1 className="h2-display">
-          {formatCount(breaks.length)} of {formatCount(rows.length)} records do not chain
+          {breaks.length === 1
+            ? `1 of ${formatCount(rows.length)} records does not chain`
+            : `${formatCount(breaks.length)} of ${formatCount(rows.length)} records do not chain`}
         </h1>
         <p className="lede">
           Each record carries the hash of the one before it, and each is
@@ -59,7 +67,14 @@ export default async function ChainPage() {
       ) : null}
 
       {pending.length > 0 ? (
-        <Notice tone="review" title={`${formatCount(pending.length)} records are waiting to anchor`}>
+        <Notice
+          tone="review"
+          title={
+            pending.length === 1
+              ? "1 record is waiting to anchor"
+              : `${formatCount(pending.length)} records are waiting to anchor`
+          }
+        >
           <p data-chain="pending">
             The figures are sealed and published. The anchor reference arrives
             when the batch lands, and until it does the record says that rather
@@ -68,6 +83,19 @@ export default async function ChainPage() {
         </Notice>
       ) : null}
 
+      {unreachable.length > 0 ? (
+        <Notice tone="blocked" title="The anchoring network could not be reached">
+          <p data-chain="unreachable">
+            {unreachable.length === 1
+              ? "1 record is sealed and published and its anchor could not be written: the network did not answer."
+              : `${formatCount(unreachable.length)} records are sealed and published and their anchors could not be written: the network did not answer.`}{" "}
+            This is not a batch on its way. The records stay truthful about it,
+            and anchoring resumes when the network does.
+          </p>
+        </Notice>
+      ) : null}
+
+      {rows.length === 0 ? <EmptyState line="No record has been published yet, so there is no chain to check." /> : null}
       <ul className="stack-tight">
         {rows.map((row) => (
           <li key={row.attestationId}>
