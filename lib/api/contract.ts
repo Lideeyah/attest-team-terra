@@ -472,6 +472,15 @@ export type ExtractionResult = {
 };
 
 export type DisclosureBundle = {
+  /* The facts the leaf is computed from. A verifier recomputes the leaf from
+     these rather than trusting the hash it was handed, so a hash lifted from
+     a published record cannot be presented as a payment. */
+  transfer: {
+    id: string;
+    amount: Amount;
+    sessionId: string | null;
+    settledAt: string | null;
+  };
   leaf: string;
   proof: string[];
   rootReference: string;
@@ -492,4 +501,85 @@ export type DisclosureVerificationResult = {
   projectName: string | null;
   anchorReachable: boolean;
   checkedAt: string;
+};
+
+/* ---- Console settings and roster imports ----------------------------------
+
+   Backend section 4.3 enumerates no endpoint for the console's own
+   administration — users and roles, API keys, webhook endpoints, notification
+   preferences — and none for the state of a roster import, which F-5 requires
+   to be resumable and partially downloadable. These five shapes are named here
+   so the two lanes carry the same ones, and the decision is recorded in
+   BUILD_LOG.md for the backend lane to adopt or amend. */
+
+export type ConsoleRole = "admin" | "operator" | "viewer";
+
+export type ConsoleUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: ConsoleRole;
+  invitedAt: string;
+  lastSignInAt: string | null;
+  /** The signed-in reader, who may not remove their own last admin role. */
+  self: boolean;
+};
+
+export type ApiKey = {
+  id: string;
+  label: string;
+  /** The first eight characters, which is all that is held after creation. */
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  /** Returned once, at creation, and never again. */
+  secret: string | null;
+};
+
+export type WebhookEndpoint = {
+  id: string;
+  url: string;
+  events: string[];
+  createdAt: string;
+  lastDeliveryAt: string | null;
+  lastDeliveryState: "delivered" | "failed" | "none";
+};
+
+/* The five events the console notifies on, per spec patch 01 item 15: each is
+   email to the user who turned it on, and every one defaults on. */
+export const NOTIFICATION_EVENTS = [
+  "dispute.opened",
+  "run.complete",
+  "funding.received",
+  "period.closing",
+  "reconciliation.mismatch",
+] as const;
+
+export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
+
+export type NotificationPreferences = {
+  userId: string;
+  /** Every event defaults on. A reader turns one off deliberately. */
+  events: Record<NotificationEvent, boolean>;
+};
+
+export type ImportFailure = {
+  /** The row number in the uploaded file, header row counted as 1. */
+  row: number;
+  errorCode: ErrorCode;
+  errorMessage: string;
+  values: Record<string, string>;
+};
+
+export type ImportJob = {
+  id: string;
+  projectId: string;
+  filename: string;
+  state: "running" | "complete" | "partially-failed";
+  rows: number;
+  imported: number;
+  failed: number;
+  startedAt: string;
+  finishedAt: string | null;
+  failures: ImportFailure[];
 };

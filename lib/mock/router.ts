@@ -1,6 +1,11 @@
 import type {
+  ApiKey,
   Arithmetic,
   Attestation,
+  ConsoleRole,
+  ConsoleUser,
+  NotificationEvent,
+  WebhookEndpoint,
   Payment,
   DisclosureBundle,
   ErrorCode,
@@ -21,10 +26,17 @@ import {
   registerSizeFor,
   rosterSizeFor,
 } from "@/lib/mock/forced";
-import { foldProof } from "@/lib/mock/merkle";
+import { depthOf, foldProof, leafFor } from "@/lib/mock/merkle";
 import {
   AGENTS,
   AMOUNT_PER_HOUSEHOLD,
+  API_KEYS,
+  CONSOLE_USERS,
+  WEBHOOK_ENDPOINTS,
+  importJob,
+  importsFor,
+  notificationPreferences,
+  setNotificationPreferences,
   CASES,
   DISPUTES,
   EXCEPTIONS,
@@ -38,6 +50,7 @@ import {
   addAmounts,
   attestationsFor,
   geography,
+  leafCountFor,
   multiplyAmount,
   participantAt,
   participants,
@@ -291,7 +304,10 @@ function arithmeticFor(runId: string): Arithmetic {
   /* One household in eleven banks elsewhere, so the run carries that many
      interbank charges. The charge is matched to the amount by the schedule,
      never to a remembered band. */
-  const interbankCount = Math.round(run.rosterSize / 11);
+  /* A run that has not executed has no transfers yet, so the estimate is over
+     the roster it would pay rather than over nothing. */
+  const payable = run.rosterSize > 0 ? run.rosterSize : (project?.enrolled ?? 0);
+  const interbankCount = Math.round(payable / 11);
   const charge = chargeFor(AMOUNT_PER_HOUSEHOLD, "interbank");
   const estimatedCharges = multiplyAmount(charge.total, interbankCount);
   const totalNeeded = addAmounts(required, estimatedCharges);
@@ -481,7 +497,15 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/projects/:id",
     handler: ({ segments }) => {
       const project = projectById(segments[2]);
-      return project ? success(project) : notFound();
+      if (!project) {
+        return notFound();
+      }
+      /* A status set from /dev/states is the project's status everywhere, not
+         only on the public register. */
+      return success({
+        ...project,
+        status: projectStatusFor(project.id, project.status) as typeof project.status,
+      });
     },
   },
   { method: "POST", pattern: "/api/projects/:id/pdd", handler: () => success({ jobId: "job_extract_0041" }, null, "Extraction queued") },
@@ -869,8 +893,18 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/projects/:id/attestations",
-    handler: ({ segments, url }) => {
-      const { page, meta } = paginate(attestationsFor(segments[2]), url);
+    handler: ({ segments, url, forced }) => {
+      /* An anchor that has not landed, or a chain that does not join, is a
+         fact about the record rather than a failure to list it. The latest
+         record carries it, which is the one a forced state is about. */
+      const records = attestationsFor(segments[2]);
+      const shaped =
+        forced && RECORD_STATES.has(forced) && records.length > 0
+          ? records.map((record, index) =>
+              index === records.length - 1 ? withRecordState(record, forced) : record,
+            )
+          : records;
+      const { page, meta } = paginate(shaped, url);
       return success(page, meta);
     },
   },
@@ -918,30 +952,58 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     handler: ({ body }) => {
       const bundle = body.bundle as Partial<DisclosureBundle> | undefined;
 
+      const transfer = bundle?.transfer;
       if (
         !bundle ||
         typeof bundle.leaf !== "string" ||
         !Array.isArray(bundle.proof) ||
-        typeof bundle.rootReference !== "string"
+        !bundle.proof.every((sibling) => typeof sibling === "string" && /^[0-9a-f]{64}$/.test(sibling)) ||
+        typeof bundle.rootReference !== "string" ||
+        !transfer ||
+        typeof transfer.id !== "string" ||
+        typeof transfer.amount !== "string" ||
+        (transfer.sessionId !== null && typeof transfer.sessionId !== "string") ||
+        (transfer.settledAt !== null && typeof transfer.settledAt !== "string")
       ) {
         return failure("INVALID_REQUEST", "bundle");
       }
 
-      /* The proof is computed, not compared. A bundle whose path does not
-         fold to the root it names proves nothing, and a leaf that folds to a
-         different root belongs to another period. */
+      /* A record that names no root that exists has not been checked against
+         anything, which is a different answer from a proof that does not
+         hold. */
       const attestation = attestationById(bundle.rootReference);
       if (!attestation) {
-        return failure("LEAF_NOT_IN_ROOT");
+        return notFound();
       }
 
-      const folded = foldProof(bundle.leaf, bundle.proof);
+      /* The leaf is recomputed from the transfer's own facts rather than
+         taken from the bundle. A hash lifted from a published record — the
+         period's root among them — is not a leaf, and an internal node of the
+         tree is not one either, because leaves and nodes are hashed in
+         separate domains. */
+      const computed = leafFor({
+        id: transfer.id,
+        amount: transfer.amount,
+        sessionId: transfer.sessionId ?? null,
+        settledAt: transfer.settledAt ?? null,
+      });
+      if (computed !== bundle.leaf) {
+        return failure("PROOF_INVALID", "leaf");
+      }
+
+      /* A path of the wrong length cannot be a path through this tree. */
+      const leaves = leafCountFor(bundle.rootReference);
+      if (leaves !== null && bundle.proof.length !== depthOf(leaves)) {
+        return failure("PROOF_INVALID", "proof");
+      }
+
+      const folded = foldProof(computed, bundle.proof);
       if (folded !== attestation.merkleRoot) {
         /* A leaf that belongs to this period with a path that does not fold
            is an invalid proof. A leaf that belongs to another period is a
            foreign leaf. They are different facts and are told apart. */
         return failure(
-          isLeafOfAnotherPeriod(bundle.leaf, bundle.rootReference)
+          isLeafOfAnotherPeriod(computed, bundle.rootReference)
             ? "LEAF_NOT_IN_ROOT"
             : "PROOF_INVALID",
         );
@@ -1343,6 +1405,186 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         null,
         "Dispute filed",
       ),
+  },
+
+  /* ---- The console's own administration -----------------------------------
+
+     Not in backend 4.3. Named here so both lanes carry one shape; the decision
+     is in BUILD_LOG.md. */
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/users",
+    handler: ({ url }) => {
+      const { page, meta } = paginate(CONSOLE_USERS, url);
+      return success(page, meta);
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/users",
+    handler: ({ body }) => {
+      const email = String(body.email ?? "");
+      if (!/.+@.+\..+/.test(email)) {
+        return failure("INVALID_REQUEST", "email");
+      }
+      if (CONSOLE_USERS.some((user) => user.email === email)) {
+        return failure("DUPLICATE_REQUEST", "email");
+      }
+      const user: ConsoleUser = {
+        id: `usr_${String(CONSOLE_USERS.length + 1).padStart(4, "0")}`,
+        name: String(body.name ?? email),
+        email,
+        role: (body.role as ConsoleRole) ?? "viewer",
+        invitedAt: new Date().toISOString(),
+        lastSignInAt: null,
+        self: false,
+      };
+      return success(user, null, "Invite sent");
+    },
+  },
+  {
+    method: "PATCH",
+    pattern: "/api/users/:id",
+    handler: ({ segments, body }) => {
+      const user = CONSOLE_USERS.find((candidate) => candidate.id === segments[2]);
+      if (!user) {
+        return notFound();
+      }
+      const role = (body.role as ConsoleRole) ?? user.role;
+      /* The last admin cannot demote themselves, or the project is left with
+         nobody who can add one. */
+      const admins = CONSOLE_USERS.filter((candidate) => candidate.role === "admin");
+      if (user.role === "admin" && role !== "admin" && admins.length === 1) {
+        return failure("FORBIDDEN", "role");
+      }
+      return success({ ...user, role }, null, "Role changed");
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/api/users/:id",
+    handler: ({ segments }) => {
+      const user = CONSOLE_USERS.find((candidate) => candidate.id === segments[2]);
+      if (!user) {
+        return notFound();
+      }
+      const admins = CONSOLE_USERS.filter((candidate) => candidate.role === "admin");
+      if (user.role === "admin" && admins.length === 1) {
+        return failure("FORBIDDEN", "id");
+      }
+      return success({ id: user.id, removed: true }, null, "Access removed");
+    },
+  },
+
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/api-keys",
+    handler: ({ url }) => {
+      const { page, meta } = paginate(API_KEYS, url);
+      return success(page, meta);
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/api-keys",
+    handler: ({ body }) => {
+      const label = String(body.label ?? "").trim();
+      if (label.length === 0) {
+        return failure("INVALID_REQUEST", "label");
+      }
+      /* The secret is returned once. Nothing holds it afterwards, here or in
+         the console. */
+      const key: ApiKey = {
+        id: `key_${String(API_KEYS.length + 1).padStart(4, "0")}`,
+        label,
+        prefix: "att_live",
+        createdAt: new Date().toISOString(),
+        lastUsedAt: null,
+        secret: `att_live_${"4f8a2c91b7d3e6054a1f8b2c9d7e30".slice(0, 30)}`,
+      };
+      return success(key, null, "Key created. It is shown once.");
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/api/api-keys/:id",
+    handler: ({ segments }) => {
+      const key = API_KEYS.find((candidate) => candidate.id === segments[2]);
+      return key ? success({ id: key.id, revoked: true }, null, "Key revoked") : notFound();
+    },
+  },
+
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/webhook-endpoints",
+    handler: ({ url }) => {
+      const { page, meta } = paginate(WEBHOOK_ENDPOINTS, url);
+      return success(page, meta);
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/api/projects/:id/webhook-endpoints",
+    handler: ({ body }) => {
+      const target = String(body.url ?? "");
+      if (!/^https:\/\//.test(target)) {
+        return failure("INVALID_REQUEST", "url");
+      }
+      const endpoint: WebhookEndpoint = {
+        id: `whk_${String(WEBHOOK_ENDPOINTS.length + 1).padStart(4, "0")}`,
+        url: target,
+        events: Array.isArray(body.events) ? (body.events as string[]) : [],
+        createdAt: new Date().toISOString(),
+        lastDeliveryAt: null,
+        lastDeliveryState: "none",
+      };
+      return success(endpoint, null, "Endpoint registered");
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/api/webhook-endpoints/:id",
+    handler: ({ segments }) => {
+      const endpoint = WEBHOOK_ENDPOINTS.find((candidate) => candidate.id === segments[2]);
+      return endpoint
+        ? success({ id: endpoint.id, removed: true }, null, "Endpoint removed")
+        : notFound();
+    },
+  },
+
+  {
+    method: "GET",
+    pattern: "/api/notifications/preferences",
+    handler: () => success(notificationPreferences("usr_0001")),
+  },
+  {
+    method: "PATCH",
+    pattern: "/api/notifications/preferences",
+    handler: ({ body }) => {
+      const events = (body.events ?? {}) as Partial<Record<NotificationEvent, boolean>>;
+      return success(
+        setNotificationPreferences("usr_0001", events),
+        null,
+        "Notification preferences saved",
+      );
+    },
+  },
+
+  {
+    method: "GET",
+    pattern: "/api/projects/:id/imports",
+    handler: ({ segments, url }) => {
+      const { page, meta } = paginate(importsFor(segments[2]), url);
+      return success(page, meta);
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/api/imports/:id",
+    handler: ({ segments }) => {
+      const job = importJob(segments[2]);
+      return job ? success(job) : notFound();
+    },
   },
 ];
 

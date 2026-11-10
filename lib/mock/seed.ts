@@ -3,6 +3,12 @@ import { leafFor, proofFor, rootOf } from "@/lib/mock/merkle";
 import type {
   AccountGraph,
   Agent,
+  ApiKey,
+  ConsoleUser,
+  ImportJob,
+  NotificationEvent,
+  NotificationPreferences,
+  WebhookEndpoint,
   ErrorCode,
   Amount,
   Attestation,
@@ -792,6 +798,16 @@ export const RUNS: Run[] = [
   run("run_2026q3", "proj_ekuri", "2026-Q3", "complete", 1904, "73300000.00", "37400000.00", "2026-09-28T08:00:00Z", "2026-09-29T10:14:02Z"),
   run("run_2026q4", "proj_ekuri", "2026-Q4", "executing", 2090, "80333333.33", "40500000.00", "2026-11-09T12:40:00Z", "2026-11-09T13:20:00Z"),
   run("run_draft", "proj_ekuri", "2026-Q4", "draft", 0, "0.00", "0.00", "2026-11-09T15:02:00Z", null),
+  /* Every state the runs index lists, so each is a row somebody can open
+     rather than a branch nobody reaches. The pre-execution states carry no
+     transfers, because a run that has not executed has none. */
+  run("run_awaiting", "proj_ekuri", "2026-Q4", "awaiting-funding", 0, "80333333.33", "0.00", "2026-11-09T15:40:00Z", null),
+  run("run_funded", "proj_ekuri", "2026-Q4", "funded", 0, "80333333.33", "48205107.20", "2026-11-09T16:10:00Z", null),
+  run("run_preflight", "proj_ekuri", "2026-Q4", "preflight-running", 0, "80333333.33", "48200000.00", "2026-11-09T16:20:00Z", null),
+  run("run_preflight_failed", "proj_ekuri", "2026-Q4", "preflight-failed", 0, "80333333.33", "48200000.00", "2026-11-09T16:30:00Z", null),
+  run("run_partial", "proj_ekuri", "2026-Q3", "partially-complete", 1904, "73300000.00", "31000000.00", "2026-09-28T08:00:00Z", "2026-09-29T11:02:00Z"),
+  run("run_cancelled", "proj_ekuri", "2026-Q2", "cancelled", 0, "68300000.00", "0.00", "2026-07-09T08:00:00Z", null),
+  run("run_failed", "proj_ekuri", "2026-Q2", "failed", 0, "68300000.00", "32100000.00", "2026-07-09T09:00:00Z", "2026-07-09T09:14:00Z"),
   run("run_hadejia_q2", "proj_hadejia", "2026-Q2", "complete", 720, "25396363.64", "14050000.00", "2026-06-28T08:00:00Z", "2026-06-30T10:00:00Z"),
   run("run_hadejia_q3", "proj_hadejia", "2026-Q3", "complete", 846, "29840727.27", "16500000.00", "2026-09-28T08:00:00Z", "2026-09-30T09:30:00Z"),
   run("run_delta_q3", "proj_delta", "2026-Q3", "complete", 1402, "44600000.00", "25700000.00", "2026-09-29T08:00:00Z", "2026-09-30T14:10:00Z"),
@@ -907,7 +923,14 @@ export function runForPeriod(projectId: string, period: string) {
 export function disclosureFor(
   attestationId: string,
   transferId: string,
-): { leaf: string; proof: string[]; rootReference: string; period: string; projectName: string } | null {
+): {
+  transfer: { id: string; amount: Amount; sessionId: string | null; settledAt: string | null };
+  leaf: string;
+  proof: string[];
+  rootReference: string;
+  period: string;
+  projectName: string;
+} | null {
   for (const project of PROJECTS) {
     for (const period of project.periods) {
       if (period.attestationId !== attestationId) {
@@ -918,6 +941,7 @@ export function disclosureFor(
         return null;
       }
       const leaves: string[] = [];
+      const facts: Transfer[] = [];
       let found = -1;
       for (let index = 0; index < periodRun.rosterSize; index += 1) {
         const transfer = transferAt(periodRun.id, index, project.id);
@@ -927,10 +951,18 @@ export function disclosureFor(
         if (transfer.id === transferId) {
           found = leaves.length;
         }
+        facts.push(transfer);
         leaves.push(leafFor(transfer));
       }
       const index = found >= 0 ? found : 0;
+      const transfer = facts[index];
       return {
+        transfer: {
+          id: transfer.id,
+          amount: transfer.amount,
+          sessionId: transfer.sessionId,
+          settledAt: transfer.settledAt,
+        },
         leaf: leaves[index],
         proof: proofFor(leaves, index),
         rootReference: attestationId,
@@ -1457,3 +1489,243 @@ function recomputeFixture(): void {
 
 recomputeFixture();
 onSharesChanged(recomputeFixture);
+
+/* ---- The console's own administration ------------------------------------- */
+
+export const CONSOLE_USERS: ConsoleUser[] = [
+  {
+    id: "usr_0001",
+    name: "Ekaete Bassey",
+    email: "operations@ekuri-initiative.ng",
+    role: "admin",
+    invitedAt: "2026-01-09T09:00:00Z",
+    lastSignInAt: "2026-11-10T07:41:00Z",
+    self: true,
+  },
+  {
+    id: "usr_0002",
+    name: "Tanko Mohammed",
+    email: "finance@ekuri-initiative.ng",
+    role: "operator",
+    invitedAt: "2026-02-18T10:20:00Z",
+    lastSignInAt: "2026-11-09T16:02:00Z",
+    self: false,
+  },
+  {
+    id: "usr_0003",
+    name: "Grace Onuoha",
+    email: "grace.onuoha@ekuri-initiative.ng",
+    role: "viewer",
+    invitedAt: "2026-06-02T08:15:00Z",
+    lastSignInAt: null,
+    self: false,
+  },
+];
+
+export const API_KEYS: ApiKey[] = [
+  {
+    id: "key_0001",
+    label: "Enrolment tablets",
+    prefix: "att_live",
+    createdAt: "2026-01-14T11:00:00Z",
+    lastUsedAt: "2026-11-10T06:58:00Z",
+    secret: null,
+  },
+  {
+    id: "key_0002",
+    label: "Finance reconciliation export",
+    prefix: "att_live",
+    createdAt: "2026-07-01T09:30:00Z",
+    lastUsedAt: "2026-11-01T02:00:00Z",
+    secret: null,
+  },
+];
+
+export const WEBHOOK_ENDPOINTS: WebhookEndpoint[] = [
+  {
+    id: "whk_0001",
+    url: "https://ops.ekuri-initiative.ng/attest/events",
+    events: ["run.complete", "dispute.opened", "reconciliation.mismatch"],
+    createdAt: "2026-02-02T12:00:00Z",
+    lastDeliveryAt: "2026-11-09T13:21:00Z",
+    lastDeliveryState: "delivered",
+  },
+  {
+    id: "whk_0002",
+    url: "https://ekuri-initiative.ng/hooks/attest",
+    events: ["funding.received"],
+    createdAt: "2026-08-19T15:40:00Z",
+    lastDeliveryAt: "2026-10-28T09:04:00Z",
+    lastDeliveryState: "failed",
+  },
+];
+
+/* Every event defaults on, per the patch's decision: a reader turns one off
+   deliberately rather than discovering it was never on. */
+const notificationState = new Map<string, Record<NotificationEvent, boolean>>();
+
+export function notificationPreferences(userId: string): NotificationPreferences {
+  const existing = notificationState.get(userId);
+  return {
+    userId,
+    events:
+      existing ?? {
+        "dispute.opened": true,
+        "run.complete": true,
+        "funding.received": true,
+        "period.closing": true,
+        "reconciliation.mismatch": true,
+      },
+  };
+}
+
+export function setNotificationPreferences(
+  userId: string,
+  events: Partial<Record<NotificationEvent, boolean>>,
+): NotificationPreferences {
+  const current = notificationPreferences(userId).events;
+  const next = { ...current, ...events };
+  notificationState.set(userId, next);
+  return { userId, events: next };
+}
+
+/* ---- Roster imports -------------------------------------------------------
+
+   The format is the patch's: a CSV whose header row names ten columns, and a
+   failure download that is the same file plus error_code and error_message
+   carrying only the rows that failed. */
+
+function importFailure(
+  row: number,
+  code: ImportJob["failures"][number]["errorCode"],
+  message: string,
+  values: Record<string, string>,
+): ImportJob["failures"][number] {
+  return { row, errorCode: code, errorMessage: message, values };
+}
+
+export const IMPORT_JOBS: ImportJob[] = [
+  {
+    id: "imp_0042",
+    projectId: "proj_ekuri",
+    filename: "iko-esai-november.csv",
+    state: "partially-failed",
+    rows: 190,
+    imported: 184,
+    failed: 6,
+    startedAt: "2026-11-09T11:02:00Z",
+    finishedAt: "2026-11-09T11:04:12Z",
+    failures: [
+      importFailure(14, "INVALID_REQUEST", "date_of_birth is not in YYYY-MM-DD form.", {
+        first_name: "Ewa",
+        last_name: "Obongha",
+        date_of_birth: "12/04/1979",
+        phone: "08031440021",
+        identity_type: "BVN",
+        identity_number: "22200000041",
+        account_number: "0123004411",
+        bank_code: "058",
+        community: "Iko Esai",
+        enrolled_by: "bassey.archibong@ekuri-initiative.ng",
+      }),
+      importFailure(31, "IDENTITY_DUPLICATE", "This verification number is already enrolled on the project.", {
+        first_name: "Mercy",
+        last_name: "Etim",
+        date_of_birth: "1988-02-02",
+        phone: "08031440088",
+        identity_type: "BVN",
+        identity_number: "22200000012",
+        account_number: "0123004480",
+        bank_code: "011",
+        community: "Owai",
+        enrolled_by: "affiong.ndifon@ekuri-initiative.ng",
+      }),
+      importFailure(57, "INVALID_REQUEST", "bank_code is not a NIP code on the bank's list.", {
+        first_name: "Sunday",
+        last_name: "Agbor",
+        date_of_birth: "1974-10-30",
+        phone: "08031440104",
+        identity_type: "NIN",
+        identity_number: "70000000019",
+        account_number: "0123004512",
+        bank_code: "9999",
+        community: "Iko Esai",
+        enrolled_by: "bassey.archibong@ekuri-initiative.ng",
+      }),
+      importFailure(88, "NOT_FOUND", "enrolled_by names an agent who is not on this project.", {
+        first_name: "Eno",
+        last_name: "Asuquo",
+        date_of_birth: "1991-07-18",
+        phone: "08031440166",
+        identity_type: "BVN",
+        identity_number: "22200000067",
+        account_number: "0123004588",
+        bank_code: "058",
+        community: "Okokori",
+        enrolled_by: "temporary.staff@ekuri-initiative.ng",
+      }),
+      importFailure(102, "ACCOUNT_NOT_FOUND", "The bank did not resolve this account number.", {
+        first_name: "Ubong",
+        last_name: "Effiong",
+        date_of_birth: "1969-01-04",
+        phone: "08031440190",
+        identity_type: "NIN",
+        identity_number: "70000000031",
+        account_number: "0000000001",
+        bank_code: "044",
+        community: "Owai",
+        enrolled_by: "okon.inyang@ekuri-initiative.ng",
+      }),
+      importFailure(148, "INVALID_REQUEST", "phone is not an eleven-digit Nigerian mobile number.", {
+        first_name: "Blessing",
+        last_name: "Ndifon",
+        date_of_birth: "1996-03-21",
+        phone: "0803144",
+        identity_type: "BVN",
+        identity_number: "22200000078",
+        account_number: "0123004640",
+        bank_code: "058",
+        community: "Iko Esai",
+        enrolled_by: "affiong.ndifon@ekuri-initiative.ng",
+      }),
+    ],
+  },
+  {
+    id: "imp_0043",
+    projectId: "proj_ekuri",
+    filename: "owai-november.csv",
+    state: "running",
+    rows: 412,
+    imported: 219,
+    failed: 1,
+    startedAt: "2026-11-10T08:58:00Z",
+    finishedAt: null,
+    failures: [],
+  },
+];
+
+export function importJob(id: string): ImportJob | undefined {
+  return IMPORT_JOBS.find((job) => job.id === id);
+}
+
+export function importsFor(projectId: string): ImportJob[] {
+  return IMPORT_JOBS.filter((job) => job.projectId === projectId);
+}
+
+/** How many leaves the period behind an attestation has, so a proof of the
+    wrong length is refused rather than folded. */
+export function leafCountFor(attestationId: string): number | null {
+  for (const project of PROJECTS) {
+    for (const period of project.periods) {
+      if (period.attestationId !== attestationId) {
+        continue;
+      }
+      const periodRun = runForPeriod(project.id, period.period);
+      if (!periodRun) {
+        return null;
+      }
+      return leavesFor(periodRun.id, project.id, periodRun.rosterSize).length;
+    }
+  }
+  return null;
+}

@@ -24,8 +24,18 @@ export function setForced(
   state.once = once;
 }
 
+/* The session is not a state any screen under test is showing: a signed-out
+   or refused session has its own screen at /signin. A code forced without a
+   path fragment is meant for the screen being looked at, so it does not
+   knock out the session the screen is read with. Forcing one at the session
+   itself still works, by naming it as the fragment. */
+const NOT_FORCED_BY_DEFAULT = ["/api/auth/session"];
+
 export function readForced(path: string): ErrorCode | null {
   if (state.code === null) {
+    return null;
+  }
+  if (!state.pathFragment && NOT_FORCED_BY_DEFAULT.includes(path)) {
     return null;
   }
   if (state.pathFragment && !path.includes(state.pathFragment)) {

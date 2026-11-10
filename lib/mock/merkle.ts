@@ -5,9 +5,29 @@ import { createHash } from "node:crypto";
    does not fold to that root it proves nothing, and that is the difference
    between an invalid proof and a leaf from another period. */
 
+/* Leaves and internal nodes are hashed in separate domains, and a bundle
+   carries the facts its leaf is computed from rather than the leaf alone. Both
+   are needed: without the domains an internal node can be passed off as a
+   leaf one level up, and without the facts the period's own published root
+   folds to itself through an empty path and verifies as a payment. */
+const LEAF_DOMAIN = "attest-leaf-v1";
+const NODE_DOMAIN = "attest-node-v1";
+
 export function hashPair(left: string, right: string): string {
   const [a, b] = left <= right ? [left, right] : [right, left];
-  return createHash("sha256").update(`${a}${b}`).digest("hex");
+  return createHash("sha256").update(`${NODE_DOMAIN}|${a}|${b}`).digest("hex");
+}
+
+/** The number of levels between a leaf and the root of a set of this size, so
+    a proof of the wrong length is refused rather than folded. */
+export function depthOf(count: number): number {
+  let level = Math.max(1, count);
+  let depth = 0;
+  while (level > 1) {
+    level = Math.ceil(level / 2);
+    depth += 1;
+  }
+  return depth;
 }
 
 export function foldProof(leaf: string, proof: string[]): string {
@@ -39,7 +59,7 @@ export function proofFor(leaves: string[], index: number): string[] {
 
 export function rootOf(leaves: string[]): string {
   if (leaves.length === 0) {
-    return createHash("sha256").update("").digest("hex");
+    return createHash("sha256").update(`${NODE_DOMAIN}|empty`).digest("hex");
   }
   let level = [...leaves];
   while (level.length > 1) {
@@ -60,6 +80,8 @@ export function leafFor(transfer: {
   settledAt: string | null;
 }): string {
   return createHash("sha256")
-    .update(`${transfer.id}|${transfer.amount}|${transfer.sessionId ?? ""}|${transfer.settledAt ?? ""}`)
+    .update(
+      `${LEAF_DOMAIN}|${transfer.id}|${transfer.amount}|${transfer.sessionId ?? ""}|${transfer.settledAt ?? ""}`,
+    )
     .digest("hex");
 }

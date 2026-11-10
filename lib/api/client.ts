@@ -1,5 +1,12 @@
 import type {
   AccountGraph,
+  ApiKey,
+  ConsoleRole,
+  ConsoleUser,
+  ImportJob,
+  NotificationEvent,
+  NotificationPreferences,
+  WebhookEndpoint,
   Payment,
   Agent,
   Arithmetic,
@@ -411,4 +418,46 @@ export const api = {
     request<{ confirmedAt: string }>(`/api/receipt/${token}/confirm`, { method: "POST" }),
   disputeReceipt: (token: string, body: { category: string; body?: string }) =>
     request<{ disputeId: string }>(`/api/receipt/${token}/dispute`, { method: "POST", body }),
+  /* Console administration. Not in backend 4.3; see BUILD_LOG.md. */
+  consoleUsers: (projectId: string) =>
+    request<ConsoleUser[]>(`/api/projects/${projectId}/users`),
+  inviteConsoleUser: (
+    projectId: string,
+    body: { name: string; email: string; role: ConsoleRole },
+  ) => request<ConsoleUser>(`/api/projects/${projectId}/users`, { method: "POST", body }),
+  changeConsoleRole: (id: string, body: { role: ConsoleRole }) =>
+    request<ConsoleUser>(`/api/users/${id}`, { method: "PATCH", body }),
+  removeConsoleUser: (id: string) =>
+    request<{ id: string; removed: boolean }>(`/api/users/${id}`, { method: "DELETE" }),
+
+  apiKeys: (projectId: string) => request<ApiKey[]>(`/api/projects/${projectId}/api-keys`),
+  createApiKey: (projectId: string, body: { label: string }) =>
+    request<ApiKey>(`/api/projects/${projectId}/api-keys`, { method: "POST", body }),
+  revokeApiKey: (id: string) =>
+    request<{ id: string; revoked: boolean }>(`/api/api-keys/${id}`, { method: "DELETE" }),
+
+  webhookEndpoints: (projectId: string) =>
+    request<WebhookEndpoint[]>(`/api/projects/${projectId}/webhook-endpoints`),
+  createWebhookEndpoint: (projectId: string, body: { url: string; events: string[] }) =>
+    request<WebhookEndpoint>(`/api/projects/${projectId}/webhook-endpoints`, {
+      method: "POST",
+      body,
+    }),
+  removeWebhookEndpoint: (id: string) =>
+    request<{ id: string; removed: boolean }>(`/api/webhook-endpoints/${id}`, {
+      method: "DELETE",
+    }),
+
+  notificationPreferences: () =>
+    request<NotificationPreferences>("/api/notifications/preferences"),
+  saveNotificationPreferences: (body: {
+    events: Partial<Record<NotificationEvent, boolean>>;
+  }) =>
+    request<NotificationPreferences>("/api/notifications/preferences", {
+      method: "PATCH",
+      body,
+    }),
+
+  imports: (projectId: string) => request<ImportJob[]>(`/api/projects/${projectId}/imports`),
+  importJob: (id: string) => request<ImportJob>(`/api/imports/${id}`),
 };
