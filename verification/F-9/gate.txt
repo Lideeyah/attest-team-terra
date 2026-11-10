@@ -1,0 +1,51 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /admin
+PASS  route renders /admin/onboarding
+PASS  route renders /admin/registry
+PASS  route renders /admin/extraction
+PASS  route renders /admin/escalations
+PASS  route renders /admin/chain
+PASS  durations are whole frames at 24fps
+PASS  no animation outside the motion primitives
+PASS  no transition declared outside the token stylesheet and the primitives
+PASS  the queue pulse is the only loop in the product
+PASS  reduced motion resting on /
+PASS  reduced motion resting on /app/runs/run_2026q4
+PASS  reduced motion resting on /field/enrol
+PASS  reduced motion resting on /ops/signals/sig_0231
+PASS  the state panel covers every surface in the product
+PASS  the state panel lists states rather than screens
+PASS  no exclamation mark, apology, congratulation or verdict anywhere in the product
+PASS  accessibility on /
+PASS  keyboard reachability on /
+PASS  accessibility on /register
+PASS  keyboard reachability on /register
+PASS  accessibility on /app
+PASS  keyboard reachability on /app
+PASS  accessibility on /field
+PASS  keyboard reachability on /field
+PASS  accessibility on /verifier
+PASS  keyboard reachability on /verifier
+PASS  accessibility on /ops
+PASS  keyboard reachability on /ops
+PASS  accessibility on /admin
+PASS  keyboard reachability on /admin
+PASS  no state is signalled by colour alone: every stamp carries its words
+PASS  focus is visible on every interactive element
+PASS  the developer tooling is not in a production build at all
+PASS  no NEXT_PUBLIC_ variable carries a key, secret or token
+PASS  the platform team key is never read in client code
+PASS  npm audit reports no critical or high finding
+PASS  every commit is authored by Lydia Solomon
+PASS  no commit message carries an agent trailer
+PASS  nothing the build produced mentions an agent
+PASS  the demo path runs green ten times consecutively
+PASS  what waits on the sandbox is written down rather than quietly skipped
+PASS  screenshot F-9/admin
+PASS  screenshot F-9/admin-onboarding
+PASS  screenshot F-9/admin-registry
+PASS  screenshot F-9/admin-extraction
+PASS  screenshot F-9/admin-escalations
+PASS  screenshot F-9/admin-chain
+50 passed, 0 failed in 165.1s

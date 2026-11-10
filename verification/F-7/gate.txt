@@ -62,4 +62,4 @@ PASS  screenshot F-7/state-export-ready
 PASS  screenshot F-7/state-export-failed
 PASS  screenshot F-7/state-no-alerts-configured
 PASS  screenshot F-7/state-an-alert-fired
-64 passed, 0 failed in 77.4s
+64 passed, 0 failed in 75.4s

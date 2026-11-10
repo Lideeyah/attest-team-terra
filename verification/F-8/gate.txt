@@ -42,4 +42,4 @@ PASS  screenshot F-8/state-a-period-not-yet-closed
 PASS  screenshot F-8/state-the-graph-still-loading
 PASS  screenshot F-8/state-no-onward-movement-yet
 PASS  screenshot F-8/state-onward-movement-entirely-ordinary
-44 passed, 0 failed in 60.4s
+44 passed, 0 failed in 64.8s

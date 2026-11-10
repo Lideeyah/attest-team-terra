@@ -1,6 +1,10 @@
 import { NOTIFICATION_EVENTS } from "@/lib/api/contract";
 import type {
   ApiKey,
+  ChainCheck,
+  ExtractionReview,
+  OnboardingReview,
+  RegistrySync,
   Arithmetic,
   Attestation,
   ConsoleRole,
@@ -2013,6 +2017,162 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     handler: ({ segments }) => {
       const job = importJob(segments[2]);
       return job ? success(job) : notFound();
+    },
+  },
+
+  /* ---- Platform admin ------------------------------------------------------
+
+     Not in backend 4.3; see BUILD_LOG.md. */
+  {
+    method: "GET",
+    pattern: "/api/admin/onboarding",
+    handler: ({ url }) => {
+      const rows: OnboardingReview[] = [
+        {
+          projectId: "proj_oban",
+          projectName: "Oban Hills Community Forest Project",
+          developerName: "Oban Hills Conservation Trust",
+          registry: "Plan Vivo",
+          registryId: "PV-2291",
+          state: "awaiting-review",
+          submittedAt: "2026-11-08T14:20:00Z",
+          outstanding: ["Nothing. The registry record matches and the account is verified."],
+          manualEntry: false,
+        },
+        {
+          projectId: "proj_hadejia",
+          projectName: "Hadejia Wetlands Restoration",
+          developerName: "Hadejia Basin Trust",
+          registry: "Verra",
+          registryId: "VCS-1842",
+          state: "registry-unverified",
+          submittedAt: "2026-11-06T09:00:00Z",
+          outstanding: [
+            "The registry did not answer and the details were entered by hand.",
+            "Check the name, the country and the methodology against the registry's own page before this is published.",
+          ],
+          manualEntry: true,
+        },
+        {
+          projectId: "proj_delta",
+          projectName: "Akassa Mangrove Carbon Project",
+          developerName: "Delta Blue Carbon Limited",
+          registry: "Gold Standard",
+          registryId: "GS-11903",
+          state: "kyb-outstanding",
+          submittedAt: "2026-10-30T11:40:00Z",
+          outstanding: ["The bank has not answered on the organisation's verification."],
+          manualEntry: false,
+        },
+      ];
+      const { page, meta } = paginate(rows, url);
+      return success(page, meta);
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/api/admin/registry",
+    handler: () =>
+      success([
+        {
+          registry: "Gold Standard",
+          lastSyncedAt: "2026-11-10T06:00:00Z",
+          projects: 2,
+          state: "synced" as const,
+          failures: [],
+        },
+        {
+          registry: "Verra",
+          lastSyncedAt: "2026-11-04T06:00:00Z",
+          projects: 1,
+          state: "failing" as const,
+          failures: [
+            {
+              at: "2026-11-10T06:00:04Z",
+              registryId: "VCS-1842",
+              reason: "The registry answered 503 on four consecutive attempts.",
+            },
+            {
+              at: "2026-11-09T06:00:03Z",
+              registryId: "VCS-1842",
+              reason: "The registry answered 503 on four consecutive attempts.",
+            },
+          ],
+        },
+        {
+          registry: "Plan Vivo",
+          lastSyncedAt: "2026-11-09T06:00:00Z",
+          projects: 1,
+          state: "stale" as const,
+          failures: [],
+        },
+      ] satisfies RegistrySync[]),
+  },
+  {
+    method: "GET",
+    pattern: "/api/admin/extraction",
+    handler: ({ url }) => {
+      const rows: ExtractionReview[] = [
+        {
+          projectId: "proj_hadejia",
+          projectName: "Hadejia Wetlands Restoration",
+          field: "percentage",
+          extracted: "45",
+          confidence: 0.61,
+          sourceQuote:
+            "The project shall distribute not less than forty-five per centum of net proceeds to participating households, assessed annually.",
+          page: 31,
+          decision: null,
+        },
+        {
+          projectId: "proj_delta",
+          projectName: "Akassa Mangrove Carbon Project",
+          field: "basis",
+          extracted: "gross",
+          confidence: 0.58,
+          sourceQuote:
+            "Benefit sharing is calculated on revenue received, before deduction of verification and monitoring costs.",
+          page: 18,
+          decision: {
+            at: "2026-11-02T10:12:00Z",
+            by: "Platform review",
+            accepted: true,
+            corrected: null,
+          },
+        },
+      ];
+      const { page, meta } = paginate(rows, url);
+      return success(page, meta);
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/api/admin/chain",
+    handler: () => {
+      const rows: ChainCheck[] = [];
+      for (const project of PROJECTS) {
+        for (const attestation of attestationsFor(project.id)) {
+          rows.push({
+            projectId: project.id,
+            projectName: project.name,
+            period: attestation.period,
+            attestationId: attestation.id,
+            chains: !attestation.chainBreak,
+            anchorState: attestation.anchorState,
+            checkedAt: "2026-11-10T08:00:00Z",
+          });
+        }
+      }
+      return success(rows);
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/api/admin/escalations",
+    handler: ({ url }) => {
+      const rows = DISPUTES.filter((dispute) => dispute.state === "escalated");
+      const { page, meta } = paginate(rows, url);
+      return success(page, meta);
     },
   },
 ];

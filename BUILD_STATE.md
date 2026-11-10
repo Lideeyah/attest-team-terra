@@ -17,8 +17,13 @@ Phase complete: F-7 — the verifier portal. Gate green, 64 of 64, awaiting
 independent verification.
 Phase complete: F-8 — the bank operations console. Gate green, 44 of 44,
 awaiting independent verification.
-Next phase: F-9 — platform admin and the hardening passes that need no
-cluster.
+Phase complete: F-9's cluster-free portion — platform admin, the motion, state,
+copy and accessibility sweeps, the hardening checks and the demo path. Gate
+green, 50 of 50.
+
+The front-end lane is built. What is left needs the sandbox: deployment, the
+swap from the mock to the real backend, and the demo recording. All three are
+written up in BUILD_LOG.md under F-9.
 
 F-4's verification found fourteen things and all are fixed; its gate went from
 51 assertions to 86. F-5's verification found thirty-one and all are

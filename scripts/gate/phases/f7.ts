@@ -10,6 +10,8 @@ import {
 } from "../assert";
 import { server } from "../server";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /* Written from F-7's exit checklist, before the verifier portal existed.
 
@@ -140,29 +142,36 @@ async function listedStates(): Promise<void> {
 /** The rule is about the product, not the rendering, so the code is searched
     as well as the screens. */
 function noVerdictInTheCode(): void {
-  let hits: string[] = [];
+  /* The rule is about what a reader sees, so the comments are stripped before
+     the search: the module that states the rule has to be able to state it,
+     and "generating" is not a rating. */
+  let files: string[] = [];
   try {
-    hits = execFileSync(
+    files = execFileSync(
       "git",
-      [
-        "grep",
-        "-niE",
-        "score|grade|badge|rating|risk label|traffic light|trustworth",
-        "--",
-        "app/(verifier)",
-        "components/verifier",
-        "lib/copy/verifier.ts",
-      ],
+      ["ls-files", "--", "app/(verifier)", "components/verifier", "lib/copy/verifier.ts"],
       { cwd: process.cwd(), stdio: "pipe" },
     )
       .toString()
       .trim()
       .split("\n")
-      .filter(Boolean)
-      /* A comment saying the surface carries none of these is not one. */
-      .filter((line) => !/\/\*|\*|\/\//.test(line.split(":").slice(2).join(":")));
+      .filter(Boolean);
   } catch {
-    hits = [];
+    files = [];
+  }
+
+  const pattern =
+    /\b(scores?|grades?|badges?|ratings?|trustworthy|risk label|traffic light)\b/i;
+  const hits: string[] = [];
+  for (const file of files) {
+    const code = readFileSync(join(process.cwd(), file), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/\/\/[^\n]*/g, " ")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, " ");
+    const match = code.match(pattern);
+    if (match) {
+      hits.push(`${file}: ${match[0]}`);
+    }
   }
   record(
     "no score, grade, badge or rating in the verifier surface's own code",

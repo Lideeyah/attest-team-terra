@@ -12,7 +12,11 @@ import type {
   Arithmetic,
   Attestation,
   Case,
+  ChainCheck,
   DisclosureBundle,
+  ExtractionReview,
+  OnboardingReview,
+  RegistrySync,
   DisclosureVerificationResult,
   Dispute,
   Envelope,
@@ -456,6 +460,13 @@ export const api = {
   exceptions: (query: { page?: number } = {}) =>
     request<VerificationException[]>("/api/ops/exceptions", { query }),
   opsReconciliation: () => request<Reconciliation[]>("/api/ops/reconciliation"),
+
+  /* Platform admin. Not in backend 4.3; see BUILD_LOG.md. */
+  onboardingReviews: () => request<OnboardingReview[]>("/api/admin/onboarding"),
+  registrySync: () => request<RegistrySync[]>("/api/admin/registry"),
+  extractionReviews: () => request<ExtractionReview[]>("/api/admin/extraction"),
+  chainChecks: () => request<ChainCheck[]>("/api/admin/chain"),
+  escalations: () => request<Dispute[]>("/api/admin/escalations"),
 
   /* Participant, unauthenticated */
   receipt: (token: string) => request<Receipt>(`/api/receipt/${token}`),

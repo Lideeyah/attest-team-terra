@@ -277,7 +277,7 @@ export function DevStates() {
           index the exit checklists mean by reachable from this panel.
         </p>
         {STATE_INDEX.map((surface) => (
-          <div className="stack" key={surface.path}>
+          <div className="stack" key={surface.path} data-state-screen={surface.path}>
             <p className="record-cell">{surface.path}</p>
             <div className="row" style={{ flexWrap: "wrap" }}>
               {surface.states.map((state) => (
@@ -285,6 +285,7 @@ export function DevStates() {
                   key={state.label}
                   small
                   variant="outline"
+                  data-state-entry={`${surface.path} · ${state.label}`}
                   onClick={() => {
                     void (async () => {
                       await state.arrange();

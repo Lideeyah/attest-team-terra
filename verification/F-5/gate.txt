@@ -110,4 +110,4 @@ PASS  screenshot F-5/state-dispute-substantiated
 PASS  screenshot F-5/state-dispute-unsubstantiated
 PASS  screenshot F-5/state-api-key-shown-once
 PASS  screenshot F-5/state-notification-preferences
-112 passed, 0 failed in 147.1s
+112 passed, 0 failed in 149.7s

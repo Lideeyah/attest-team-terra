@@ -1,3 +1,72 @@
+# Attest — front-end build log
+
+## Where it got to
+
+Ten phases, F-0 through F-9's cluster-free portion. Every gate green:
+
+| Phase | | Assertions |
+|---|---|---|
+| F-0 | Foundation | 34 |
+| F-1 | Mock server, typed client, state control | 42 |
+| F-2 | Landing page | 45 |
+| F-3 | Public surfaces | 49 |
+| F-4 | Role selection, auth, onboarding | 86 |
+| F-5 | Developer console | 112 |
+| F-6 | Field app | 44 |
+| F-7 | Verifier portal | 64 |
+| F-8 | Bank operations | 44 |
+| F-9 | Platform admin and the sweeps | 50 |
+
+Tests 12 of 12, lint clean, and the demo path runs green ten times
+consecutively.
+
+## The three things most worth your attention
+
+**1. The disclosure verifier had a hole, and it was the worst one available.**
+It accepted the period's own published Merkle root as a leaf with an empty
+proof path and answered "match". The root is printed on every public
+attestation page, so anybody could assemble that bundle out of public data and
+be told a payment belonged to a period — on the one screen whose entire job is
+saying whether a proof holds. It is closed: leaves and internal nodes hash in
+separate domains, a bundle carries the transfer's own facts and the verifier
+recomputes the leaf instead of trusting it, a proof of the wrong length is
+refused, and a record that has since been corrected says so. The gate now asks
+that question four ways, and F-5's independent verification could not forge a
+bundle.
+
+**2. Three phases passed their gates and failed their verifications.** F-3,
+F-4, F-5 and F-6 each went green and were then failed by a fresh pair of eyes:
+fourteen findings on F-4, thirty-one on F-5, fourteen on F-6. All are fixed,
+and the gates that missed them grew — F-4 from 51 assertions to 86, F-5 from
+99 to 112, F-6 from 37 to 44. The pattern in what they caught is worth
+knowing: the gates asserted what a screen does and almost never what it leaves
+out, so a figure that disagreed with another screen, a state that could not be
+reached, or a claim the product made about itself all passed. **F-7 and F-8
+have not been verified yet.**
+
+**3. Nineteen endpoints this lane needs that backend section 4.3 does not
+have.** The console's nine, the field app's identity check, the verifier's
+export shape, platform admin's five, the auth resend and the roster imports.
+Each is named in `lib/api/contract.ts` with the reason it exists, and the
+backend lane adopts or amends them. Nothing was patched around in the front
+end.
+
+## What is waiting on you
+
+- **The hero sentence.** The placeholder is the one the orchestration named:
+  "The money is promised, sometimes paid, and never provable."
+- **The 150KB budget on the field app.** First load is 157.0KB, of which
+  138.9KB is the framework every route pays and 18.2KB is the field app's own
+  code. Under 150 means a different stack for that one surface.
+- **The field app at desktop width** renders as a phone-width column rather
+  than refusing outright. The phase says "never rendered on desktop".
+- **`--ink-dim` at 2.9:1**, the Farm Africa citation, the synthetic Gold
+  Standard reference, and the Privacy and Terms text.
+- **Deployment, the backend swap and the demo recording**, all three waiting
+  on the sandbox.
+
+---
+
 # Attest front-end build log
 
 Written as the build runs. The summary at the top is the last thing written.
@@ -1333,3 +1402,70 @@ as a contract name, and a sweep for words about people rather than accounts.
 3. **Freeze and escalate are recorded as asked for, not as done.** The
    authorisation is the financial crime desk's, and a console that says
    "frozen" when it has only asked is a console that lies about money.
+
+---
+
+## F-9 — Platform admin, and the sweeps
+
+**Built.** The platform's own surface: what is waiting on it, project
+onboarding review, registry sync with its failure log, the extraction review
+queue for commitments the model read without confidence, the reports a project
+and a household could not settle between them, and a monitor on the
+attestation chain.
+
+Two decisions in that last one. The chain monitor reports a break and repairs
+nothing: a repaired chain and a rewritten one look the same from outside, and
+not being able to rewrite a record is the whole product. And the extraction
+queue shows the document's own sentence beside what was read from it, because
+a reviewer deciding whether 45% is right needs the sentence, not the figure.
+
+**Five endpoints are not in backend 4.3** — `/api/admin/onboarding`,
+`/api/admin/registry`, `/api/admin/extraction`, `/api/admin/chain` and
+`/api/admin/escalations`. Named in `lib/api/contract.ts` for the backend lane
+to adopt or amend, like the console's and the field app's.
+
+**The sweeps.** F-9's middle five items are sweeps across the whole product
+rather than assertions about one screen, and each is executable:
+
+- **Motion.** Every duration a whole frame at 24fps; no animation declared
+  outside the primitives; and a walk of all forty-five screens asserting the
+  queue pulse is the only infinite loop in the product.
+- **States.** The state panel covers every surface and lists 165 states, each
+  reachable by clicking rather than by editing a fixture.
+- **Copy.** All forty-five screens read for an exclamation mark, an apology, a
+  congratulation, or a verdict about a project. The verdict sweep reads the
+  sentence rather than the word, so the about page saying the product never
+  calls a project compliant is not itself a breach.
+- **Accessibility.** axe on seven surfaces, keyboard reachability, focus
+  visible on every interactive element, and a check that no state is signalled
+  by colour alone — every stamp carries its words.
+- **Hardening.** The developer tooling absent from a production build, no
+  `NEXT_PUBLIC_` variable carrying a secret, the platform key never read in
+  client code, `npm audit`, and the history: every commit Lydia's, no agent
+  trailer in any message, nothing the build produced naming one.
+
+**The demo path runs ten times consecutively** in the gate: the register shows
+the project, the run's transfers settle live, the period's record is
+published, the record states its anchor, and a disclosure bundle exported from
+it verifies on the public verifier. It is the one test that must never be
+flaky, so it is the one test that runs ten times.
+
+**Waiting on the sandbox**, and recorded rather than quietly skipped:
+
+1. **Deployment to production and staging**, and the check that the deployed
+   URL loads on a phone over mobile data rather than on a laptop.
+2. **The backend swap**: pointing the typed client at the real base URL,
+   importing the shared types package and deleting the local duplicates, then
+   walking every screen against the real endpoints. The contract mismatches
+   this would find are the reason the rule exists: fix the backend or amend
+   section 3 on both sides, never patch around it in the front end.
+3. **The demo recording**, driven by Playwright at 1920×1080 with video
+   capture so it is reproducible by re-running the script.
+4. **`/dev/states` and `/dev/kitchen-sink` returning 404 on the deployed
+   host.** The gate asserts it against a production build here; the deployed
+   check needs the deployment.
+
+**The nineteen endpoints this lane added that backend 4.3 does not have** are
+listed in one place for the backend lane: the console's nine, the field app's
+one, the verifier's export shape, the platform admin's five, and the auth
+resend. Each is named in `lib/api/contract.ts` with the reason it exists.

@@ -523,6 +523,60 @@ export type DisclosureVerificationResult = {
   checkedAt: string;
 };
 
+/* ---- Platform admin -------------------------------------------------------
+
+   Backend 4.3 enumerates none of these. F-9 asks for project onboarding
+   review, registry sync with its failure log, an extraction review queue, the
+   escalations a project cannot resolve itself, and a monitor on the
+   attestation chain. Named here for the backend lane to adopt or amend. */
+
+export type OnboardingReview = {
+  projectId: string;
+  projectName: string;
+  developerName: string;
+  registry: string;
+  registryId: string;
+  /** Where the project is in review, and what is outstanding. */
+  state: "awaiting-review" | "registry-unverified" | "kyb-outstanding" | "approved";
+  submittedAt: string;
+  outstanding: string[];
+  /** True where the registry could not be reached and the details were
+      entered by hand, which is the case that needs a person. */
+  manualEntry: boolean;
+};
+
+export type RegistrySync = {
+  registry: string;
+  lastSyncedAt: string;
+  projects: number;
+  state: "synced" | "stale" | "failing";
+  failures: { at: string; registryId: string; reason: string }[];
+};
+
+export type ExtractionReview = {
+  projectId: string;
+  projectName: string;
+  field: string;
+  extracted: string;
+  confidence: number;
+  sourceQuote: string;
+  page: number;
+  /** Set once a reviewer has decided; the extraction stays either way. */
+  decision: { at: string; by: string; accepted: boolean; corrected: string | null } | null;
+};
+
+export type ChainCheck = {
+  projectId: string;
+  projectName: string;
+  period: string;
+  attestationId: string;
+  /** Each record's hash is the previous record's input. A break is published
+      rather than repaired, so this monitor reports rather than fixes. */
+  chains: boolean;
+  anchorState: "anchored" | "pending" | "unreachable";
+  checkedAt: string;
+};
+
 export type VerifierAlert = {
   id: string;
   projectId: string;
