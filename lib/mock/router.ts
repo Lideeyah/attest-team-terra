@@ -206,7 +206,7 @@ export type Replay = { envelope: Envelope<unknown>; replayed: boolean };
 const SESSION: Session = {
   userId: "usr_lydia_ekuri",
   email: "operations@ekuri-initiative.ng",
-  organisation: "Ekuri Initiative Limited",
+  organisation: "Environmental Conservation Trust of Uganda (ECOTRUST)",
   role: "developer",
   projectId: "proj_ekuri",
   emailVerified: true,
@@ -222,8 +222,8 @@ const SESSION: Session = {
 const REGISTRY_RECORD: RegistryRecord = {
   registryId: "PV-2314",
   registry: "Plan Vivo",
-  name: "Ekuri Community Forest Carbon Project",
-  country: "Nigeria",
+  name: "Trees for Global Benefits — demonstration instance",
+  country: "Uganda",
   methodology: "Plan Vivo community forest management and agroforestry",
   boundaryName: null,
   issuances: [
@@ -390,7 +390,7 @@ const EXTRACTION: ExtractionResult = {
 
 const INVITE: Invite = {
   code: "inv_7KQ2M4",
-  projectName: "Ekuri Community Forest Carbon Project",
+  projectName: "Trees for Global Benefits — demonstration instance",
   agentName: "Idongesit Ekpenyong",
   state: "valid",
   expiresAt: "2026-11-23T23:59:59Z",
@@ -1388,7 +1388,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
             ...dispute.responses,
             {
               at: "2026-11-09T16:00:00Z",
-              author: "Ekuri Initiative Limited",
+              author: "Environmental Conservation Trust of Uganda (ECOTRUST)",
               body: String(body.body ?? ""),
             },
           ],
@@ -1656,7 +1656,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
            ask for it when it is offline, so it is given with the session and
            held on the device. */
         boundary: {
-          name: "Ekuri community forest, Akamkpa",
+          name: "Hoima landscape project area (demonstration)",
           north: 5.95,
           south: 5.55,
           east: 8.65,

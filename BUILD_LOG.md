@@ -1478,6 +1478,40 @@ F-4 re-ran green at 86 of 86 (the confirmation-marker change), F-9 at 66 of
 66. The disbursement rail, attestation engine, Merkle path, field app,
 dashboards and register are untouched, per the patch's own section six.
 
+## Demo seed: real project values
+
+The seeded demonstration project is now the real one. **Trees for Global
+Benefits — demonstration instance**, developer Environmental Conservation
+Trust of Uganda (ECOTRUST), Plan Vivo, Uganda, with the Northern Uganda pilot
+as the withdrawn second instance. Both carry "demonstration" in the name, so
+the register row and every screen that names the project says it, and the
+public project page carries a notice stating the guardrail outright: the
+commitment and the annual report are the project's own published documents,
+and every household, payment, settlement, confirmation and coverage figure is
+synthetic — none of it describes what TGB or ECOTRUST has paid or not paid.
+The synthetic villages are synthetic too, not drawn from the real producer
+lists.
+
+**The commitment is verbatim from the published PDD.** One deviation from the
+seed note, made deliberately: the note cites section A.13.1 and Table 5, but
+neither published PDD obtainable from Plan Vivo's project page or the
+project's partners carries that section — the current PDD states benefit
+sharing in Part J, and the V2.0 (October 2016) PDD in J2.1 "Equity in Benefit
+Sharing", page 44. The seed therefore carries the J2.1 sentence, extracted
+from the published PDF rather than retyped: "The cash benefits come from the
+sale of carbon credits, whose price is designed to give the community at
+least 60% of the purchase price…" — 60%, basis gross, cadence staged against
+verification, which is what the seed note's own non-negotiable requires: a
+sentence the extraction's quote-verification can match against source text.
+`Commitment` gained a `section` locator and a `staged` cadence, rendered
+wherever the commitment renders. Both PDFs are in `demo/` beside the 2024
+annual report, so the citation is checkable from the repo.
+
+The receipt's inlined stylesheet still carried the old dim ink — it restates
+the tokens because a receipt ships with no stylesheet — and failed the
+contrast rule the moment a gate looked; it is in step now. Gates re-run
+green: F-3 49, F-4 86, F-9 66.
+
 ## F-9 — Platform admin, and the sweeps
 
 **Built.** The platform's own surface: what is waiting on it, project

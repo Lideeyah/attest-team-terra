@@ -43,7 +43,11 @@ then failed the verification. The gates now carry roughly 130 assertions
 written in response to that, and the pattern behind every one of them is the
 same: a gate asserts what a screen does, and is blind to what it leaves out.
 
-Spec patch 01 is applied in full. Spec patch 02 is applied in full: the demo
+Spec patch 01 is applied in full. The demo seed note is applied: the
+demonstration project is Trees for Global Benefits (ECOTRUST, Plan Vivo,
+Uganda), labelled as a demonstration instance everywhere, carrying the real
+PDD's benefit-sharing sentence verbatim (J2.1, page 44) with synthetic
+payment data stated as synthetic on the public page. Spec patch 02 is applied in full: the demo
 project is Plan Vivo PV-2314, onboarding step two carries the KML boundary
 upload path behind BOUNDARY_NOT_AVAILABLE, and the benefit-sharing report
 export exists on /verifier/export and /app/attestations.

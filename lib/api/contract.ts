@@ -93,10 +93,15 @@ export type Amount = string;
 export type Commitment = {
   percentage: number;
   basis: "net" | "gross";
-  cadence: "quarterly" | "annual";
+  /** "staged" is a Plan Vivo pattern: performance-based tranches released
+      against verification milestones rather than on a calendar. */
+  cadence: "quarterly" | "annual" | "staged";
   beneficiary: string;
   sourceQuote: string;
   page: number;
+  /** The document section the quote sits in, where the PDD numbers its
+      sections — a finer locator than the page alone. */
+  section: string | null;
   confidence: number;
   corrected: boolean;
   originalPercentage: number | null;
@@ -161,6 +166,11 @@ export type Project = {
   localGovernment: string;
   methodology: string;
   status: ProjectStatus;
+  /** True for a seeded instance that carries a real project's published
+      commitment with synthetic payment data. The register and the project
+      page label it, and the page states that no figure on it describes the
+      real project's performance. */
+  demonstration?: boolean;
   commitment: Commitment;
   enrolled: number;
   /** The households the project undertook to enrol in this programme. The

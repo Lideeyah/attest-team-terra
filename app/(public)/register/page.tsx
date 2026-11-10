@@ -72,7 +72,7 @@ export default async function RegisterPage({
               type="search"
               name="q"
               defaultValue={search.q ?? ""}
-              placeholder="Ekuri, PV-2314, Hadejia"
+              placeholder="Trees for Global Benefits, PV-2314, Hadejia"
             />
           </div>
           <div className="field" style={{ minWidth: "180px" }}>

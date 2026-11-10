@@ -13,7 +13,7 @@ const STYLES = `
     --contrast: #BAAEA2;
     --ink: #181816;
     --muted: #5C5A55;
-    --dim: #8C887E;
+    --dim: #5E5A52; /* kept in step with --ink-dim in tokens.css: this file restates the tokens because the receipt ships with no stylesheet */
     --bottle: #1E3A2E;
     --sealed-wash: #EFECE1;
     --sealed-border: #BAAEA2;

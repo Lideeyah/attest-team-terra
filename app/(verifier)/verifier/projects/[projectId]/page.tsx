@@ -143,10 +143,14 @@ export default async function VerifierProject({
         <Rule />
         <p className="quotation">{project.commitment.sourceQuote}</p>
         <p className="note">
-          Project design document, page {project.commitment.page}.{" "}
+          Project design document,{" "}
+          {project.commitment.section
+            ? `section ${project.commitment.section}, page ${project.commitment.page}`
+            : `page ${project.commitment.page}`}
+          .{" "}
           {project.commitment.corrected
             ? `Read as ${project.commitment.originalPercentage}% and corrected to ${project.commitment.percentage}%: ${project.commitment.correctionReason ?? ""}`
-            : `Read as ${project.commitment.percentage}% of ${project.commitment.basis} revenue, ${project.commitment.cadence}.`}
+            : `Read as ${project.commitment.percentage}% of ${project.commitment.basis} revenue, ${project.commitment.cadence === "staged" ? "paid in stages against verification" : project.commitment.cadence}.`}
         </p>
         <p className="note">
           Every shortfall below is measured against this, and against nothing

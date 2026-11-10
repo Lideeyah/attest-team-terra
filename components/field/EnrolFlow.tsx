@@ -74,7 +74,7 @@ export function EnrolFlow({
   const [familyName, setFamilyName] = useState("");
   const [phone, setPhone] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [community, setCommunity] = useState("Iko Esai");
+  const [community, setCommunity] = useState("Buseruka");
   const [photograph, setPhotograph] = useState<string | null>(null);
   const [photographFailed, setPhotographFailed] = useState(false);
   const [location, setLocation] = useState<CaptureLocation>(null);

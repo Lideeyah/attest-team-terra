@@ -49,7 +49,7 @@ export function DeveloperShell({
   children,
   outstanding = {},
   account = {
-    organisation: "Ekuri Initiative Limited",
+    organisation: "Environmental Conservation Trust of Uganda (ECOTRUST)",
     email: "operations@ekuri-initiative.ng",
   },
   /* No default figures: a shell that invents a period would put a date on

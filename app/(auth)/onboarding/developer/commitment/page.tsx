@@ -54,6 +54,7 @@ const FIELDS: {
     options: [
       { value: "quarterly", label: "Quarterly" },
       { value: "annual", label: "Annual" },
+      { value: "staged", label: "Staged against verification" },
     ],
   },
   {
@@ -381,7 +382,8 @@ export default async function CommitmentStep({
               />
               <p className="field-note">
                 For the basis, &ldquo;net&rdquo; or &ldquo;gross&rdquo;; for the
-                cadence, &ldquo;quarterly&rdquo; or &ldquo;annual&rdquo;.
+                cadence, &ldquo;quarterly&rdquo;, &ldquo;annual&rdquo; or
+                &ldquo;staged&rdquo;.
               </p>
             </div>
             <div className="field">

@@ -201,10 +201,15 @@ async function ProjectBody({ projectId }: { projectId: string }) {
           <div className="stack">
             <p className="quotation">{project.commitment.sourceQuote}</p>
             <p className="eyebrow">
-              Project design document, page {project.commitment.page} ·{" "}
-              {project.commitment.percentage}% of{" "}
+              Project design document,{" "}
+              {project.commitment.section
+                ? `section ${project.commitment.section}, page ${project.commitment.page}`
+                : `page ${project.commitment.page}`}{" "}
+              · {project.commitment.percentage}% of{" "}
               {project.commitment.basis === "net" ? "net" : "gross"} revenue,{" "}
-              {project.commitment.cadence}
+              {project.commitment.cadence === "staged"
+                ? "paid in stages against verification"
+                : project.commitment.cadence}
             </p>
             {project.commitment.corrected ? (
               <p className="prose-muted">
@@ -220,6 +225,18 @@ async function ProjectBody({ projectId }: { projectId: string }) {
           Attest&rsquo;s reading of them. Every figure on this page is measured
           against it.
         </p>
+        {project.demonstration ? (
+          <Notice title="A demonstration instance">
+            <p data-demonstration={project.id}>
+              The commitment above and the project&rsquo;s annual report are
+              Trees for Global Benefits&rsquo; own published documents. Every
+              household, payment, settlement, confirmation and coverage figure
+              on this page is synthetic demonstration data: none of it
+              describes what Trees for Global Benefits or ECOTRUST has paid or
+              not paid.
+            </p>
+          </Notice>
+        ) : null}
       </div>
 
       <div className="stack">

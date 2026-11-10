@@ -388,7 +388,7 @@ function TransferTable() {
   return (
     <div data-component="table">
     <Table
-      caption="Transfers in period 2026-Q4 for the Ekuri Forest Initiative"
+      caption="Transfers in period 2026-Q4 for the demonstration instance"
       columns={columns}
       rows={TRANSFERS}
       rowKey={(row) => row.id}
