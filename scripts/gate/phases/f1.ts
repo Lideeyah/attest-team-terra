@@ -94,11 +94,53 @@ const PROBES: Probe[] = [
   { method: "GET", path: "/api/attestations/att_ekuri_2026q3" },
   { method: "POST", path: "/api/attestations/att_ekuri_2026q3/disclosure", body: { transferId: "trf_2026q3_00001" } },
   { method: "POST", path: "/api/verify/attestation", body: { hash: "0" } },
+  /* A bundle without the transfer's own facts cannot be verified at all: the
+     leaf is recomputed from them rather than trusted, so the request is
+     malformed rather than a proof that does not hold. */
   {
     method: "POST",
     path: "/api/verify/disclosure",
     body: { bundle: { leaf: "", proof: [], rootReference: "att_ekuri_2026q3" } },
+    expectCode: "INVALID_REQUEST",
+  },
+  /* With the facts, and a leaf that is not what they compute to, it is a
+     proof that does not hold. */
+  {
+    method: "POST",
+    path: "/api/verify/disclosure",
+    body: {
+      bundle: {
+        transfer: {
+          id: "trf_2026q3_00001",
+          amount: "23050.00",
+          sessionId: null,
+          settledAt: null,
+        },
+        leaf: "0".repeat(64),
+        proof: [],
+        rootReference: "att_ekuri_2026q3",
+      },
+    },
     expectCode: "PROOF_INVALID",
+  },
+  /* A root nothing was checked against is not a foreign leaf. */
+  {
+    method: "POST",
+    path: "/api/verify/disclosure",
+    body: {
+      bundle: {
+        transfer: {
+          id: "trf_2026q3_00001",
+          amount: "23050.00",
+          sessionId: null,
+          settledAt: null,
+        },
+        leaf: "0".repeat(64),
+        proof: [],
+        rootReference: "att_nothing",
+      },
+    },
+    expectCode: "NOT_FOUND",
   },
 
   /* Field */
