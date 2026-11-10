@@ -286,9 +286,23 @@ export function DevStates() {
                   small
                   variant="outline"
                   data-state-entry={`${surface.path} · ${state.label}`}
-                  onClick={() => {
+                  /* The href the entry opens, so the gate can check that
+                     every state in this panel actually goes somewhere rather
+                     than counting the buttons. */
+                  data-state-href={state.href}
+                  onClick={(event) => {
+                    const button = event.currentTarget;
                     void (async () => {
-                      await state.arrange();
+                      try {
+                        await state.arrange();
+                      } catch (error) {
+                        /* An arrangement that failed must not navigate: the
+                           screen would open in whatever state was left over,
+                           and the panel would have lied about what it shows.
+                           The attribute is what the gate reads. */
+                        button.setAttribute("data-arrange-error", String(error));
+                        return;
+                      }
                       window.location.href = state.href;
                     })();
                   }}

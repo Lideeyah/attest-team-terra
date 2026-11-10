@@ -1,5 +1,6 @@
 import {
   forceCode,
+  setAdmin,
   setOpsEmpty,
   setPeriod,
   setProjectStatus,
@@ -21,6 +22,9 @@ const clear = async () => {
   await setRosterSize("proj_ekuri", null);
   await setPeriod("proj_ekuri", { closesOn: null, state: null });
   await setOpsEmpty(false);
+  /* The admin queues are mutated in place by decisions, so clearing also
+     puts them back: without this, every admin state below is one-shot. */
+  await setAdmin({ empty: false, reset: true });
 };
 
 export const STATE_INDEX: { path: string; states: State[] }[] = [
@@ -274,6 +278,37 @@ export const STATE_INDEX: { path: string; states: State[] }[] = [
       { label: "Reports", href: "/app/disputes", arrange: clear },
       { label: "Attestations", href: "/app/attestations", arrange: clear },
       { label: "Settings", href: "/app/settings", arrange: clear },
+    ],
+  },
+  {
+    /* Platform admin. It was absent from this index while the chain monitor
+       was the one screen in the product whose whole reason for existing — a
+       record that does not follow the one before it — could not be put on the
+       screen. The forced states below are what make it reachable. */
+    path: "/admin",
+    states: [
+      { label: "Something waiting in every queue", href: "/admin", arrange: clear },
+      { label: "A queue did not answer", href: "/admin", arrange: async () => { await clear(); await forceCode("MODEL_UNAVAILABLE", "/api/admin/extraction", false); } },
+      { label: "Nothing on the screen was read", href: "/admin", arrange: async () => { await clear(); await forceCode("REGISTRY_UNREACHABLE", "/api/admin", false); } },
+      { label: "Nothing waiting in any queue", href: "/admin", arrange: async () => { await clear(); await setAdmin({ empty: true }); } },
+      { label: "Onboarding review", href: "/admin/onboarding", arrange: clear },
+      { label: "Onboarding queue refused", href: "/admin/onboarding", arrange: async () => { await clear(); await forceCode("FORBIDDEN", "/api/admin/onboarding", false); } },
+      { label: "Onboarding queue empty", href: "/admin/onboarding", arrange: async () => { await clear(); await setAdmin({ empty: true }); } },
+      { label: "Registry sync", href: "/admin/registry", arrange: clear },
+      { label: "Registry sync refused", href: "/admin/registry", arrange: async () => { await clear(); await forceCode("FORBIDDEN", "/api/admin/registry", false); } },
+      { label: "No registry connected", href: "/admin/registry", arrange: async () => { await clear(); await setAdmin({ empty: true }); } },
+      { label: "Extraction review", href: "/admin/extraction", arrange: clear },
+      { label: "Extraction queue refused", href: "/admin/extraction", arrange: async () => { await clear(); await forceCode("MODEL_UNAVAILABLE", "/api/admin/extraction", false); } },
+      { label: "Extraction queue empty", href: "/admin/extraction", arrange: async () => { await clear(); await setAdmin({ empty: true }); } },
+      { label: "Escalations", href: "/admin/escalations", arrange: clear },
+      { label: "Escalations refused", href: "/admin/escalations", arrange: async () => { await clear(); await forceCode("FORBIDDEN", "/api/admin/escalations", false); } },
+      { label: "No report escalated", href: "/admin/escalations", arrange: async () => { await clear(); await setAdmin({ empty: true }); } },
+      { label: "The chain refused", href: "/admin/chain", arrange: async () => { await clear(); await forceCode("FORBIDDEN", "/api/admin/chain", false); } },
+      { label: "No record published, no chain", href: "/admin/chain", arrange: async () => { await clear(); await setAdmin({ empty: true }); } },
+      { label: "The chain, every record following", href: "/admin/chain", arrange: clear },
+      { label: "The chain, a record that does not follow", href: "/admin/chain", arrange: async () => { await clear(); await forceCode("CHAIN_DISCONTINUITY", "/api/admin/chain", false); } },
+      { label: "The chain, a record waiting to anchor", href: "/admin/chain", arrange: async () => { await clear(); await forceCode("ANCHOR_PENDING", "/api/admin/chain", false); } },
+      { label: "The chain, the anchor unreachable", href: "/admin/chain", arrange: async () => { await clear(); await forceCode("ANCHOR_UNREACHABLE", "/api/admin/chain", false); } },
     ],
   },
 ];

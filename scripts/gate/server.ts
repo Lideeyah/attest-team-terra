@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { readFile, writeFile } from "node:fs/promises";
 
 /* The gate's servers. Both are production builds: a development server does
    not hydrate under the headless browser the gate drives, so an assertion
@@ -84,7 +85,20 @@ async function start(
     return slot.running;
   }
   const env = { ...process.env, ...extraEnv };
-  await run(["run", "build"], env);
+  /* A build with a custom distDir writes that directory's generated types
+     into tsconfig.json's include. Left there, the next `tsc --noEmit` reads a
+     stale build's types and fails on files nobody wrote — which it has done
+     once per phase for most of this build. The committed tsconfig is the
+     canonical one, so the gate puts it back after building rather than
+     leaving a landmine in the tree. */
+  const tsconfig = await readFile("tsconfig.json", "utf8");
+  try {
+    await run(["run", "build"], env);
+  } finally {
+    if ((await readFile("tsconfig.json", "utf8")) !== tsconfig) {
+      await writeFile("tsconfig.json", tsconfig);
+    }
+  }
   const baseUrl = `http://127.0.0.1:${port}`;
   slot.child = spawn("npm", ["run", "start", "--", "--port", String(port)], {
     stdio: "ignore",

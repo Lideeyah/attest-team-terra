@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium, type Browser, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -112,8 +112,18 @@ export function durationsAreFrames(): void {
       if (!path.endsWith(".css") && !/(duration|delay|transition|animation)/i.test(line)) {
         continue;
       }
-      for (const match of line.matchAll(/(\d+(?:\.\d+)?)ms\b/g)) {
-        const value = Number(match[1]);
+      /* Both units. A stylesheet writing 0.25s is writing six frames in a
+         unit the earlier version of this check could not see, which made the
+         rule hold only for the half of the product that happened to write
+         milliseconds. */
+      const durations = [
+        ...[...line.matchAll(/(\d+(?:\.\d+)?)ms\b/g)].map((match) => match[1]),
+        ...[...line.matchAll(/(?<![\d.])(\d+(?:\.\d+)?)s\b/g)].map(
+          (match) => String(Number(match[1]) * 1000),
+        ),
+      ];
+      for (const duration of durations) {
+        const value = Number(duration);
         if (value === 0 || value === 0.001) {
           continue;
         }
@@ -296,13 +306,18 @@ export async function a11y(path: string): Promise<void> {
   await withPage(async (page, baseUrl) => {
     await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
     const results = await new AxeBuilder({ page }).analyze();
-    const critical = results.violations.filter(
-      (violation) => violation.impact === "critical",
+    /* "Axe-clean" means serious as well as critical. The first version kept
+       only critical, which is how forty-odd serious contrast failures sat
+       under a passing assertion for nine phases. */
+    const failing = results.violations.filter(
+      (violation) => violation.impact === "critical" || violation.impact === "serious",
     );
     record(
       `accessibility on ${path}`,
-      critical.length === 0,
-      critical.map((violation) => violation.id).join(", "),
+      failing.length === 0,
+      failing
+        .map((violation) => `${violation.id}(${violation.nodes.length})`)
+        .join(", "),
     );
 
     const reachable = await page.evaluate(() => {
@@ -469,6 +484,11 @@ export function fileContains(name: string, path: string, patterns: RegExp[]): vo
 /** Builds with ATTEST_API_MODE=live and asserts the mock server and the
     developer tooling are not in the route tree at all. */
 export function liveBuildExcludesMock(): void {
+  /* The other half of the tsconfig landmine: this build path also writes
+     .next-live's generated types into tsconfig.json's include, and its
+     finally block restored everything except that. */
+  const tsconfigPath = join(ROOT, "tsconfig.json");
+  const tsconfigBefore = readFileSync(tsconfigPath, "utf8");
   try {
     const output = execFileSync("npm", ["run", "build"], {
       cwd: ROOT,
@@ -511,6 +531,9 @@ export function liveBuildExcludesMock(): void {
       env: { ...process.env, ATTEST_DEV_TOOLS: "1", ATTEST_API_MODE: "mock" },
     });
     execFileSync("npx", ["next", "typegen"], { cwd: ROOT, stdio: "pipe" });
+    if (readFileSync(tsconfigPath, "utf8") !== tsconfigBefore) {
+      writeFileSync(tsconfigPath, tsconfigBefore);
+    }
   }
 }
 
