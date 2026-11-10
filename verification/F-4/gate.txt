@@ -84,4 +84,4 @@ PASS  screenshot F-4/state-unverified-email-with-a-resend
 PASS  screenshot F-4/state-session-expired-returning-the-reader-to-where-they-were
 PASS  screenshot F-4/state-KYB-rejected-with-the-reason-and-the-path-forward
 PASS  screenshot F-4/state-the-registry-unreachable-with-manual-entry
-86 passed, 0 failed in 104.0s
+86 passed, 0 failed in 101.2s

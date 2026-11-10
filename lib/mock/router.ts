@@ -1293,6 +1293,33 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     },
   },
 
+  {
+    /* Not in backend 4.3. The one hard block in the product — a second
+       enrolment on one verification number — has to happen while the agent is
+       still in front of the household, which means a check at capture rather
+       than at sync. Offline it does not answer and the enrolment is queued
+       with the check outstanding. Recorded in BUILD_LOG.md. */
+    method: "POST",
+    pattern: "/api/field/identity-check",
+    handler: ({ body }) => {
+      const number = String(body.number ?? "").trim();
+      if (number.length < 11) {
+        return failure("INVALID_REQUEST", "number");
+      }
+      /* Section 2.5's trigger values, so each answer is reachable by typing a
+         number rather than by editing a fixture. */
+      if (number.endsWith("12")) {
+        return failure("IDENTITY_DUPLICATE", "number");
+      }
+      if (number.endsWith("97")) {
+        return failure("BVN_MISMATCH", "number");
+      }
+      if (number.endsWith("00")) {
+        return failure("IDENTITY_UNREACHABLE", "number");
+      }
+      return success({ checked: true, lastFour: number.slice(-4) });
+    },
+  },
   { method: "POST", pattern: "/api/field/device/bind", handler: () => success({ bound: true, deviceId: "dev_9f41" }, null, "Device bound") },
   {
     method: "POST",
@@ -1301,8 +1328,15 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       const items = Array.isArray(body.items) ? body.items : [];
       return success(
         items.map((item, index) => {
-          const record = item as { clientUuid?: string };
-          const failed = index % 9 === 4;
+          const record = item as {
+            clientUuid?: string;
+            identity?: { number?: string };
+          };
+          /* An account the bank does not resolve, in the style of section
+             2.5's trigger values: the number itself decides, so a partial
+             failure is reachable by enrolling with one. */
+          const number = String(record.identity?.number ?? "");
+          const failed = number.endsWith("4") || index % 9 === 4;
           return {
             clientUuid: record.clientUuid ?? `uuid_${index}`,
             accepted: !failed,
@@ -1335,6 +1369,17 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       success({
         agent: AGENTS[2],
         today: { captured: 14, queued: 3, target: 20 },
+        /* The boundary the capture is judged against. The field app cannot
+           ask for it when it is offline, so it is given with the session and
+           held on the device. */
+        boundary: {
+          name: "Ekuri community forest, Akamkpa",
+          north: 5.95,
+          south: 5.55,
+          east: 8.65,
+          west: 8.25,
+        },
+        flagThreshold: 0.05,
       }),
   },
 

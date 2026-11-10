@@ -364,6 +364,13 @@ export const api = {
     }),
 
   /* Field */
+  /** Not in backend 4.3; see BUILD_LOG.md. The duplicate block has to happen
+      while the agent is still with the household. */
+  checkIdentity: (body: { type: "BVN" | "NIN"; number: string }) =>
+    request<{ checked: boolean; lastFour: string }>("/api/field/identity-check", {
+      method: "POST",
+      body,
+    }),
   bindDevice: (body: { deviceKey: string }) =>
     request<{ bound: boolean; deviceId: string }>("/api/field/device/bind", { method: "POST", body }),
   submitEnrolments: (body: { items: unknown[] }) =>
@@ -372,7 +379,13 @@ export const api = {
       { method: "POST", body },
     ),
   enrolment: (id: string) => request<unknown>(`/api/field/enrolments/${id}`),
-  me: () => request<{ agent: Agent; today: { captured: number; queued: number; target: number } }>("/api/field/me"),
+  me: () =>
+    request<{
+      agent: Agent;
+      today: { captured: number; queued: number; target: number };
+      boundary: { name: string; north: number; south: number; east: number; west: number };
+      flagThreshold: number;
+    }>("/api/field/me"),
 
   /* Public */
   register: (query: { q?: string; country?: string; sort?: string; page?: number; per_page?: number } = {}) =>

@@ -754,9 +754,11 @@ export async function f1(): Promise<void> {
     "no caller uses try/catch for an expected error",
     /(?<![.\w])catch\s*[({]/,
     ["app/**/*.tsx", "components/**/*.tsx", "lib/**/*.ts"],
-    /* lib/json.ts is the one place a throw is turned into a typed result, and
-       what it guards is pasted input rather than an answer from the API. */
-    ["lib/api/client.test.ts", "lib/json.ts"],
+    /* Two places turn a throw into a value, and neither guards an answer from
+       the API: lib/json.ts guards pasted input, and lib/field/storage.ts
+       guards the device's own storage and camera, which refuse by throwing
+       and have no typed result to switch on. */
+    ["lib/api/client.test.ts", "lib/json.ts", "lib/field/storage.ts"],
   );
   grepAbsent(
     "no NEXT_PUBLIC_ variable carries a key, secret or token",

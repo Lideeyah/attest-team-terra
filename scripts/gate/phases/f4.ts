@@ -580,8 +580,13 @@ function titlesDoNotDoubleTheBrand(): void {
       .trim()
       .split("\n")
       .filter(Boolean)
-      /* The root layout owns the brand and the template that appends it. */
-      .filter((line) => !line.startsWith("app/layout.tsx:"));
+      /* The root layout owns the brand and the template that appends it, and
+         the installed field app is named rather than titled: "Attest" under
+         an icon on a home screen is the app's name, not a page's. */
+      .filter(
+        (line) =>
+          !line.startsWith("app/layout.tsx:") && !line.includes("appleWebApp"),
+      );
   } catch {
     hits = [];
   }

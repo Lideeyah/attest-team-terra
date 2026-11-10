@@ -883,11 +883,12 @@ th[aria-sort] .sort-caret {
   justify-content: center;
   min-height: var(--tap-target);
   font-family: var(--font-record);
-  font-size: var(--fs-eyebrow);
+  /* A step up from the eyebrow elsewhere: this is read outdoors. */
+  font-size: var(--fs-record-cell);
   letter-spacing: var(--tr-label);
   text-transform: uppercase;
   text-decoration: none;
-  color: var(--ink-muted);
+  color: var(--ink-primary);
   border-right: var(--hairline) solid var(--rule-hairline);
 }
 

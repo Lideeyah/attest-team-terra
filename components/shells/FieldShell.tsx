@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { FIELD_COPY } from "@/lib/copy/field";
+import { useOnline, useQueue } from "@/lib/field/useQueue";
 
 const TABS = [
   { href: "/field", label: "Today" },
@@ -13,28 +15,28 @@ const TABS = [
 
 type FieldShellProps = {
   children: ReactNode;
-  /** Offline is the normal case, so the indicator is persistent. */
-  online?: boolean;
-  pendingSync?: number;
 };
 
 /** The field app shell: a bottom tab bar at 390px with a persistent offline
     indicator and pending-sync count. Built mobile-first and held to a phone
     width on a larger screen rather than laid out for the desktop. */
-export function FieldShell({
-  children,
-  online = true,
-  pendingSync = 0,
-}: FieldShellProps) {
+export function FieldShell({ children }: FieldShellProps) {
   const pathname = usePathname();
+  /* Both read the device rather than the server: the indicator has to be true
+     with no connection, which is when it matters. */
+  const online = useOnline();
+  const { queue } = useQueue();
+  const pendingSync = queue.length;
 
   return (
     <div className="field-frame">
       <div className="field-shell">
-        <header className="field-status">
-          <span className="eyebrow">{online ? "Online" : "Offline"}</span>
-          <span className="eyebrow">
-            {pendingSync} pending sync
+        <header className="field-status" data-connection={online ? "online" : "offline"}>
+          <span className="field-status-label">
+            {online ? FIELD_COPY.online : FIELD_COPY.offline}
+          </span>
+          <span className="field-status-label" data-pending={pendingSync}>
+            {FIELD_COPY.pending(pendingSync)}
           </span>
         </header>
         <div className="field-main">{children}</div>
@@ -49,12 +51,15 @@ export function FieldShell({
                 key={tab.href}
                 href={tab.href}
                 className="field-tab"
-                prefetch={false}
+                /* The four screens are prefetched while there is a
+                   connection, because the next thing an agent taps is one of
+                   them and the tap may happen with no signal at all. */
+                prefetch
                 aria-current={active ? "page" : undefined}
               >
                 {tab.label}
                 {tab.href === "/field/queue" && pendingSync > 0 ? (
-                  <span className="record-cell"> {pendingSync}</span>
+                  <span className="field-tab-count"> {pendingSync}</span>
                 ) : null}
               </Link>
             );

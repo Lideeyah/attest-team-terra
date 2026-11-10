@@ -1,0 +1,242 @@
+/* The field app. The shell itself — the frame, the status strip, the tab bar
+   — is in components.css with the other shells; this is what runs inside it.
+
+   Two things set every value here apart from the rest of the product. It is
+   read outdoors in direct sunlight, so there is no dim ink on this surface at
+   all and type is a step larger than it would be on a desktop. And it is
+   operated one-handed, often while holding a document, so every control is at
+   least the tap target and the ones that matter sit at the bottom of the
+   screen where a thumb reaches. */
+
+.field-screen {
+  display: grid;
+  gap: var(--stack);
+  padding-bottom: var(--section-sm);
+}
+
+/* ---- Type, a step up, and never dim ------------------------------------- */
+
+.field-lede {
+  font-family: var(--font-editorial);
+  font-size: var(--fs-lede);
+  line-height: var(--lh-body);
+  color: var(--ink-primary);
+}
+
+/* The secondary line. Muted, not dim: the dim ink is unreadable on a phone
+   held at arm's length in the sun, and this surface never uses it. */
+.field-note {
+  font-family: var(--font-editorial);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+
+/* Anything the agent reads aloud to a household: full size, full contrast,
+   measured for reading rather than scanning. */
+.field-readable {
+  font-family: var(--font-editorial);
+  font-size: var(--fs-lede);
+  line-height: var(--lh-lede);
+  color: var(--ink-primary);
+  background: var(--surface-reading);
+  border-left: var(--edge-strip) solid var(--bottle-deep);
+  padding: var(--pad-panel) var(--pad-cell-x);
+}
+
+.field-record {
+  font-size: var(--fs-input);
+  color: var(--ink-primary);
+}
+
+/* The label face is muted here, never dim. Every surface but this one can
+   afford the dim ink; a phone screen at midday cannot. */
+.field-screen .eyebrow,
+.field-status .eyebrow,
+.field-screen .label,
+.field-screen .field-note,
+.field-screen .note,
+.field-screen .field-denominator,
+.field-screen .console-time,
+.field-screen .console-meta {
+  color: var(--ink-muted);
+}
+
+.field-status-label {
+  font-family: var(--font-record);
+  font-size: var(--fs-record-cell);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--ink-primary);
+}
+
+.field-status[data-connection="offline"] {
+  background: var(--stamp-flagged-wash);
+  border-bottom-color: var(--stamp-flagged-border);
+}
+
+.field-status[data-connection="offline"] .field-status-label {
+  color: var(--stamp-flagged-ink);
+}
+
+.field-tab-count {
+  font-family: var(--font-record);
+  font-size: var(--fs-record-cell);
+  color: var(--stamp-flagged-ink);
+}
+
+/* ---- Controls, sized for a thumb ---------------------------------------- */
+
+.field-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--tap-target);
+  font-size: var(--fs-input);
+  text-decoration: none;
+}
+
+.field-group {
+  display: grid;
+  gap: calc(var(--stack) / 2);
+}
+
+.field-input {
+  min-height: var(--tap-target);
+  font-size: var(--fs-lede);
+}
+
+textarea.field-input {
+  min-height: calc(var(--tap-target) * 2);
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: var(--stack);
+  min-height: var(--tap-target);
+  font-family: var(--font-editorial);
+  font-size: var(--fs-lede);
+  line-height: var(--lh-body);
+  color: var(--ink-primary);
+  background: var(--surface-elevated);
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+  border: var(--hairline) solid var(--rule-contrast);
+}
+
+/* The one radius in the product is the consent punch, and here it is the size
+   of a thumb rather than the size of a checkbox. */
+.field-punch {
+  width: var(--tap-target);
+  height: var(--tap-target);
+  flex: 0 0 auto;
+}
+
+/* The camera input is the control the button opens; the button is what the
+   agent sees. */
+.field-camera {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.field-frame-shot {
+  width: 100%;
+  border: var(--hairline) solid var(--rule-contrast);
+}
+
+/* ---- Figures ------------------------------------------------------------- */
+
+.field-figures {
+  display: grid;
+  gap: var(--stack);
+  margin: 0;
+  border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  padding-block: var(--stack);
+}
+
+.field-figure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--stack);
+}
+
+.field-figure-value {
+  margin: 0;
+  font-family: var(--font-record);
+  font-size: var(--fs-figure);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-primary);
+  line-height: var(--lh-flat);
+}
+
+.field-denominator {
+  font-size: var(--fs-input);
+  color: var(--ink-muted);
+}
+
+/* ---- The record, and the queue ------------------------------------------ */
+
+.field-review {
+  display: grid;
+  gap: var(--stack);
+  margin: 0;
+  background: var(--surface-reading);
+  border: var(--hairline) solid var(--rule-hairline);
+  padding: var(--pad-panel) var(--pad-cell-x);
+}
+
+.field-review div {
+  display: grid;
+  gap: calc(var(--stack) / 4);
+}
+
+.field-review dd {
+  margin: 0;
+}
+
+.field-queue {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface-sunken);
+}
+
+.field-queue-row {
+  display: grid;
+  gap: calc(var(--stack) / 4);
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  border-left: var(--edge-strip) solid transparent;
+}
+
+.field-queue-row[data-state="failed"] {
+  border-left-color: var(--stamp-blocked-ink);
+  background: var(--stamp-blocked-wash);
+}
+
+.field-queue-row[data-state="syncing"] {
+  border-left-color: var(--bottle-muted);
+}
+
+/* ---- Never on a desktop --------------------------------------------------
+
+   The field app is built for a phone and is held to a phone's width on a
+   larger screen rather than laid out for one: a capture flow stretched across
+   1,400px would be a different product, and the one it is for is the phone. */
+
+@media (min-width: 720px) {
+  .field-shell {
+    max-width: var(--field-width-max);
+    margin-block: var(--section-sm);
+    min-height: auto;
+    border: var(--hairline) solid var(--rule-contrast);
+  }
+}

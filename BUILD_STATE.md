@@ -11,7 +11,9 @@ Phase complete: F-4 — role selection, auth and onboarding. Gate green, 86 of
 86, verified and corrected after a verification that failed it.
 Phase complete: F-5 — the developer console. Gate green, 112 of 112, verified
 and corrected after a verification that failed it.
-Next phase: F-6 — the field app.
+Phase complete: F-6 — the field app. Gate green, 37 of 37, awaiting
+independent verification.
+Next phase: F-7 — the verifier portal.
 
 F-4's verification found fourteen things and all are fixed; its gate went from
 51 assertions to 86. F-5's verification found thirty-one and all are

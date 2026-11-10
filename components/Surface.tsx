@@ -15,3 +15,14 @@ export function Surface({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/* The field app's surface: the three faces and nothing else.
+
+   It carries no motion provider and no toast stack, because the animation
+   library is about a hundred kilobytes and this surface is held to a hundred
+   and fifty on a phone on 3G. The motion the field app does have is CSS —
+   the same primitives, declared the same way — and CSS costs nothing to
+   parse on a phone that is already rendering. */
+export function PlainSurface({ children }: { children: ReactNode }) {
+  return <div className={typeset}>{children}</div>;
+}

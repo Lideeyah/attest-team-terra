@@ -1100,3 +1100,80 @@ to be fixed in an F-4 remediation pass before F-6.
     surfaces; `orUnknown`, `maskPhone`, `formatDateTime`, `formatPeriod`'s
     spelled form and both print helpers are defined and never called.
 14. **`/dev/states` indexes no F-4 state at all.**
+
+---
+
+## F-6 — The field app
+
+**Built.** An installable PWA at 390px with a service worker and IndexedDB,
+where offline is the normal case rather than a degraded one. Today, the
+seven-step capture flow, the queue and the agent's own record, each rendering
+from a session held on the device: the agent signs in once with a connection
+and every screen afterwards opens without one. A submitted enrolment is a
+record with no control that would edit it, and it says where a correction
+goes instead of looking disabled.
+
+The capture flow enforces three rules and no others. Consent cannot be
+bypassed, and a later step opened directly says so and goes back to it. A
+duplicate verification number is the one hard block, and the block screen
+carries a paragraph written to be read aloud to the household. Everything else
+— no location, no photograph, outside the boundary, an identity service that
+will not answer — flags the enrolment and lets it proceed, because an agent
+standing in front of a household must never be stopped by something they
+cannot fix from there. Outside the boundary additionally requires a reason.
+
+Every enrolment is minted on the device with a client UUID, a capture
+timestamp and a location, signed with a device key generated once and never
+sent anywhere, and written to IndexedDB before anything is attempted over the
+network. The queue drains as a batch, idempotent on that UUID, and the server
+answers per item, so a batch where one account number is wrong sends the other
+forty-nine and names the one to look at. The photograph is compressed on the
+device to about sixty kilobytes before it is queued.
+
+**Gate.** `npm run gate -- F-6`: 37 assertions, 37 passed. A full enrolment
+captured with the connection switched off, queued and drained on reconnection;
+the queue read back after every page of the app is closed and reopened, with
+the capture timestamps compared byte for byte; a partial batch failure with
+each item's own reason; the duplicate block, the boundary flag and the consent
+gate each exercised by typing rather than by forcing a code; every tap target
+measured at 390px; and a sweep for the dim ink, which is unreadable on a phone
+in sunlight and which this surface therefore does not use at all.
+
+**Decisions taken.**
+
+1. **The field app does not use `Surface`.** It carries the three faces and
+   nothing else: no motion provider, no toast stack. The animation library is
+   about a hundred kilobytes and this surface is held to a budget on a phone
+   on 3G. The motion it does have is the same primitives declared in CSS.
+2. **It does not use the typed client either.** `lib/field/api.ts` carries the
+   four calls the field app makes. Importing the client would put ninety
+   endpoints in the bundle a phone downloads before an agent can enrol
+   anybody.
+3. **`POST /api/field/identity-check` is not in backend 4.3.** The one hard
+   block in the product has to happen while the agent is still in front of the
+   household, which means a check at capture rather than at sync. Offline it
+   does not answer, and the enrolment is queued with the check outstanding.
+   **The backend lane adopts or amends it.**
+4. **`GET /api/field/me` carries the project's boundary and the flag
+   threshold.** The boundary check happens on the device with no connection,
+   so the boundary has to be on the device.
+5. **The two colours the platform wants as JavaScript** — the browser chrome's
+   theme colour and the installed app's background — are read from
+   `app/styles/tokens.css` at build time by `lib/tokens.ts` rather than
+   restated as hex literals.
+6. **Device storage and the camera are the one place a throw becomes a
+   value**, in `lib/field/storage.ts`. A private window, blocked site data or
+   a camera that will not decode are the platform refusing rather than an API
+   answering, and there is no typed result to switch on. The gate's rule
+   against `try`/`catch` excludes that file and nothing else in the field app.
+
+**Manual review needed — the 150KB budget is not met, and cannot be on this
+stack.** First load is **172.9KB** transferred on a cold load at 390px. Of
+that, **138.9KB is the framework every route in the product pays** — React,
+React DOM and the App Router client runtime — and **34.0KB is the field app's
+own code**, which is what the gate asserts a budget against. The only way
+under 150KB is a different stack for this one surface: the receipt is already
+hand-written HTML with no JavaScript at all, and the capture flow could be
+built the same way at the cost of writing its state machine by hand. That is
+a decision about what this surface is worth, not one to take while Lydia is
+away. The figure is measured on every gate run and printed.

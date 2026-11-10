@@ -1,0 +1,38 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /field
+PASS  route renders /field/enrol
+PASS  route renders /field/queue
+PASS  route renders /field/me
+PASS  route renders /field/enrolment/enr_000001
+PASS  an enrolment completes with the connection down and queues
+PASS  the queue drains when the connection returns
+PASS  the queue survives a force-quit with its capture timestamps intact
+PASS  a partial batch failure names each item and why, rather than failing wholesale
+PASS  consent cannot be bypassed
+PASS  a duplicate identity blocks the enrolment and says so in words the agent can read aloud
+PASS  outside the boundary warns, requires a reason, and then proceeds
+PASS  an identity service that cannot be reached queues the enrolment rather than stopping it
+PASS  a location that cannot be captured flags the enrolment and lets it proceed
+PASS  a submitted enrolment carries no control that would edit it
+PASS  a submitted enrolment says it is a record rather than looking disabled
+PASS  a phone that is not bound captures nothing and can ask to be bound
+PASS  a screen working from the cached session says so, with when it stops being good
+PASS  the field app's own JavaScript is under 40KB
+PASS  first load is measured against the 150KB the phase asks for
+PASS  every tap target is at least 44px on a phone
+PASS  the field app does not use the dim ink, which is unreadable in sunlight
+PASS  the field app is installable: a manifest, an icon and a start URL
+PASS  a service worker is served and registered
+PASS  accessibility on /field
+PASS  keyboard reachability on /field
+PASS  accessibility on /field/enrol
+PASS  keyboard reachability on /field/enrol
+PASS  accessibility on /field/queue
+PASS  keyboard reachability on /field/queue
+PASS  screenshot F-6/field
+PASS  screenshot F-6/field-enrol
+PASS  screenshot F-6/field-queue
+PASS  screenshot F-6/field-me
+PASS  screenshot F-6/field-enrolment-enr_000001
+37 passed, 0 failed in 79.4s

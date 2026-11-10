@@ -169,6 +169,19 @@ export const STATE_INDEX: { path: string; states: State[] }[] = [
     ],
   },
   {
+    path: "/field · the field app",
+    states: [
+      { label: "Today, online", href: "/field", arrange: clear },
+      { label: "Today, device not bound", href: "/field", arrange: async () => { await clear(); await forceCode("DEVICE_UNBOUND", "/api/field/me", false); } },
+      { label: "Capture, step one", href: "/field/enrol", arrange: clear },
+      { label: "Capture, consent not given", href: "/field/enrol?step=identity", arrange: clear },
+      { label: "Queue", href: "/field/queue", arrange: clear },
+      { label: "Your record", href: "/field/me", arrange: clear },
+      { label: "Your record, flag rate above the threshold", href: "/field/me", arrange: clear },
+      { label: "A submitted enrolment, read-only", href: "/field/enrolment/enr_000001", arrange: clear },
+    ],
+  },
+  {
     path: "/app · the console",
     states: [
       { label: "Home", href: "/app", arrange: clear },
