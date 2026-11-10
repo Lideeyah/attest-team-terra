@@ -201,6 +201,26 @@ a:hover {
   gap: var(--stack-lg);
 }
 
+/* A tighter stack, for rows of records that belong to one another. */
+.stack-tight {
+  display: grid;
+  gap: calc(var(--stack) / 2);
+}
+
+/* The secondary line under a record: the constraint, the reason, the
+   denominator. Editorial face, muted, at the reading measure. */
+.note {
+  font-family: var(--font-editorial);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+  max-width: 65ch;
+}
+
+.ink-dim {
+  color: var(--ink-dim);
+}
+
 .row {
   display: flex;
   align-items: center;

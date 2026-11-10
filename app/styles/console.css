@@ -1,0 +1,475 @@
+/* The developer console. The shell itself — the rail, the period indicator,
+   the nav — is in components.css with the other shells; this file is the
+   screens inside it: dense rows of records, a virtualised roster, a live run,
+   and the commitment arithmetic.
+
+   Every value here reads a token. A literal would be a defect. */
+
+.console-page {
+  padding: var(--section-tight) var(--gutter);
+  max-width: var(--measure);
+}
+
+/* A composition that is a block of records rather than a full-width table
+   takes the reading measure. */
+.console-page.reading {
+  max-width: var(--measure-reading);
+}
+
+/* ---- Figures across the top of the home screen -------------------------- */
+
+.figure-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--stack-lg);
+  border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  padding-block: var(--stack-lg);
+}
+
+.figure-inline {
+  font-family: var(--font-record);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-primary);
+}
+
+/* ---- The action list: what blocks the next payment ---------------------- */
+
+.action-list {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: calc(var(--mark-size) + var(--stack)) 1fr;
+  align-items: baseline;
+  gap: var(--stack);
+  padding-block: var(--pad-cell-y);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.action-mark {
+  margin-top: calc(var(--stack) / 4);
+}
+
+.action-mark-space {
+  display: block;
+  width: var(--mark-size);
+  height: var(--mark-size);
+}
+
+.action-line {
+  font-family: var(--font-editorial);
+  line-height: var(--lh-body);
+  color: var(--ink-primary);
+  text-decoration: none;
+  border-bottom: var(--hairline) solid transparent;
+}
+
+.action-line:hover {
+  border-bottom-color: var(--rule-contrast);
+}
+
+/* ---- Record grids and lists -------------------------------------------- */
+
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--stack-lg);
+  margin: 0;
+}
+
+.record-grid dt {
+  margin-bottom: calc(var(--stack) / 4);
+}
+
+.record-grid dd {
+  margin: 0;
+}
+
+.column-list,
+.note-list {
+  display: grid;
+  gap: calc(var(--stack) / 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.column-row {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: var(--stack);
+  align-items: baseline;
+  padding-block: calc(var(--pad-cell-y) / 2);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.column-row dd {
+  margin: 0;
+}
+
+.flag-list {
+  display: grid;
+  gap: calc(var(--stack) / 3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Strip rows, one grid per screen ------------------------------------ */
+
+.roster-head,
+.agent-head,
+.run-head,
+.transfer-head,
+.dispute-row,
+.funding-row,
+.settings-row,
+.agent-row,
+.run-row,
+.roster-row,
+.transfer-row {
+  display: grid;
+  align-items: center;
+  gap: var(--stack);
+  padding-inline: var(--pad-cell-x);
+}
+
+.roster-head,
+.agent-head,
+.run-head,
+.transfer-head {
+  padding-block: var(--pad-cell-y);
+  border-bottom: var(--rule-weight-heavy) solid var(--rule-heavy);
+  font-family: var(--font-record);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.roster-head,
+.roster-row {
+  grid-template-columns: minmax(170px, 1.4fr) 110px 90px 70px 120px minmax(140px, 1fr) minmax(120px, 1fr);
+}
+
+.agent-head,
+.agent-row {
+  grid-template-columns: minmax(180px, 1.4fr) 110px 110px 160px 110px;
+}
+
+.run-head,
+.run-row {
+  grid-template-columns: 130px 200px minmax(180px, 1fr) 160px 130px;
+}
+
+.transfer-head,
+.transfer-row {
+  grid-template-columns: minmax(140px, 1fr) 140px 170px minmax(200px, 1.2fr) 180px;
+}
+
+.dispute-row {
+  grid-template-columns: minmax(190px, 1.3fr) minmax(150px, 1fr) 110px minmax(190px, 1fr) 120px;
+}
+
+.funding-row {
+  grid-template-columns: minmax(130px, 1fr) 160px 160px minmax(200px, 1.2fr);
+}
+
+.settings-row {
+  grid-template-columns: minmax(150px, 1fr) minmax(190px, 1.3fr) 170px minmax(180px, 1fr) 150px;
+}
+
+.roster-name {
+  color: var(--ink-primary);
+}
+
+/* ---- The virtualised roster and transfer tables ------------------------- */
+
+.roster-scroll {
+  height: var(--roster-viewport);
+  overflow-y: auto;
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.roster-scroll:focus-visible {
+  outline: var(--edge-active) solid var(--bottle-deep);
+  outline-offset: calc(var(--edge-active) * -1);
+}
+
+.roster-track {
+  position: relative;
+}
+
+.roster-window {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.roster-row,
+.transfer-row {
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  background: var(--canvas-paper);
+}
+
+.roster-row:hover,
+.transfer-row:hover {
+  background: var(--surface-elevated);
+}
+
+.roster-row[data-status="flagged"],
+.roster-row[data-status="excluded"] {
+  border-left: var(--edge-strip) solid var(--stamp-flagged-ink);
+}
+
+.roster-row[data-status="removed"],
+.roster-row[data-status="duplicate-blocked"] {
+  border-left: var(--edge-strip) solid var(--stamp-blocked-ink);
+}
+
+.roster-row[data-status="disputed"] {
+  border-left: var(--edge-strip) solid var(--stamp-review-ink);
+}
+
+.transfer-row[data-state="failed"] {
+  border-left: var(--edge-strip) solid var(--stamp-blocked-ink);
+}
+
+.transfer-row[data-state="reversed"] {
+  border-left: var(--edge-strip) solid var(--stamp-flagged-ink);
+}
+
+.transfer-row[data-state="in_flight"] {
+  border-left: var(--edge-strip) solid var(--bottle-muted);
+}
+
+/* ---- The run: counts, bar, failures ------------------------------------- */
+
+.run-strip {
+  display: grid;
+  gap: var(--stack);
+  border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
+  padding-top: var(--stack);
+}
+
+.run-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--stack-lg);
+  margin: 0;
+}
+
+.run-count dd {
+  margin: 0;
+}
+
+.run-bar {
+  display: flex;
+  height: var(--queue-underline);
+  background: var(--rule-hairline);
+}
+
+.run-bar-settled {
+  background: var(--bottle-deep);
+}
+
+.run-bar-failed {
+  background: var(--stamp-blocked-ink);
+}
+
+.run-bar-flight {
+  background: var(--bottle-muted);
+}
+
+.failure-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--stack-lg);
+  align-items: start;
+  padding-block: var(--pad-cell-y);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  border-left: var(--edge-strip) solid var(--stamp-blocked-ink);
+  padding-left: var(--pad-cell-x);
+}
+
+.exclusion-row {
+  display: grid;
+  grid-template-columns: 150px 220px 1fr;
+  gap: var(--stack);
+  align-items: baseline;
+  padding-block: calc(var(--pad-cell-y) / 2);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+/* ---- The commitment arithmetic ----------------------------------------- */
+
+.arithmetic {
+  display: grid;
+  margin: 0;
+}
+
+.arithmetic-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: var(--stack-lg);
+  align-items: baseline;
+  padding-block: var(--pad-cell-y);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.arithmetic-row dt {
+  display: grid;
+  gap: calc(var(--stack) / 4);
+}
+
+.arithmetic-row dd {
+  margin: 0;
+  text-align: right;
+  font-size: var(--fs-input);
+}
+
+.arithmetic-total {
+  border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
+  border-bottom: var(--rule-weight-heavy) solid var(--rule-heavy);
+}
+
+/* ---- The run builder's steps ------------------------------------------- */
+
+.step-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--stack-lg);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.step-item {
+  font-family: var(--font-record);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.step-item a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.step-item[aria-current="step"] {
+  color: var(--ink-primary);
+  border-bottom: var(--edge-active) solid var(--bottle-deep);
+}
+
+/* ---- Filters, payments, settings --------------------------------------- */
+
+.filter-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--stack);
+  padding-block: var(--stack);
+  border-top: var(--hairline) solid var(--rule-hairline);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.filter-rail .field {
+  min-width: 170px;
+}
+
+.payment-list {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.payment-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--stack-lg);
+  align-items: start;
+  padding-block: var(--pad-cell-y);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.notification-row {
+  display: grid;
+  grid-template-columns: 1fr 60px;
+  align-items: center;
+  gap: var(--stack);
+  padding-block: calc(var(--pad-cell-y) / 2);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+}
+
+.punch-label {
+  display: flex;
+  align-items: center;
+  gap: var(--stack);
+  min-height: var(--tap-target);
+}
+
+.console-closing {
+  color: var(--stamp-flagged-ink);
+}
+
+/* ---- Narrow. The console is a desktop product, and below the rail's own
+   breakpoint the dense grids become stacked records rather than columns
+   squeezed into nothing. ---------------------------------------------- */
+
+@media (max-width: 1080px) {
+  .roster-head,
+  .agent-head,
+  .run-head,
+  .transfer-head {
+    display: none;
+  }
+
+  .roster-row,
+  .agent-row,
+  .run-row,
+  .transfer-row,
+  .dispute-row,
+  .funding-row,
+  .settings-row {
+    grid-template-columns: 1fr;
+    gap: calc(var(--stack) / 3);
+    align-items: start;
+    padding-block: var(--pad-cell-y);
+  }
+
+  /* A virtualised row's height is fixed by the window, so the roster and the
+     transfer table keep their columns and scroll sideways instead. */
+  .roster-scroll {
+    overflow-x: auto;
+  }
+
+  .roster-row,
+  .transfer-row {
+    grid-auto-flow: column;
+    grid-template-columns: max-content;
+    grid-auto-columns: max-content;
+    gap: var(--stack);
+    align-items: center;
+    min-width: 100%;
+  }
+
+  .column-row,
+  .exclusion-row,
+  .arithmetic-row {
+    grid-template-columns: 1fr;
+  }
+
+  .arithmetic-row dd {
+    text-align: left;
+  }
+}

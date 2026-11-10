@@ -131,6 +131,11 @@
   --field-width: 390px;
   --field-width-max: 430px;
   --tap-target: 56px;
+  /* The fixed height of a virtualised row. The roster reads this value rather
+     than holding a number of its own, so the window and the rows cannot
+     disagree about where a row is. */
+  --row-height: 44px;
+  --roster-viewport: 620px;
   --sheet-width: 480px;
   --modal-width: 520px;
   --mark-size: 17px;

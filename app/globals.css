@@ -5,6 +5,7 @@
 @import "./styles/components.css";
 @import "./styles/motion.css";
 @import "./styles/landing.css";
+@import "./styles/console.css";
 
 /* Tailwind's own palette, type scale, radii and shadows are removed so they
    cannot be used by accident. Nothing in Attest may reach for a value the
