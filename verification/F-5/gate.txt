@@ -1,4 +1,4 @@
-PASS  typecheck: tsc --noEmit
+FAIL  typecheck: tsc --noEmit
 PASS  typecheck: no any
 PASS  route renders /app
 PASS  route renders /app/roster
@@ -97,4 +97,4 @@ PASS  screenshot F-5/state-dispute-substantiated
 PASS  screenshot F-5/state-dispute-unsubstantiated
 PASS  screenshot F-5/state-api-key-shown-once
 PASS  screenshot F-5/state-notification-preferences
-99 passed, 0 failed in 124.8s
+98 passed, 1 failed in 127.4s

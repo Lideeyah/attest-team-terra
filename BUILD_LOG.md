@@ -935,7 +935,52 @@ screens are built for the write; the endpoint that takes it is
 
 ---
 
-## F-4 — what the verification found
+## F-4 — what the verification found, and what was done about it
+
+**All fourteen are fixed.** The gate grew from 51 assertions to 86, and each
+fix is asserted rather than asserted to be done:
+
+1. **The commitment step takes the document now.** A file input, a PDF check,
+   `POST /api/projects/:id/pdd`, and the uploaded document named with its
+   extraction job on the step afterwards.
+2. **Every extracted field is correctable** — share, basis, cadence and
+   beneficiary — each through the same `PATCH …/commitment` the contract has.
+3. **A correction and its original live in the wizard, not the URL.** Every
+   correction keeps the figure it replaced, its reason and when it was made,
+   and they are all still on the step after a reload or a week away.
+4. **Going back no longer rewinds.** The wizard carries `reached` as well as
+   `step`, `reached` never moves backwards, the indicator links every step
+   already reached, and resuming lands on the furthest one with a notice
+   saying so. The account step keeps both fields through its own refusal.
+5. **The missing states are built**: KYB rejected, with the bank's reason and
+   the path forward; identity verification pending; an invitation expired,
+   already redeemed or revoked, each a fact about the code; verification
+   complete and the verification link expired, at `/verify-email`, with a
+   resend; the unverified-email resend on sign-in; and "validating" on every
+   submit that makes a round trip. `IDENTITY_MISMATCH` is the prompt's name
+   for the contract's `BVN_MISMATCH` and now reaches the same screen.
+6. **Step five frames the project the wizard created.** Confirming the
+   registry record is what creates the project, and its id is what the live
+   step reads.
+7. **`REGISTRY_UNREACHABLE` has the manual entry it promised**, queued for
+   review, with what is queued stated back.
+8. **`(auth)` carries `RouteTransition`**, so wizard progress has
+   `routeForward` and `routeBack`.
+9. **The brand is appended once**, by the root template.
+10. **Register, sign in and get started are each their own link at 390px.**
+    One link cannot go to two places.
+11. **One footer per page.**
+12. **All 47 contract codes have words for a reader**, the map is total rather
+    than partial so a new code fails the typecheck until it has some, and the
+    gate asserts no code reaches a reader on any F-4 surface.
+13. **Coverage is a whole number**; periods print through `formatPeriod` on the
+    attestation, register, verify and receipt surfaces; a period with none
+    closed reads as an unknown rather than as prose; `maskPhone` is used where
+    a corrected number was being handed back in full.
+14. **`/dev/states` indexes every F-4 and F-5 state**, each reachable by
+    clicking.
+
+### What it found, in full
 
 F-4's independent verification ran after F-5 was built, against the production
 build. The gate passed 51 of 51 and the verifier still failed the phase, which

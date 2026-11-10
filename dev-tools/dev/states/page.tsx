@@ -3,7 +3,7 @@ import { Surface } from "@/components/Surface";
 import { DevStates } from "./DevStates";
 
 export const metadata: Metadata = {
-  title: "State control — Attest",
+  title: "State control",
   description:
     "Forces any contract error code on the next call, and configures the mock run stream.",
   robots: { index: false, follow: false },

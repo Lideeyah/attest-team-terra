@@ -5,6 +5,7 @@ PASS  route renders /signup/developer
 PASS  route renders /signup/institution
 PASS  route renders /signin
 PASS  route renders /signin/reset
+PASS  route renders /verify-email
 PASS  route renders /invite/inv_7KQ2M4
 PASS  route renders /onboarding/developer/project
 PASS  route renders /onboarding/developer/verify
@@ -22,25 +23,46 @@ PASS  state PDD_UNREADABLE on /onboarding/developer/commitment
 PASS  state PDD_NO_COMMITMENT on /onboarding/developer/commitment
 PASS  state EXTRACTION_LOW_CONFIDENCE on /onboarding/developer/commitment
 PASS  state MODEL_UNAVAILABLE on /onboarding/developer/commitment
+PASS  every state F-4 lists is reachable and says what it is
 PASS  each step states its own rejection rather than a generic failure
 PASS  role selection presents three paths and says households do not sign up
 PASS  role selection offers no path to bank operations or platform admin
 PASS  role selection links to neither operations nor admin
 PASS  going back keeps what was entered
-PASS  the wizard resumes where it was left
+PASS  a refusal on the account step keeps both fields
+PASS  the wizard resumes where it was left, and says that is what it is doing
+PASS  a step already reached stays open from an earlier step
+PASS  looking back at step one does not rewind the saved position
 PASS  a correction is logged with its reason and the original stays readable
+PASS  the correction and its original are still there after a reload
+PASS  the commitment step takes the document the extraction reads
+PASS  every field the extraction produced is correctable
 PASS  step five shows the project's real public page at zero
+PASS  step five frames the project the wizard created, not a fallback
+PASS  a session that has ended sends the reader to sign in with where they were
+PASS  register, sign in and get started are each reachable at 390px
+PASS  wizard progress carries the route transition
+PASS  every one of the 47 contract codes has words for a reader
+PASS  no contract code is shown to a reader on any F-4 surface
+PASS  no page appends the brand the root template already appends
+PASS  one footer on /attestation/att_ekuri_2026q3
+PASS  one footer on /developers/dev_ekuri
+PASS  one footer on /register
+PASS  the state panel indexes F-4's states
 PASS  accessibility on /get-started
 PASS  keyboard reachability on /get-started
 PASS  accessibility on /signup/developer
 PASS  keyboard reachability on /signup/developer
 PASS  accessibility on /onboarding/developer/commitment
 PASS  keyboard reachability on /onboarding/developer/commitment
+PASS  accessibility on /verify-email
+PASS  keyboard reachability on /verify-email
 PASS  screenshot F-4/get-started
 PASS  screenshot F-4/signup-developer
 PASS  screenshot F-4/signup-institution
 PASS  screenshot F-4/signin
 PASS  screenshot F-4/signin-reset
+PASS  screenshot F-4/verify-email
 PASS  screenshot F-4/invite-inv_7KQ2M4
 PASS  screenshot F-4/onboarding-developer-project
 PASS  screenshot F-4/onboarding-developer-verify
@@ -49,4 +71,17 @@ PASS  screenshot F-4/onboarding-developer-account
 PASS  screenshot F-4/onboarding-developer-live
 PASS  screenshot F-4/onboarding-institution-organisation
 PASS  screenshot F-4/onboarding-institution-watchlist
-51 passed, 0 failed in 54.3s
+PASS  screenshot F-4/state-invitation-expired
+PASS  screenshot F-4/state-invitation-already-redeemed
+PASS  screenshot F-4/state-invitation-revoked
+PASS  screenshot F-4/state-identity-verification-pending
+PASS  screenshot F-4/state-identity-mismatch-under-the-prompt-s-own-name
+PASS  screenshot F-4/state-device-bound
+PASS  screenshot F-4/state-verification-complete
+PASS  screenshot F-4/state-verification-link-expired
+PASS  screenshot F-4/state-a-new-verification-link-sent
+PASS  screenshot F-4/state-unverified-email-with-a-resend
+PASS  screenshot F-4/state-session-expired-returning-the-reader-to-where-they-were
+PASS  screenshot F-4/state-KYB-rejected-with-the-reason-and-the-path-forward
+PASS  screenshot F-4/state-the-registry-unreachable-with-manual-entry
+86 passed, 0 failed in 101.1s
