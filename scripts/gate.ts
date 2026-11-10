@@ -14,6 +14,7 @@ import { f3 } from "./gate/phases/f3";
 import { f4 } from "./gate/phases/f4";
 import { f5 } from "./gate/phases/f5";
 import { f6 } from "./gate/phases/f6";
+import { f7 } from "./gate/phases/f7";
 
 const PHASES: Record<string, () => Promise<void>> = {
   "F-0": f0,
@@ -23,6 +24,7 @@ const PHASES: Record<string, () => Promise<void>> = {
   "F-4": f4,
   "F-5": f5,
   "F-6": f6,
+  "F-7": f7,
 };
 
 async function main(): Promise<void> {

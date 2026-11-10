@@ -1532,16 +1532,61 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "POST",
     pattern: "/api/verifier/export",
-    handler: ({ body }) =>
-      success(
+    handler: ({ body }) => {
+      const format = String(body.format ?? "csv");
+      const projectId = String(body.projectId ?? "proj_ekuri");
+      const period = String(body.period ?? "2026-Q3");
+
+      /* A disclosure export is the bundle itself, not a link to one: an
+         export that an auditor cannot put straight into the public verifier
+         proves nothing, and that round trip is the point of the format. */
+      if (format === "disclosure") {
+        const project = projectById(projectId);
+        const closed = project?.periods.find((candidate) => candidate.period === period);
+        if (!project || !closed?.attestationId) {
+          return failure("NOT_FOUND", "period");
+        }
+        const periodRun = runForPeriod(projectId, period);
+        if (!periodRun) {
+          return failure("NOT_FOUND", "period");
+        }
+        /* The first settled transfer of the period: a bundle is about one
+           transfer, and which one is the auditor's choice elsewhere. */
+        const transferId = String(
+          body.transferId ??
+            runTransfers(periodRun.id, projectId, periodRun.rosterSize).find(
+              (transfer) =>
+                transfer.state === "settled" || transfer.state === "unconfirmed",
+            )?.id ??
+            "",
+        );
+        const bundle = disclosureFor(closed.attestationId, transferId);
+        if (!bundle) {
+          return failure("NOT_FOUND", "transferId");
+        }
+        return success(
+          {
+            exportId: "exp_0041",
+            format,
+            state: "ready" as const,
+            bundle: { ...bundle, attestationId: closed.attestationId },
+          },
+          null,
+          "Export ready",
+        );
+      }
+
+      return success(
         {
           exportId: "exp_0041",
-          format: String(body.format ?? "csv"),
+          format,
           state: "ready" as const,
+          url: `/attestation/${projectId === "proj_ekuri" ? "att_ekuri_2026q3" : projectId}/download`,
         },
         null,
         "Export ready",
-      ),
+      );
+    },
   },
   {
     method: "GET",

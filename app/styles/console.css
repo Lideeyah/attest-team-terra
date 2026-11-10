@@ -473,3 +473,50 @@
     text-align: left;
   }
 }
+
+/* ---- The verifier portal -------------------------------------------------
+
+   A reading surface rather than an operating one: rows of records at the full
+   measure, every figure beside the figure it is read against. There is
+   nothing here that ranks anything, so there is no colour that means good and
+   none that means bad — the stamps carry record states and nothing else. */
+
+.verifier-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr);
+  gap: var(--stack);
+  align-items: baseline;
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+}
+
+.verifier-row.wide {
+  grid-template-columns: minmax(200px, 1.3fr) repeat(auto-fit, minmax(150px, 1fr));
+}
+
+/* Two figures side by side: this period against the project's own history.
+   Neither is interpreted, and neither is coloured. */
+.verifier-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--stack-lg);
+  border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  padding-block: var(--stack);
+}
+
+.compare-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 1080px) {
+  .verifier-row,
+  .verifier-row.wide {
+    grid-template-columns: 1fr;
+    gap: calc(var(--stack) / 3);
+  }
+}

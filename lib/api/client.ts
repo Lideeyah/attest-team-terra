@@ -12,6 +12,7 @@ import type {
   Arithmetic,
   Attestation,
   Case,
+  DisclosureBundle,
   DisclosureVerificationResult,
   Dispute,
   Envelope,
@@ -32,6 +33,7 @@ import type {
   Signal,
   Tariff,
   Transfer,
+  VerifierAlert,
   VerificationException,
 } from "@/lib/api/contract";
 
@@ -414,19 +416,34 @@ export const api = {
   watchlist: () => request<RegisterRow[]>("/api/verifier/watchlist"),
   watch: (body: { projectId: string }) =>
     request<{ watched: boolean }>("/api/verifier/watchlist", { method: "POST", body }),
-  verifierProject: (id: string) => request<unknown>(`/api/verifier/projects/${id}`),
+  verifierProject: (id: string) =>
+    request<{
+      project: Project;
+      attestations: Attestation[];
+      signalsByClass: Record<string, number>;
+      agentFlagRates: { agentId: string; flagRate: number }[];
+      geography: GeographyBucket[];
+    }>(`/api/verifier/projects/${id}`),
   compare: (ids: string[]) =>
     request<{ projects: Project[]; comparablePeriods: string[] }>("/api/verifier/compare", {
       query: { ids: ids.join(",") },
     }),
-  exportBundle: (body: { projectId: string; period: string; format: string }) =>
-    request<{ exportId: string; state: string; url: string }>("/api/verifier/export", {
-      method: "POST",
-      body,
-    }),
-  alerts: () => request<unknown[]>("/api/verifier/alerts"),
-  createAlert: (body: { projectId: string; condition: string; threshold: number }) =>
-    request<unknown>("/api/verifier/alerts", { method: "POST", body }),
+  exportBundle: (
+    body: { projectId: string; period: string; format: string; transferId?: string },
+    idempotencyKey: string,
+  ) =>
+    request<{
+      exportId: string;
+      format: string;
+      state: string;
+      url?: string;
+      bundle?: DisclosureBundle;
+    }>("/api/verifier/export", { method: "POST", body, idempotencyKey }),
+  alerts: () => request<VerifierAlert[]>("/api/verifier/alerts"),
+  createAlert: (
+    body: { projectId: string; condition: string; threshold: number },
+    idempotencyKey: string,
+  ) => request<VerifierAlert>("/api/verifier/alerts", { method: "POST", body, idempotencyKey }),
 
   /* Bank operations */
   signals: (query: { class?: string; severity?: string; page?: number } = {}) =>

@@ -1177,3 +1177,51 @@ hand-written HTML with no JavaScript at all, and the capture flow could be
 built the same way at the cost of writing its state machine by hand. That is
 a decision about what this surface is worth, not one to take while Lydia is
 away. The figure is measured on every gate run and printed.
+
+---
+
+## F-7 — The verifier portal
+
+**Built.** Six screens in the masthead shell: the watchlist, the project list
+with watchlist management, a project in more detail than the public page, a
+comparison of two or three projects, an export, and alerts.
+
+The copy rule for this surface is the phase's own and it is a product decision
+rather than a styling one: it presents facts and never a verdict. There is no
+score, no grade, no badge, no rating, no risk label and no traffic light
+anywhere on it, and no colour that means good or bad — the stamps carry record
+states only. Where a figure invites a judgement, the screen puts the figure it
+should be read against beside it and stops: this period's confirmation rate
+sits next to the project's own earlier periods, both stated, neither
+interpreted. A signal count is given with what a signal is — a pattern the
+bank's monitoring raised about accounts, not a finding about the project.
+Agent flag rates are aggregated and never shown against a named person here.
+
+**Gate.** `npm run gate -- F-7`: 64 assertions, 64 passed. Among them: a sweep
+for twenty-six verdict words across every screen and every listed state, the
+same sweep over the surface's own source, an assertion that no element is a
+score or a badge, a check that a refusal carries no verdict either, and a
+round trip that exports a disclosure bundle from this surface and posts it to
+the public verifier — which recomputes the leaf from the transfer's own facts
+and folds it to the period's published root. An export nobody can check is a
+file, so the gate checks it.
+
+Also asserted: no household is identifiable at any granularity — participant
+identifiers, masked phones, account numbers and coordinates finer than the
+published resolution are all searched for on every screen.
+
+**Decisions taken.**
+
+1. **`POST /api/verifier/export` returns the bundle itself for the disclosure
+   format**, rather than a link to one. The contract says the endpoint returns
+   an export; what makes that export worth anything is that an auditor can
+   paste it straight into the public verifier, and a URL behind an
+   authenticated session cannot be pasted anywhere.
+2. **Comparison is only ever on periods both projects closed.** A figure from
+   one period beside a figure from another is a comparison of calendars.
+   Projects with no period in common say so and show nothing.
+3. **Two or three projects, never more.** One is not a comparison and four is
+   a table nobody reads.
+4. **An alert's threshold is the reader's own figure.** The screen says so:
+   Attest does not have a number it thinks is right, because having one would
+   be a rating with extra steps.

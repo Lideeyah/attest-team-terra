@@ -1,0 +1,65 @@
+PASS  typecheck: tsc --noEmit
+PASS  typecheck: no any
+PASS  route renders /verifier
+PASS  route renders /verifier/projects
+PASS  route renders /verifier/projects/proj_ekuri
+PASS  route renders /verifier/compare
+PASS  route renders /verifier/export
+PASS  route renders /verifier/alerts
+PASS  every state the verifier portal lists is reachable and says what it is
+PASS  no verdict about a project on /verifier
+PASS  no verdict about a project on /verifier/projects
+PASS  no verdict about a project on /verifier/projects/proj_ekuri
+PASS  no verdict about a project on /verifier/compare
+PASS  no verdict about a project on /verifier/export
+PASS  no verdict about a project on /verifier/alerts
+PASS  no verdict about a project on /verifier?watchlist=empty
+PASS  no verdict about a project on /verifier?since=now
+PASS  no verdict about a project on /verifier/projects?q=ekuri
+PASS  no verdict about a project on /verifier/projects?q=zzzzzz
+PASS  no verdict about a project on /verifier/projects?q=
+PASS  no verdict about a project on /verifier/projects/proj_delta
+PASS  no verdict about a project on /verifier/compare
+PASS  no verdict about a project on /verifier/compare?ids=proj_ekuri,proj_hadejia
+PASS  no verdict about a project on /verifier/compare?ids=proj_ekuri,proj_hadejia,proj_delta
+PASS  no verdict about a project on /verifier/compare?ids=proj_ekuri,proj_oban
+PASS  no verdict about a project on /verifier/export
+PASS  no verdict about a project on /verifier/export?state=ready
+PASS  no verdict about a project on /verifier/export?state=failed
+PASS  no verdict about a project on /verifier/alerts?configured=none
+PASS  no verdict about a project on /verifier/alerts?fired=alr_0001
+PASS  no score, grade, badge or rating in the verifier surface's own code
+PASS  no element on the verifier surface is a score or a badge
+PASS  a confirmation rate below the project's own history is two figures and no verdict
+PASS  a bundle this surface exports verifies on /verify
+PASS  projects with no period in common say so rather than comparing nothing
+PASS  no household is identifiable at any granularity on the verifier surface
+PASS  a refusal on the verifier surface carries no verdict either
+PASS  accessibility on /verifier
+PASS  keyboard reachability on /verifier
+PASS  accessibility on /verifier/projects/proj_ekuri
+PASS  keyboard reachability on /verifier/projects/proj_ekuri
+PASS  accessibility on /verifier/compare?ids=proj_ekuri,proj_hadejia
+PASS  keyboard reachability on /verifier/compare?ids=proj_ekuri,proj_hadejia
+PASS  screenshot F-7/verifier
+PASS  screenshot F-7/verifier-projects
+PASS  screenshot F-7/verifier-projects-proj_ekuri
+PASS  screenshot F-7/verifier-compare
+PASS  screenshot F-7/verifier-export
+PASS  screenshot F-7/verifier-alerts
+PASS  screenshot F-7/state-no-watchlist
+PASS  screenshot F-7/state-nothing-changed-since-last-visit
+PASS  screenshot F-7/state-projects-filtered
+PASS  screenshot F-7/state-projects-filtered-to-nothing
+PASS  screenshot F-7/state-search-empty
+PASS  screenshot F-7/state-signals-present
+PASS  screenshot F-7/state-nothing-selected-to-compare
+PASS  screenshot F-7/state-two-compared
+PASS  screenshot F-7/state-three-compared
+PASS  screenshot F-7/state-periods-that-do-not-overlap
+PASS  screenshot F-7/state-nothing-selected-to-export
+PASS  screenshot F-7/state-export-ready
+PASS  screenshot F-7/state-export-failed
+PASS  screenshot F-7/state-no-alerts-configured
+PASS  screenshot F-7/state-an-alert-fired
+64 passed, 0 failed in 77.4s

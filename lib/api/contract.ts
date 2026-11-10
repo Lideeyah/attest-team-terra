@@ -523,6 +523,23 @@ export type DisclosureVerificationResult = {
   checkedAt: string;
 };
 
+export type VerifierAlert = {
+  id: string;
+  projectId: string;
+  /** What the alert watches. The condition is a fact about a record, never a
+      judgement: a coverage figure below a number the verifier chose, a period
+      closed after its own date, a correction published. */
+  condition:
+    | "coverage-below"
+    | "dispute-raised"
+    | "period-closed-late"
+    | "correction-issued";
+  threshold: number;
+  firedAt: string | null;
+  /** The record that fired it, so the alert is a pointer rather than a claim. */
+  record: string | null;
+};
+
 export type PreflightExclusion = {
   participantId: string;
   reason: ErrorCode;
