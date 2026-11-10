@@ -1,3 +1,4 @@
+import { typeset } from "@/lib/fonts";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 
 const SECTIONS = [
@@ -11,8 +12,10 @@ const SECTIONS = [
 
 export default function AdminLayout({ children }: LayoutProps<"/">) {
   return (
+    <div className={typeset}>
     <MastheadShell surface="Platform admin" sections={SECTIONS}>
       {children}
     </MastheadShell>
+    </div>
   );
 }

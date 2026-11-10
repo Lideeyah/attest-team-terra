@@ -647,3 +647,42 @@ foundation document specifies and the work is to fix execution. The build
 continues through F-3, F-4 and F-5.
 
 **Gate.** `npm run gate -- F-2`: 42 assertions, 42 passed.
+
+**Fourth verification of F-2.** Two failures, and the first was the same
+defect Lydia had already reported in her own words:
+
+1. **The movements still did not tile.** A sticky block exactly as tall as its
+   section has no travel, so nothing pinned at all: each composition simply
+   crossed its own screen. Measured at 1280x800, the band between one
+   composition and the next ran 457, 212, 237, 371 and 355 pixels — 1,890
+   pixels of scroll, about a quarter of the page, with nothing covering the
+   middle of the screen. Smaller than before, same defect.
+2. **The tally did not finish before its movement left**, at anything above a
+   slow scroll: 21,021 against 21,658 at 1,400 pixels a second. A direct
+   consequence of the first, because nothing held the reader.
+
+**The page is one stage now.** Six screens of scroll drive a single pinned
+stage, and each movement takes that stage in turn: it arrives while the one
+before it is still leaving and leaves while the next is already arriving, in
+the same place. There is no paper between two movements because there is no
+between — there is one stage. Measured across the whole 4,800-pixel track, at
+1280 and at 390: zero pixels with nothing covering the middle of the screen.
+
+**A figure is its real value by the time its movement hands over.** The count
+plays if there is time for it, and if the reader scrolls faster than the
+primitive, the count is stopped and the figure is written at its real value. A
+running count is an animation; a figure left part-counted is a wrong number,
+and this is an instrument of record.
+
+**One trap worth recording.** Giving the first and last movements the same
+four-point fade as the ones in between put a negative offset in the first
+movement's input range, and Motion handed that to the browser as a keyframe
+offset: `Offsets must be monotonically non-decreasing`, thrown during
+hydration, which took down the whole page into the error boundary. The first
+movement is already on the stage and the last one stays on it, so each has one
+fewer point than the movements between them.
+
+**Gate.** `npm run gate -- F-2`: 45 assertions, 45 passed, now including that
+a composition covers the middle of the screen at every point on the track at
+both widths, and that a figure is its real value by the time its movement
+hands over at 900 and 2,200 pixels a second.

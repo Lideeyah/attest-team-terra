@@ -10,6 +10,7 @@ import {
   viewportRenders,
 } from "../assert";
 import { server } from "../server";
+import type { Page } from "@playwright/test";
 
 /* Written from F-2's exit checklist, before the landing page existed. */
 
@@ -83,6 +84,8 @@ export async function f2(): Promise<void> {
 
   await primitivesPlayed();
   await compositionHolds();
+  await stageIsContinuous();
+  await figuresSettleAtSpeed();
   await pageHeight();
   await fitsThePhone();
 
@@ -215,9 +218,7 @@ async function primitivesPlayed(): Promise<void> {
   const page = await context.newPage();
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
 
-  const stampSection = (await page.evaluate(
-    `document.querySelector('[data-movement="stamp"]').offsetTop`,
-  )) as number;
+  const track = await trackGeometry(page);
 
   /* Sample the stamp's scale as it lands. The primitive overshoots past its
      resting size and comes back; a linear shrink never goes below one. The
@@ -238,7 +239,7 @@ async function primitivesPlayed(): Promise<void> {
   `);
   for (let step = 0; step <= 16; step += 1) {
     await page.evaluate(
-      `window.scrollTo(0, ${scrollForProgress(stampSection, 900, 0.1 + step * 0.05)})`,
+      `window.scrollTo(0, ${scrollForProgress(track, 900, INDEX.stamp, 0.1 + step * 0.05)})`,
     );
     await page.waitForTimeout(90);
   }
@@ -300,16 +301,13 @@ async function fitsThePhone(): Promise<void> {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  const track = await trackGeometry(page);
   const tooTall: string[] = [];
   for (const movement of MOVEMENTS) {
-    const top = (await page.evaluate(
-      `document.querySelector('[data-movement="${movement}"]').offsetTop`,
-    )) as number;
-    const sectionHeight = (await page.evaluate(
-      `document.querySelector('[data-movement="${movement}"]').offsetHeight`,
-    )) as number;
-    /* The middle of the movement, which is where its composition is centred. */
-    await page.evaluate(`window.scrollTo(0, ${Math.round(top + sectionHeight / 2 - 422)})`);
+    /* The middle of the movement, which is where its composition is held. */
+    await page.evaluate(
+      `window.scrollTo(0, ${scrollForProgress(track, 844, INDEX[movement], 0.5)})`,
+    );
     await page.waitForTimeout(250);
     const box = (await page.evaluate(
       `JSON.stringify((function () {
@@ -333,12 +331,47 @@ async function fitsThePhone(): Promise<void> {
 
 
 
-/* Where to scroll to put a movement at a given point in its own progress.
-   A movement is one screen tall and its progress runs across the middle of
-   its travel, so progress p sits at its top plus a fraction of a screen. */
-function scrollForProgress(top: number, viewport: number, p: number): number {
-  return Math.round(top + viewport * (0.64 * p - 0.32));
+/* The six movements share one pinned stage driven by a track of six screens,
+   so a movement is addressed by its index rather than by its own offset. The
+   arithmetic mirrors the component: a movement owns a sixth of the track, its
+   composition plays from just after it takes the stage until the handover
+   begins. */
+const COUNT = 6;
+const ENTER = 0.04;
+const HANDOVER = 0.12;
+
+type Track = { top: number; height: number };
+
+async function trackGeometry(page: Page): Promise<Track> {
+  return JSON.parse(
+    (await page.evaluate(
+      `JSON.stringify((function () {
+        var track = document.querySelector('.landing-track');
+        return { top: track.offsetTop, height: track.offsetHeight };
+      })())`,
+    )) as string,
+  ) as Track;
 }
+
+function scrollForProgress(
+  track: Track,
+  viewport: number,
+  index: number,
+  p: number,
+): number {
+  const span = 1 / COUNT;
+  const fraction = span * (index + ENTER + p * (1 - HANDOVER - ENTER));
+  return Math.round(track.top + fraction * (track.height - viewport));
+}
+
+const INDEX: Record<string, number> = {
+  stillness: 0,
+  figures: 1,
+  ledger: 2,
+  stamp: 3,
+  seal: 4,
+  record: 5,
+};
 
 /** The composition is one object: the rows that arrive are the rows that are
     stamped and the rows that are sealed, the stamps land one after another,
@@ -360,16 +393,10 @@ async function compositionHolds(): Promise<void> {
     });
     const page = await context.newPage();
     await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
-    const geometry = async (movement: string) => {
-      const box = (await page.evaluate(
-        `JSON.stringify((function () {
-          var section = document.querySelector('[data-movement="${movement}"]');
-          return { top: section.offsetTop, height: section.offsetHeight };
-        })())`,
-      )) as string;
-      return JSON.parse(box) as { top: number; height: number };
-    };
-    return { context, page, geometry };
+    const track = await trackGeometry(page);
+    const at = (movement: string, p: number) =>
+      scrollForProgress(track, width === 390 ? 844 : 900, INDEX[movement], p);
+    return { context, page, at };
   };
 
   for (const width of [390, 1280]) {
@@ -377,11 +404,8 @@ async function compositionHolds(): Promise<void> {
 
     /* A figure is not legible before its count begins. */
     {
-      const { context, page, geometry } = await open(width);
-      const figures = await geometry("figures");
-      await page.evaluate(
-        `window.scrollTo(0, ${scrollForProgress(figures.top, viewport, 0.12)})`,
-      );
+      const { context, page, at } = await open(width);
+      await page.evaluate(`window.scrollTo(0, ${at("figures", 0.12)})`);
       await page.waitForTimeout(250);
       /* Each figure is revealed as its own count begins, so each is checked. */
       const opacities = JSON.parse(
@@ -399,11 +423,8 @@ async function compositionHolds(): Promise<void> {
 
     /* The seal rule is not drawn before it draws, and it draws on screen. */
     {
-      const { context, page, geometry } = await open(width);
-      const seal = await geometry("seal");
-      await page.evaluate(
-        `window.scrollTo(0, ${scrollForProgress(seal.top, viewport, 0.3)})`,
-      );
+      const { context, page, at } = await open(width);
+      await page.evaluate(`window.scrollTo(0, ${at("seal", 0.25)})`);
       await page.waitForTimeout(300);
       const before = JSON.parse(
         (await page.evaluate(
@@ -419,9 +440,7 @@ async function compositionHolds(): Promise<void> {
         `width ${before.width}`,
       );
 
-      await page.evaluate(
-        `window.scrollTo(0, ${scrollForProgress(seal.top, viewport, 0.8)})`,
-      );
+      await page.evaluate(`window.scrollTo(0, ${at("seal", 0.8)})`);
       await page.waitForTimeout(600);
       const after = JSON.parse(
         (await page.evaluate(
@@ -442,20 +461,14 @@ async function compositionHolds(): Promise<void> {
     /* The rows that arrive are the rows that are stamped and sealed, and the
        stamps land one after another. */
     {
-      const { context, page, geometry } = await open(width);
-      const ledger = await geometry("ledger");
-      await page.evaluate(
-        `window.scrollTo(0, ${scrollForProgress(ledger.top, viewport, 0.98)})`,
-      );
+      const { context, page, at } = await open(width);
+      await page.evaluate(`window.scrollTo(0, ${at("ledger", 0.98)})`);
       await page.waitForTimeout(400);
       const ledgerRows = (await page.evaluate(
         `document.querySelectorAll('[data-movement="ledger"] .ledger-row').length`,
       )) as number;
 
-      const stamp = await geometry("stamp");
-      await page.evaluate(
-        `window.scrollTo(0, ${scrollForProgress(stamp.top, viewport, 0.75)})`,
-      );
+      await page.evaluate(`window.scrollTo(0, ${at("stamp", 0.8)})`);
       await page.waitForTimeout(900);
       const stampRows = (await page.evaluate(
         `document.querySelectorAll('[data-movement="stamp"] .ledger-row').length`,
@@ -466,10 +479,7 @@ async function compositionHolds(): Promise<void> {
         )) as string,
       ) as string[];
 
-      const seal = await geometry("seal");
-      await page.evaluate(
-        `window.scrollTo(0, ${scrollForProgress(seal.top, viewport, 0.85)})`,
-      );
+      await page.evaluate(`window.scrollTo(0, ${at("seal", 0.88)})`);
       await page.waitForTimeout(500);
       const sealRows = (await page.evaluate(
         `document.querySelectorAll('[data-movement="seal"] .ledger-row').length`,
@@ -505,4 +515,99 @@ async function compositionHolds(): Promise<void> {
   }
 
   await browser.close();
+}
+
+
+/** There is never a point on the track where no composition covers the middle
+    of the screen. One movement is the page at any moment. */
+async function stageIsContinuous(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+
+  for (const [width, height] of [
+    [1280, 800],
+    [390, 844],
+  ]) {
+    const context = await browser.newContext({
+      reducedMotion: "no-preference",
+      viewport: { width, height },
+    });
+    const page = await context.newPage();
+    await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+    const track = await trackGeometry(page);
+
+    let uncovered = 0;
+    for (let y = track.top; y <= track.top + track.height - height; y += 60) {
+      await page.evaluate(`window.scrollTo(0, ${y})`);
+      await page.waitForTimeout(25);
+      const covered = (await page.evaluate(
+        `(function () {
+          var mid = ${height} / 2;
+          return Array.from(document.querySelectorAll(".movement")).some(function (movement) {
+            if (Number(getComputedStyle(movement).opacity) < 0.08) { return false; }
+            var box = movement.querySelector(".measure").getBoundingClientRect();
+            return box.top <= mid && box.bottom >= mid;
+          });
+        })()`,
+      )) as boolean;
+      if (!covered) {
+        uncovered += 60;
+      }
+    }
+    await context.close();
+    record(
+      `a composition covers the screen through the whole track at ${width}px`,
+      uncovered === 0,
+      `${uncovered}px uncovered`,
+    );
+  }
+
+  await browser.close();
+}
+
+/** However fast the reader scrolls, a figure is its real value by the time
+    its movement hands over. A part-counted figure is a wrong number. */
+async function figuresSettleAtSpeed(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+  const context = await browser.newContext({
+    reducedMotion: "no-preference",
+    viewport: { width: 1280, height: 800 },
+  });
+  const page = await context.newPage();
+
+  const wrong: string[] = [];
+  for (const speed of [900, 2200]) {
+    await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+    const height = (await page.evaluate("document.body.scrollHeight")) as number;
+    const step = Math.round(speed / 20);
+    let last = "";
+    for (let y = 0; y <= height - 800; y += step) {
+      await page.evaluate(`window.scrollTo(0, ${y})`);
+      await page.waitForTimeout(50);
+      const read = (await page.evaluate(
+        `(function () {
+          var movement = document.querySelector('[data-movement="figures"]');
+          if (Number(getComputedStyle(movement).opacity) < 0.35) { return ""; }
+          return Array.from(movement.querySelectorAll(".figure-value span"))
+            .map(function (node) { return node.textContent; })
+            .join(" | ");
+        })()`,
+      )) as string;
+      if (read) {
+        last = read;
+      }
+    }
+    if (!/21,658 \| 7,375 \| 34%/.test(last)) {
+      wrong.push(`${speed}px/s: ${last}`);
+    }
+  }
+  await browser.close();
+  record(
+    "a figure is its real value by the time its movement hands over",
+    wrong.length === 0,
+    wrong.join(" | "),
+  );
 }

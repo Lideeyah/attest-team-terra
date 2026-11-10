@@ -34,10 +34,13 @@ PASS  the seal rule is undrawn before it draws at 1280px
 PASS  the seal rule draws where the reader can see it at 1280px
 PASS  the rows that arrive are the rows that are stamped and sealed at 1280px
 PASS  the stamps land one after another at 1280px
+PASS  a composition covers the screen through the whole track at 1280px
+PASS  a composition covers the screen through the whole track at 390px
+PASS  a figure is its real value by the time its movement hands over
 PASS  the composition is under ten screens of scroll
 PASS  every composition fits the phone screen at 390px
 PASS  the hero sentence is the named placeholder and is flagged for review
 PASS  accessibility on /
 PASS  keyboard reachability on /
 PASS  screenshot F-2/landing
-42 passed, 0 failed in 47.2s
+45 passed, 0 failed in 62.1s

@@ -1,3 +1,4 @@
+import { typeset } from "@/lib/fonts";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 
 const SECTIONS = [
@@ -10,8 +11,10 @@ const SECTIONS = [
 
 export default function OpsLayout({ children }: LayoutProps<"/">) {
   return (
+    <div className={typeset}>
     <MastheadShell surface="Bank operations" sections={SECTIONS}>
       {children}
     </MastheadShell>
+    </div>
   );
 }

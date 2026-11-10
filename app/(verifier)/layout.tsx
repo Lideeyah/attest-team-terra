@@ -1,3 +1,4 @@
+import { typeset } from "@/lib/fonts";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 
 const SECTIONS = [
@@ -10,8 +11,10 @@ const SECTIONS = [
 
 export default function VerifierLayout({ children }: LayoutProps<"/">) {
   return (
+    <div className={typeset}>
     <MastheadShell surface="Verifier portal" sections={SECTIONS}>
       {children}
     </MastheadShell>
+    </div>
   );
 }

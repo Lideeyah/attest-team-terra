@@ -1,3 +1,4 @@
+import { typeset } from "@/lib/fonts";
 import { ButtonLink } from "@/components/Button";
 import { Rule } from "@/components/Rule";
 
@@ -5,7 +6,7 @@ import { Rule } from "@/components/Rule";
    routeForward; going back reverses the axis. */
 export default function DeeperPage() {
   return (
-    <div className="measure section">
+    <div className={`measure section ${typeset}`}>
       <div className="stack-lg">
         <p className="eyebrow">Route transition reference</p>
         <h1 className="h2-display">One level deeper</h1>

@@ -10,6 +10,7 @@ import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import {
   Movement,
+  Stage,
   motion,
   useArrivedCount,
   useCrossed,
@@ -68,7 +69,7 @@ function Masthead() {
    in once on load and then does nothing at all. */
 function Stillness() {
   return (
-    <Movement name="stillness" still>
+    <Movement name="stillness" index={0}>
       {() => (
         <div className={`stack-lg ${PRIMITIVE_CLASS.recordArrive}`}>
           <h1 className="h1-display" style={{ maxWidth: "24ch" }}>
@@ -103,17 +104,39 @@ function TallyFigure({
   /* Each figure appears as its own count begins. A figure that is legible
      before it counts has told the reader the answer. */
   const opacity = useReveal(progress, [mark - 0.07, mark - 0.005], [0, 1]);
+  /* However fast the reader scrolls, the figure is its real value by the time
+     the movement hands over. A count that is still running is an animation; a
+     figure left part-counted is a wrong number. */
+  const settled = useCrossed(progress, 0.94);
+
+  const cancelTally = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!started || reduced) {
       return;
     }
-    return tallyTo(value, (count) => {
+    const cancel = tallyTo(value, (count) => {
       if (ref.current) {
         ref.current.textContent = format(count);
       }
     });
+    cancelTally.current = cancel;
+    return () => {
+      cancel();
+      cancelTally.current = null;
+    };
   }, [started, value, format, reduced]);
+
+  useEffect(() => {
+    if (!settled || !ref.current) {
+      return;
+    }
+    /* The count is stopped before the figure is written, or its next frame
+       would put a part-counted number back on screen. */
+    cancelTally.current?.();
+    cancelTally.current = null;
+    ref.current.textContent = format(value);
+  }, [settled, value, format]);
 
   return (
     <motion.div className="figure-cell" style={{ opacity }}>
@@ -130,7 +153,7 @@ function TallyFigure({
    composition is in front of the reader. The number does the talking. */
 function Figures() {
   return (
-    <Movement name="figures">{(progress) => <FiguresBody progress={progress} />}</Movement>
+    <Movement name="figures" index={1}>{(progress) => <FiguresBody progress={progress} />}</Movement>
   );
 }
 
@@ -244,7 +267,7 @@ function LedgerRow({
    scrolling up removes rows and scrolling down adds them, one frame apart. */
 function Ledger() {
   return (
-    <Movement name="ledger">{(progress) => <LedgerBody progress={progress} />}</Movement>
+    <Movement name="ledger" index={2}>{(progress) => <LedgerBody progress={progress} />}</Movement>
   );
 }
 
@@ -285,7 +308,7 @@ function LedgerBody({ progress }: { progress: MotionValue<number> }) {
    up, because nothing in this product can be. */
 function Stamps() {
   return (
-    <Movement name="stamp">{(progress) => <StampsBody progress={progress} />}</Movement>
+    <Movement name="stamp" index={3}>{(progress) => <StampsBody progress={progress} />}</Movement>
   );
 }
 
@@ -334,7 +357,7 @@ function StampsBody({ progress }: { progress: MotionValue<number> }) {
    above it steps back one contrast level, without moving and without
    disappearing. The rows above the rule are the rows that were stamped. */
 function Seal() {
-  return <Movement name="seal">{(progress) => <SealBody progress={progress} />}</Movement>;
+  return <Movement name="seal" index={4}>{(progress) => <SealBody progress={progress} />}</Movement>;
 }
 
 function SealBody({ progress }: { progress: MotionValue<number> }) {
@@ -395,7 +418,7 @@ function SealBody({ progress }: { progress: MotionValue<number> }) {
 /* Movement 6, The record goes public. */
 function PublicRecord() {
   return (
-    <Movement name="record">{(progress) => <PublicRecordBody progress={progress} />}</Movement>
+    <Movement name="record" index={5}>{(progress) => <PublicRecordBody progress={progress} />}</Movement>
   );
 }
 
@@ -528,12 +551,14 @@ export function Landing() {
   return (
     <div className="landing">
       <Masthead />
-      <Stillness />
-      <Figures />
-      <Ledger />
-      <Stamps />
-      <Seal />
-      <PublicRecord />
+      <Stage count={6}>
+        <Stillness />
+        <Figures />
+        <Ledger />
+        <Stamps />
+        <Seal />
+        <PublicRecord />
+      </Stage>
       <Sections />
       <Foot />
     </div>

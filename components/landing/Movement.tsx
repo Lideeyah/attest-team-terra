@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  createContext,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -17,56 +19,126 @@ import {
 } from "motion/react";
 import type { MotionValue } from "motion/react";
 
-/* One movement of the landing composition. It reports its own progress and
-   marks itself resolved once it has played, so the sequence can be read from
-   the page rather than inferred from a scroll position. */
+/* The landing page is one object through six movements, so the movements share
+   one screen rather than each taking a screen of their own. A track of six
+   screens of scroll drives a single pinned stage; each movement owns a sixth
+   of the track, and its composition enters, holds and leaves in place while
+   the next one takes over. The reader is never shown empty paper between two
+   of them, because there is no between: there is one stage. */
+
+type StageValue = {
+  progress: MotionValue<number>;
+  count: number;
+};
+
+const StageContext = createContext<StageValue | null>(null);
+
+export function Stage({ count, children }: { count: number; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end end"],
+  });
+
+  return (
+    <StageContext.Provider value={{ progress: scrollYProgress, count }}>
+      <div
+        className="landing-track"
+        ref={ref}
+        style={{ height: `${count * 100}vh` }}
+      >
+        <div className="landing-stage">{children}</div>
+      </div>
+    </StageContext.Provider>
+  );
+}
+
+function useStage(): StageValue {
+  const stage = useContext(StageContext);
+  if (!stage) {
+    throw new Error("A movement must be rendered inside the stage");
+  }
+  return stage;
+}
 
 type MovementProps = {
   name: string;
+  index: number;
   children: (progress: MotionValue<number>) => ReactNode;
-  /** A movement that does not pin, used by the stillness movement. */
-  still?: boolean;
 };
 
-export function Movement({ name, children, still = false }: MovementProps) {
+/* A movement's own progress runs from the moment it takes the stage to the
+   moment it begins to hand it over, so everything it does happens while it is
+   the thing on screen. The handover overlaps: the next composition is already
+   arriving as this one leaves, so there is never a frame with neither. */
+const ENTER = 0.04;
+const HANDOVER = 0.12;
+/* The short travel the system uses for a screen transition. */
+const TRAVEL = 24;
+
+export function Movement({ name, index, children }: MovementProps) {
   const ref = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
-  /* Progress runs across the middle of the movement's travel, which is the
-     part where its composition is in front of the reader. Nothing fires while
-     a movement is still entering from the bottom or has begun to leave. */
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-  const progress = useTransform(scrollYProgress, [0.34, 0.66], [0, 1], {
-    clamp: true,
-  });
+  const { progress: track, count } = useStage();
 
-  useMotionValueEvent(progress, "change", (value) => {
-    if (value >= 0.95 && ref.current) {
+  const span = 1 / count;
+  const start = index * span;
+  const overlap = HANDOVER * span;
+  const last = index === count - 1;
+
+  /* The composition plays from just after it takes the stage until the
+     handover begins, so everything completes while it is the thing on
+     screen. */
+  const played = useTransform(
+    track,
+    [start + ENTER * span, start + span - overlap],
+    [0, 1],
+    { clamp: true },
+  );
+
+  /* It arrives while the one before it is still leaving, and leaves while the
+     next is already arriving, so the screen is never empty between two. The
+     first movement is already on the stage and the last one stays on it, so
+     each has one fewer point than the movements in between. */
+  const marks = [start - overlap, start, start + span - overlap, start + span];
+  const fade: { input: number[]; opacity: number[]; travel: number[] } =
+    index === 0
+      ? { input: [marks[1], marks[2], marks[3]], opacity: [1, 1, 0], travel: [0, 0, -TRAVEL] }
+      : last
+        ? { input: [marks[0], marks[1], marks[3]], opacity: [0, 1, 1], travel: [TRAVEL, 0, 0] }
+        : { input: marks, opacity: [0, 1, 1, 0], travel: [TRAVEL, 0, 0, -TRAVEL] };
+
+  const liveOpacity = useTransform(track, fade.input, fade.opacity);
+  const liveY = useTransform(track, fade.input, fade.travel);
+
+  const resting = useMotionValue(1);
+  const restingY = useMotionValue(0);
+
+  const opacity = reduced ? resting : liveOpacity;
+  const y = reduced ? restingY : liveY;
+
+  useMotionValueEvent(played, "change", (value) => {
+    if (value >= 0.9 && ref.current) {
       ref.current.setAttribute("data-resolved", "true");
     }
   });
 
-  /* Under reduced motion the movement renders at its resting state, which is
-     its resolved state. The six compositions still read as a sequence. */
   useEffect(() => {
-    if ((reduced || still) && ref.current) {
+    if (reduced && ref.current) {
       ref.current.setAttribute("data-resolved", "true");
     }
-  }, [reduced, still]);
+  }, [reduced]);
 
   return (
-    <section
+    <motion.section
       ref={ref}
       data-movement={name}
       data-resolved="false"
-      className={still ? "movement movement-still" : "movement"}
+      className="movement"
+      style={{ opacity, y }}
     >
-      <div className="movement-pinned">
-        <div className="measure">{children(progress)}</div>
-      </div>
-    </section>
+      <div className="measure">{children(played)}</div>
+    </motion.section>
   );
 }
 

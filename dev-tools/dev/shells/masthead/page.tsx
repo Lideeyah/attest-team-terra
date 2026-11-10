@@ -1,3 +1,4 @@
+import { typeset } from "@/lib/fonts";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 import { Rule } from "@/components/Rule";
 
@@ -11,6 +12,7 @@ const SECTIONS = [
 
 export default function MastheadShellPreview() {
   return (
+    <div className={typeset}>
     <MastheadShell
       surface="Verifier portal"
       sections={SECTIONS}
@@ -26,5 +28,6 @@ export default function MastheadShellPreview() {
         </p>
       </div>
     </MastheadShell>
+    </div>
   );
 }

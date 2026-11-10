@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { typeset } from "@/lib/fonts";
 import { DevStates } from "./DevStates";
 
 export const metadata: Metadata = {
@@ -9,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function DevStatesPage() {
-  return <DevStates />;
+  return (
+    <div className={typeset}>
+      <DevStates />
+    </div>
+  );
 }

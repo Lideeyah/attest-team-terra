@@ -11,29 +11,26 @@
    composition is directly behind the one leaving rather than a screen below
    it. The composition plays across the middle of its travel, while it is in
    front of the reader. */
-.movement {
+/* One stage, six movements. The track is six screens of scroll; the stage is
+   pinned to the screen for the whole of it, and each movement occupies the
+   stage in turn. There is no paper between two movements because there is
+   nothing between them: one leaves as the next arrives, in the same place. */
+.landing-track {
   position: relative;
-  height: var(--movement-scroll);
 }
 
-/* A movement's composition reads as a block, not as a table stretched to the
-   full measure with its figures a screen away from their households. */
-.movement .measure {
-  max-width: var(--measure-reading);
-  margin-inline: 0;
-}
-
-.movement-pinned {
+.landing-stage {
   position: sticky;
   top: 0;
   height: 100vh;
-  display: flex;
+  display: grid;
   align-items: center;
-  overflow: hidden;
 }
 
-.movement-still {
-  height: 100vh;
+.movement {
+  grid-area: 1 / 1;
+  width: 100%;
+  will-change: opacity, transform;
 }
 
 .ledger-row {

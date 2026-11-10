@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { typeset } from "@/lib/fonts";
 import { KitchenSink } from "./KitchenSink";
 
 export const metadata: Metadata = {
@@ -9,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function KitchenSinkPage() {
-  return <KitchenSink />;
+  return (
+    <div className={typeset}>
+      <KitchenSink />
+    </div>
+  );
 }
