@@ -7,7 +7,7 @@ import { Strip } from "@/components/Strip";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
 import { EXCEPTION_COPY } from "@/lib/copy/ops";
-import { formatCount, formatDate, orUnknown } from "@/lib/record";
+import { formatCount, formatDate } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "Exceptions",
@@ -67,7 +67,7 @@ export default async function ExceptionsPage({
                   <span className="note" data-resolution={row.resolution ? "resolved" : "open"}>
                     {row.resolution
                       ? `Resolved: ${row.resolution}`
-                      : orUnknown(null)}
+                      : "Not resolved yet"}
                   </span>
                 </div>
               </Strip>

@@ -59,8 +59,11 @@ export default async function SignalPage({
   return (
     <div className="measure section-tight stack-lg">
       <header className="stack">
+        <Link href="/ops/signals" className="btn-quiet btn-sm back-link" prefetch={false}>
+          ← Signals
+        </Link>
         <p className="eyebrow">
-          {signal.id} · {signal.projectName} · {formatPeriod(signal.period)}
+          {signal.projectName} · {formatPeriod(signal.period)}
         </p>
         <h1 className="h2-display">{copy.heading}</h1>
         <p className="lede">{copy.what}</p>
@@ -85,7 +88,7 @@ export default async function SignalPage({
           <dd className="record-cell">
             {signal.caseId ? (
               <Link href="/ops/cases" prefetch={false}>
-                {signal.caseId}
+                Already on a case
               </Link>
             ) : (
               "Not on a case"
@@ -94,7 +97,9 @@ export default async function SignalPage({
         </div>
       </dl>
 
-      <p className="note">{signal.summary}</p>
+      {search.graph === "none" || search.graph === "ordinary" ? null : (
+        <p className="note">{signal.summary}</p>
+      )}
 
       <section className="stack" aria-label="Where the money went">
         <h2 className="h3-display">Where the money went</h2>

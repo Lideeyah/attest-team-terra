@@ -85,6 +85,14 @@ export async function f8(): Promise<void> {
      deciding. */
   await anActionCanBeRefused();
 
+  /* What F-8's independent verification found. */
+  await anActionChangesTheCase();
+  await aRefusedReadIsNotAZero();
+  await theBalanceAgreesWithItsOwnArithmetic();
+  await theGraphsFiguresAddUp();
+  await theGraphIsTheSignalsOwn();
+  await nothingOpenIsReachable();
+
   await a11y("/ops");
   await a11y("/ops/signals");
   await a11y("/ops/cases");
@@ -95,6 +103,197 @@ export async function f8(): Promise<void> {
   for (const state of STATES) {
     await screenshot("F-8", state.href, `state-${state.label.replace(/[^a-z0-9]+/gi, "-")}`);
   }
+}
+
+/* The console said "Recorded — the case closes as unsubstantiated" while the
+   card above it still read "Being investigated", and the note the dialog
+   insisted on was discarded. */
+async function anActionChangesTheCase(): Promise<void> {
+  const note =
+    "Cleared after the enrolment records accounted for every one of the accounts.";
+  const outcome = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}/ops/cases`, { waitUntil: "networkidle" });
+    const before = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    await page.locator('[data-case-action="clear"]').first().click();
+    await page.locator("[data-case-note]").fill(note);
+    await page.locator("[data-case-confirm]").click();
+    await page.waitForTimeout(2500);
+    const after = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    return { before, after };
+  });
+
+  record(
+    "an action changes the case it was taken on",
+    /being investigated/i.test(outcome.before) &&
+      /unsubstantiated/i.test(outcome.after),
+    outcome.after.slice(0, 160),
+  );
+  record(
+    "the note the action required is on the case record",
+    outcome.after.includes("accounted for every one of the accounts"),
+    outcome.after.slice(0, 160),
+  );
+
+  /* And the server refuses an action it does not have, or one with no
+     reason: a console that can post anything is not a record. */
+  const { baseUrl } = await server();
+  const bad = await fetch(`${baseUrl}/api/ops/cases/case_0231/action`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "detonate", note }),
+  });
+  const noReason = await fetch(`${baseUrl}/api/ops/cases/case_0231/action`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "documentation" }),
+  });
+  record(
+    "an action that is not an action, and one with no reason, are both refused",
+    bad.status >= 400 && noReason.status >= 400,
+    `${bad.status} and ${noReason.status}`,
+  );
+}
+
+/* A 403 rendered as "no case is open" is the worst available failure on a
+   console about suspected fraud. */
+async function aRefusedReadIsNotAZero(): Promise<void> {
+  await forceCode("FORBIDDEN", "/api/ops/cases");
+  const body = await withBrowser(async (page, baseUrl) => {
+    await page.goto(`${baseUrl}/ops`, { waitUntil: "networkidle" });
+    return (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  });
+  await forceCode(null);
+  record(
+    "a read that was refused is said to be refused, not counted as zero",
+    /could not be read|does not have access/i.test(body) &&
+      !/no case is open/i.test(body),
+    body.slice(0, 160),
+  );
+}
+
+/* Inbound minus outbound minus charges, against the balance printed beside
+   them. They were not the same number. */
+async function theBalanceAgreesWithItsOwnArithmetic(): Promise<void> {
+  const { baseUrl } = await server();
+  const payload = (await (await fetch(`${baseUrl}/api/ops/reconciliation`)).json()) as {
+    data?: {
+      period: string;
+      inbound: string;
+      outbound: string;
+      charges: string;
+      balance: string;
+      delta: string;
+      state: string;
+    }[];
+  };
+  const wrong = (payload.data ?? []).filter((row) => {
+    const computed =
+      Number(row.inbound) - Number(row.outbound) - Number(row.charges);
+    return Math.abs(computed - Number(row.balance)) > 0.01;
+  });
+  record(
+    "every reconciliation row's balance is its own arithmetic",
+    wrong.length === 0,
+    wrong
+      .slice(0, 2)
+      .map((row) => `${row.period}: ${row.inbound}−${row.outbound}−${row.charges} ≠ ${row.balance}`)
+      .join(" | "),
+  );
+}
+
+/* The money total on the drawing belonged to neither the sample drawn nor
+   the population named. */
+async function theGraphsFiguresAddUp(): Promise<void> {
+  const { baseUrl } = await server();
+  const graph = (await (await fetch(`${baseUrl}/api/ops/signals/sig_0231/graph`)).json()) as {
+    data?: {
+      nodes: { id: string; kind: string; amount: string }[];
+      edges: { to: string; amount: string }[];
+      sampleSize: number;
+      populationSize: number;
+    };
+  };
+  const data = graph.data;
+  if (!data) {
+    record("the graph's figures add up", false, "no graph");
+    return;
+  }
+  const concentrators = data.nodes.filter((node) => node.kind === "concentrator");
+  const stated = concentrators.reduce((sum, node) => sum + Number(node.amount), 0);
+  const reaching = data.edges
+    .filter((edge) => concentrators.some((node) => node.id === edge.to))
+    .reduce((sum, edge) => sum + Number(edge.amount), 0);
+
+  const body = await withBrowser(async (page, baseUrl2) => {
+    await page.goto(`${baseUrl2}/ops/signals/sig_0231`, { waitUntil: "networkidle" });
+    await page.waitForSelector("[data-graph-node]", { timeout: 30_000 });
+    return (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  });
+
+  record(
+    "each account's amount is what the drawing shows reaching it",
+    Math.abs(stated - reaching) < 0.01,
+    `${stated} stated, ${reaching} reaching`,
+  );
+  record(
+    "the legend says how many wallets are drawn, of how many the period paid",
+    body.includes(`${data.sampleSize.toLocaleString("en-NG")} of ${data.populationSize.toLocaleString("en-NG")}`),
+    body.slice(0, 160),
+  );
+  record(
+    "the movements are on the screen with their amounts and their timing",
+    /after it settled/i.test(body) && /first hop/i.test(body),
+    body.slice(0, 160),
+  );
+}
+
+/* A concentration graph was served for every signal, including a
+   shared-device one whose own account count the page printed beside it. */
+async function theGraphIsTheSignalsOwn(): Promise<void> {
+  const { baseUrl } = await server();
+  const broken: string[] = [];
+  for (const id of ["sig_0231", "sig_0233", "sig_0234"]) {
+    const signal = (await (await fetch(`${baseUrl}/api/ops/signals/${id}`)).json()) as {
+      data?: { accounts: number };
+    };
+    const graph = (await (await fetch(`${baseUrl}/api/ops/signals/${id}/graph`)).json()) as {
+      data?: { populationSize: number };
+    };
+    if (signal.data?.accounts !== graph.data?.populationSize) {
+      broken.push(
+        `${id}: ${signal.data?.accounts} accounts, graph of ${graph.data?.populationSize}`,
+      );
+    }
+  }
+  record(
+    "a signal's graph is about the accounts that signal names",
+    broken.length === 0,
+    broken.join(" | "),
+  );
+}
+
+/* "Nothing open" is the first state the phase lists and there was no way to
+   reach it. */
+async function nothingOpenIsReachable(): Promise<void> {
+  const { baseUrl } = await server();
+  const empty = async (value: boolean) => {
+    await fetch(`${baseUrl}/api/dev/ops-empty`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ empty: value }),
+    });
+  };
+  await empty(true);
+  const body = await withBrowser(async (page) => {
+    await page.goto(`${baseUrl}/ops`, { waitUntil: "networkidle" });
+    return (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  });
+  await empty(false);
+  record(
+    "nothing open is reachable, and says so",
+    /nothing is open/i.test(body),
+    body.slice(0, 140),
+  );
 }
 
 async function withBrowser<T>(

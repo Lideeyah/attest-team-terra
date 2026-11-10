@@ -14,7 +14,9 @@ const SECTIONS = [
 export default function AdminLayout({ children }: LayoutProps<"/">) {
   return (
     <Surface>
-    <MastheadShell surface="Platform admin" sections={SECTIONS}>
+    <MastheadShell
+      account={{ organisation: "Attest, platform", email: "platform@attest.ng" }}
+      surface="Platform admin" sections={SECTIONS}>
       <RouteTransition>{children}</RouteTransition>
     </MastheadShell>
     </Surface>

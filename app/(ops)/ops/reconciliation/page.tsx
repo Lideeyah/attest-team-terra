@@ -82,7 +82,11 @@ export default async function ReconciliationPage() {
               </div>
               <div>
                 <dt className="eyebrow">Balance</dt>
-                <dd className="record-cell">{formatNaira(row.balance)}</dd>
+                <dd className="record-cell" data-balance={row.balance}>
+                  {Number(row.balance) < 0
+                    ? `${formatNaira(row.balance)} — more left the account than arrived in it`
+                    : formatNaira(row.balance)}
+                </dd>
               </div>
             </dl>
 

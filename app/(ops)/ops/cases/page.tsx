@@ -6,7 +6,7 @@ import { Rule } from "@/components/Rule";
 import { CaseActions } from "@/components/ops/CaseActions";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
-import { CASE_COPY } from "@/lib/copy/ops";
+import { ACTION_COPY, CASE_COPY } from "@/lib/copy/ops";
 import { formatCount, formatDateTime } from "@/lib/record";
 
 export const metadata: Metadata = {
@@ -74,14 +74,14 @@ export default async function CasesPage({
             <li key={row.id} className="panel stack" data-case={row.id}>
               <div className="row-between">
                 <div className="stack-tight">
-                  <p className="eyebrow">
-                    {row.id} · {row.projectName}
-                  </p>
+                  <p className="eyebrow">{row.projectName}</p>
                   <h2 className="h3-display">{CASE_COPY[row.state]}</h2>
                 </div>
                 <p className="record-cell">
-                  {formatCount(row.signalIds.length)} signals · opened{" "}
-                  {formatDateTime(row.openedAt)}
+                  {row.signalIds.length === 1
+                    ? "1 signal"
+                    : `${formatCount(row.signalIds.length)} signals`}{" "}
+                  · opened {formatDateTime(row.openedAt)}
                 </p>
               </div>
               <Rule />
@@ -89,7 +89,9 @@ export default async function CasesPage({
                 {row.actions.map((action) => (
                   <li key={action.at} className="case-action">
                     <span className="record-cell">{formatDateTime(action.at)}</span>
-                    <span className="record-cell">{action.action}</span>
+                    <span className="record-cell">
+                      {ACTION_COPY[action.action]?.label ?? action.action}
+                    </span>
                     <span className="note">{action.note}</span>
                     <span className="record-cell">{action.by}</span>
                   </li>

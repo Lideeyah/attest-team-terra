@@ -49,22 +49,23 @@ export default async function SignalsPage({
 
   /* An empty queue and a queue whose signals are all on cases are different
      things, and both are states this screen has. */
+  /* An empty queue is arranged; a signal already on a case is not, because
+     one genuinely is. Rewriting every signal's case to make the state appear
+     would put a Delta case on an Ekuri signal. */
   const rows =
     search.state === "none"
       ? []
       : search.state === "attached"
-        ? result.data.map((signal) => ({
-            ...signal,
-            state: "attached" as const,
-            caseId: signal.caseId ?? "case_0231",
-          }))
+        ? result.data.filter((signal) => signal.caseId !== null)
         : result.data;
 
   return (
     <div className="measure section-tight stack-lg">
       <header className="stack">
         <p className="eyebrow">Signals</p>
-        <h1 className="h2-display">{formatCount(rows.length)} signals</h1>
+        <h1 className="h2-display">
+          {rows.length === 1 ? "1 signal" : `${formatCount(rows.length)} signals`}
+        </h1>
         <p className="lede">{OPS_COPY.evidenceStaysHere}</p>
         <Rule weight="heavy" />
       </header>
@@ -140,12 +141,14 @@ export default async function SignalsPage({
                   </div>
                   <div className="stack-tight">
                     <p className="record-cell">
-                      {formatCount(signal.accounts)} accounts
+                      {signal.accounts === 1
+                        ? "1 account"
+                        : `${formatCount(signal.accounts)} accounts`}
                     </p>
                     <p className="record-cell">Raised {formatDate(signal.raisedAt)}</p>
                     {signal.caseId ? (
                       <p className="record-cell" data-signal-case={signal.caseId}>
-                        On case {signal.caseId}
+                        Already on a case
                       </p>
                     ) : (
                       <p className="record-cell">Not on a case</p>

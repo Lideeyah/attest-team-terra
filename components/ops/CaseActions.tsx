@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Modal } from "@/components/Modal";
@@ -21,6 +22,7 @@ export function CaseActions({
   caseId: string;
   state: Case["state"];
 }) {
+  const router = useRouter();
   const [chosen, setChosen] = useState<(typeof ACTIONS)[number] | null>(null);
   const [note, setNote] = useState("");
   const [outcome, setOutcome] = useState<
@@ -40,17 +42,22 @@ export function CaseActions({
         line:
           result.code === "FORBIDDEN"
             ? "This account does not have access to that action. Freezing and escalation are taken by the financial crime desk, and nothing was changed here."
-            : result.message,
+            : result.code === "INVALID_REQUEST" && result.field === "note"
+              ? "The case record carries the reason, so it is required: a few words about why this action was taken."
+              : result.message,
       });
       return;
     }
     /* A freeze is authorised elsewhere: the console records that it was
-       asked for, not that it happened. */
+       asked for, not that it happened. Either way the case itself has
+       changed, so the screen re-reads it rather than describing a state it
+       has not checked. */
     setOutcome(
       action === "freeze" || action === "escalate"
         ? { kind: "pending", action }
         : { kind: "done", action },
     );
+    router.refresh();
   }
 
   if (state === "closed") {
@@ -90,7 +97,10 @@ export function CaseActions({
 
       {outcome.kind === "done" ? (
         <Notice title="Recorded">
-          <p data-action-state="done">{ACTION_COPY[outcome.action].consequence}</p>
+          <p data-action-state="done">
+            {ACTION_COPY[outcome.action].consequence} The case above says what
+            it is now.
+          </p>
         </Notice>
       ) : null}
 

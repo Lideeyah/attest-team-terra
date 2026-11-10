@@ -9,7 +9,7 @@ import { Strip } from "@/components/Strip";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
 import { CASE_COPY, OPS_COPY, SEVERITY_COPY, SIGNAL_COPY } from "@/lib/copy/ops";
-import { formatCount, formatNaira, formatPeriod } from "@/lib/record";
+import { formatCount, formatDate, formatNaira, formatPeriod } from "@/lib/record";
 
 export const metadata: Metadata = {
   title: "Bank operations",
@@ -33,6 +33,15 @@ export default async function OpsHome() {
       </div>
     );
   }
+
+  /* A read that was refused is not an absence of cases. On a console about
+     suspected fraud, a 403 rendered as a reassuring zero is the worst
+     available failure. */
+  const refused = [
+    cases.ok ? null : { what: "cases", result: cases },
+    exceptions.ok ? null : { what: "verification exceptions", result: exceptions },
+    reconciliation.ok ? null : { what: "reconciliation", result: reconciliation },
+  ].filter((entry) => entry !== null);
 
   const openCases = cases.ok
     ? cases.data.filter((row) => row.state === "open" || row.state === "investigating")
@@ -60,7 +69,24 @@ export default async function OpsHome() {
         <Rule weight="heavy" />
       </header>
 
-      {nothingOpen ? <EmptyState line={OPS_COPY.nothingOpen} /> : null}
+      {refused.map((entry) => (
+        <Notice
+          key={entry.what}
+          tone="blocked"
+          title={headingFor(entry.result.code, `The ${entry.what} could not be read`)}
+        >
+          <p data-refused={entry.what}>
+            {entry.result.message} Nothing below counts the {entry.what}, and
+            this screen does not know what is open rather than knowing that
+            nothing is.
+          </p>
+          <p className="note">{entry.result.remediation}</p>
+        </Notice>
+      ))}
+
+      {refused.length === 0 && nothingOpen ? (
+        <EmptyState line={OPS_COPY.nothingOpen} />
+      ) : null}
 
       <section className="figure-row" aria-label="Open work">
         <Figure
@@ -127,7 +153,9 @@ export default async function OpsHome() {
                     <span className="record-cell">{signal.projectName}</span>
                     <span className="record-cell">{formatPeriod(signal.period)}</span>
                     <span className="record-cell">
-                      {formatCount(signal.accounts)} accounts
+                      {signal.accounts === 1
+                        ? "1 account"
+                        : `${formatCount(signal.accounts)} accounts`}
                     </span>
                     <span className="record-cell">{SEVERITY_COPY[signal.severity]}</span>
                   </div>
@@ -141,7 +169,12 @@ export default async function OpsHome() {
       <section className="stack" aria-label="Cases">
         <h2 className="h3-display">Cases</h2>
         <Rule />
-        {openCases.length === 0 ? (
+        {!cases.ok ? (
+          <p className="note">
+            The cases could not be read, so this screen cannot say what is
+            open.
+          </p>
+        ) : openCases.length === 0 ? (
           <p className="note">No case is open.</p>
         ) : (
           <ul className="stack-tight">
@@ -151,13 +184,17 @@ export default async function OpsHome() {
                   <div className="verifier-row wide" data-case={row.id}>
                     <span>
                       <Link href="/ops/cases" prefetch={false}>
-                        {row.id}
+                        {row.projectName}
                       </Link>
                     </span>
-                    <span className="record-cell">{row.projectName}</span>
                     <span className="record-cell">{CASE_COPY[row.state]}</span>
                     <span className="record-cell">
-                      {formatCount(row.signalIds.length)} signals
+                      {row.signalIds.length === 1
+                        ? "1 signal"
+                        : `${formatCount(row.signalIds.length)} signals`}
+                    </span>
+                    <span className="record-cell">
+                      Opened {formatDate(row.openedAt)}
                     </span>
                   </div>
                 </Strip>

@@ -96,6 +96,15 @@ export const GRAPH_COPY = {
     `Every movement here happened within ${hours} hours of the transfer settling.`,
   description: (accounts: number, concentrators: number, hours: number) =>
     `${accounts} household wallets, and the ${concentrators} accounts their money moved into within ${hours} hours.`,
+  describeSampled: (
+    shown: number,
+    population: number,
+    concentrators: number,
+    hours: number,
+  ) =>
+    `A sample of ${shown} of ${population} household wallets, and the ${concentrators} accounts their money moved into within ${hours} hours.`,
+  logNote:
+    "Each movement with what it carried and how long after the transfer settled. A household withdrawing at the market the next morning looks nothing like four hundred wallets emptying in the same four minutes.",
   concentrator: "An account the money moved into.",
   intermediary: "An account the money passed through.",
   household: "A household wallet the project paid.",

@@ -13,7 +13,9 @@ const SECTIONS = [
 export default function OpsLayout({ children }: LayoutProps<"/">) {
   return (
     <Surface>
-    <MastheadShell surface="Bank operations" sections={SECTIONS}>
+    <MastheadShell
+      account={{ organisation: "Access Bank, operations", email: "ops.desk@accessbank.ng" }}
+      surface="Bank operations" sections={SECTIONS}>
       <RouteTransition>{children}</RouteTransition>
     </MastheadShell>
     </Surface>
