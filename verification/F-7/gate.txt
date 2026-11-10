@@ -34,6 +34,11 @@ PASS  a confirmation rate below the project's own history is two figures and no 
 PASS  a bundle this surface exports verifies on /verify
 PASS  projects with no period in common say so rather than comparing nothing
 PASS  no household is identifiable at any granularity on the verifier surface
+PASS  the confirmation rate is a percentage a reader can read
+PASS  the watchlist states the closed period's own figures under its own label
+PASS  nothing on the verifier surface is marked adversely by colour
+PASS  every export format delivers the file it names, for every project
+PASS  a key is issued once and is not on the screen afterwards
 PASS  a refusal on the verifier surface carries no verdict either
 PASS  accessibility on /verifier
 PASS  keyboard reachability on /verifier
@@ -62,4 +67,4 @@ PASS  screenshot F-7/state-export-ready
 PASS  screenshot F-7/state-export-failed
 PASS  screenshot F-7/state-no-alerts-configured
 PASS  screenshot F-7/state-an-alert-fired
-64 passed, 0 failed in 75.4s
+69 passed, 0 failed in 82.1s

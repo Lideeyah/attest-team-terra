@@ -48,4 +48,4 @@ PASS  screenshot F-9/admin-registry
 PASS  screenshot F-9/admin-extraction
 PASS  screenshot F-9/admin-escalations
 PASS  screenshot F-9/admin-chain
-50 passed, 0 failed in 165.1s
+50 passed, 0 failed in 162.7s

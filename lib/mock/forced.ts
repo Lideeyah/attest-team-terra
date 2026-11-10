@@ -151,3 +151,16 @@ export function projectStatusFor(projectId: string, fallback: string): string {
 export function projectStatusOverrides(): Record<string, string> {
   return Object.fromEntries(statusOverrides);
 }
+
+/* Whether the operations console has nothing open. The fixture always carries
+   signals and cases, so the state the phase lists first is otherwise
+   unreachable. */
+let emptyOps = false;
+
+export function setOpsEmpty(value: boolean): void {
+  emptyOps = value;
+}
+
+export function opsEmpty(): boolean {
+  return emptyOps;
+}

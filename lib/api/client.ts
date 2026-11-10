@@ -38,6 +38,7 @@ import type {
   Tariff,
   Transfer,
   VerifierAlert,
+  VerifierKey,
   VerificationException,
 } from "@/lib/api/contract";
 
@@ -424,12 +425,14 @@ export const api = {
     request<{
       project: Project;
       attestations: Attestation[];
-      signalsByClass: Record<string, number>;
-      agentFlagRates: { agentId: string; flagRate: number }[];
+      /* A count, not a breakdown by class: which pattern the bank's
+         monitoring raised is evidence, and the published form is the count. */
+      signals: number;
+      agentFlagRates: { agentId: string; flagRate: number; enrolments: number }[];
       geography: GeographyBucket[];
     }>(`/api/verifier/projects/${id}`),
   compare: (ids: string[]) =>
-    request<{ projects: Project[]; comparablePeriods: string[] }>("/api/verifier/compare", {
+    request<{ projects: Project[]; comparablePeriods: string[]; unknown: string[] }>("/api/verifier/compare", {
       query: { ids: ids.join(",") },
     }),
   exportBundle: (
@@ -443,6 +446,9 @@ export const api = {
       url?: string;
       bundle?: DisclosureBundle;
     }>("/api/verifier/export", { method: "POST", body, idempotencyKey }),
+  verifierKeys: () => request<VerifierKey[]>("/api/verifier/keys"),
+  issueVerifierKey: (body: { label: string }, idempotencyKey: string) =>
+    request<VerifierKey>("/api/verifier/keys", { method: "POST", body, idempotencyKey }),
   alerts: () => request<VerifierAlert[]>("/api/verifier/alerts"),
   createAlert: (
     body: { projectId: string; condition: string; threshold: number },

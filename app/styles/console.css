@@ -628,3 +628,44 @@
     gap: calc(var(--stack) / 3);
   }
 }
+
+/* The graph's skeleton is the graph's own height, so the page does not jump
+   when the drawing arrives. */
+.graph-skeleton {
+  aspect-ratio: 1200 / 760;
+  width: 100%;
+}
+
+/* The movement log beside the drawing. The drawing shows the shape; this is
+   the evidence, and it is a log rather than a composition. */
+.graph-log {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface-sunken);
+}
+
+.graph-log-row {
+  display: grid;
+  grid-template-columns: 150px minmax(240px, 1fr) 200px 110px;
+  gap: var(--stack);
+  align-items: baseline;
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+  border-bottom: var(--hairline) solid var(--rule-hairline);
+  border-left: var(--edge-strip) solid transparent;
+}
+
+/* A second hop is the money moving again, which is the part that is hard to
+   explain, so it carries the edge. */
+.graph-log-row[data-log-hop="2"] {
+  border-left-color: var(--stamp-blocked-ink);
+}
+
+@media (max-width: 1080px) {
+  .graph-log-row {
+    grid-template-columns: 1fr;
+    gap: calc(var(--stack) / 3);
+  }
+}

@@ -6,15 +6,15 @@ Ten phases, F-0 through F-9's cluster-free portion. Every gate green:
 
 | Phase | | Assertions |
 |---|---|---|
-| F-0 | Foundation | 34 |
+| F-0 | Foundation | 35 |
 | F-1 | Mock server, typed client, state control | 42 |
 | F-2 | Landing page | 45 |
 | F-3 | Public surfaces | 49 |
 | F-4 | Role selection, auth, onboarding | 86 |
 | F-5 | Developer console | 112 |
 | F-6 | Field app | 44 |
-| F-7 | Verifier portal | 64 |
-| F-8 | Bank operations | 44 |
+| F-7 | Verifier portal | 69 |
+| F-8 | Bank operations | 54 |
 | F-9 | Platform admin and the sweeps | 50 |
 
 Tests 12 of 12, lint clean, and the demo path runs green ten times
@@ -34,15 +34,17 @@ refused, and a record that has since been corrected says so. The gate now asks
 that question four ways, and F-5's independent verification could not forge a
 bundle.
 
-**2. Three phases passed their gates and failed their verifications.** F-3,
-F-4, F-5 and F-6 each went green and were then failed by a fresh pair of eyes:
-fourteen findings on F-4, thirty-one on F-5, fourteen on F-6. All are fixed,
-and the gates that missed them grew — F-4 from 51 assertions to 86, F-5 from
-99 to 112, F-6 from 37 to 44. The pattern in what they caught is worth
-knowing: the gates asserted what a screen does and almost never what it leaves
-out, so a figure that disagreed with another screen, a state that could not be
-reached, or a claim the product made about itself all passed. **F-7 and F-8
-have not been verified yet.**
+**2. Every phase that has been verified passed its gate and then failed the
+verification.** F-3, F-4, F-5, F-6, F-7 and F-8: fourteen findings on F-4,
+thirty-one on F-5, fourteen on F-6, and both of the last two failed on their
+exit checklists. All are fixed, and the gates that missed them grew — F-4 from
+51 assertions to 86, F-5 from 99 to 112, F-6 from 37 to 44, F-7 from 64 to 69,
+F-8 from 44 to 54. The pattern is consistent and worth knowing: a gate asserts
+what a screen does and almost never what it leaves out, so a figure that
+disagreed with another screen, a state that could not be reached, and a claim
+the product made about itself all passed. The three worst things found were a
+confirmation rate rendered a hundred times too small, a console reporting
+actions that never happened, and a 403 rendered as "no case is open".
 
 **3. Nineteen endpoints this lane needs that backend section 4.3 does not
 have.** The console's nine, the field app's identity check, the verifier's
@@ -1469,3 +1471,96 @@ flaky, so it is the one test that runs ten times.
 listed in one place for the backend lane: the console's nine, the field app's
 one, the verifier's export shape, the platform admin's five, and the auth
 resend. Each is named in `lib/api/contract.ts` with the reason it exists.
+
+---
+
+## F-7 and F-8 — what their verifications found
+
+Both phases went green and both were failed by fresh eyes, which is now the
+pattern on every phase that has been verified. The gates grew: F-7 from 64
+assertions to 69, F-8 from 44 to 54.
+
+### F-7, the verifier portal
+
+**The copy rule held and the arithmetic did not.** A verdict sweep across
+every screen, every state, titles and metadata found nothing; the prose is
+doing what the phase asked. Three figures were wrong.
+
+1. **The confirmation rate was rendered a hundred times too small on three
+   screens.** The contract returns a fraction, the public page multiplies, and
+   the verifier surface did not: 0.72 printed as "1%". Worse than a typo,
+   because the comparison then showed one project at "0% confirmed" beside two
+   at "1%" — exactly the verdict-by-implication the phase exists to prevent —
+   and the "materially below its own history" state could never fire. There is
+   one helper for the unit now and every screen uses it.
+2. **The watchlist printed the open period's figures under the closed
+   period's label.** Ekuri read "Q3 2026 · 1,369 of 2,090 households paid";
+   Q3 closed at 1,611 of 1,904. The register row carries the figures for the
+   period it names now.
+3. **The aggregate agent flag rate was an unweighted mean given a denominator
+   it was never computed against** — an agent who enrolled nobody counted the
+   same as one who enrolled seven hundred. It is weighted, and stated as
+   flagged enrolments of enrolments.
+
+**And four places let a verdict in by colour**: an edge on any project with an
+open report, a clay notice for projects that share no period, the strongest
+adverse colour for an administrative status, and a flagged stamp on a
+correction. A correction is the record working as designed. All four are
+neutral now, and the gate walks the surface looking for an adverse colour
+rather than only for adverse words.
+
+Also fixed: API keys, which the phase lists and which did not exist; saved
+searches, the same; the CSV format, which returned the attestation record
+under a `.csv` name and 404ed for three of four projects; an export failure
+that discarded the server's reason; loading skeletons at the real height; a
+project detail that measured a shortfall against a commitment it never stated;
+a dispute basis that published one household's settlement session and exact
+amount on a surface whose rule is no household at any granularity; `?ids=`
+accepting a project twice and dropping unknown ones silently; a 200 answer for
+a project that does not exist; and the `noPii` copy, which claimed a property
+of the contract the contract does not have.
+
+### F-8, the bank operations console
+
+**The console asserted things that were not true**, which on a console about
+suspected fraud is the whole problem.
+
+1. **A case action claimed an outcome that never happened.** Clicking "Clear"
+   showed "Recorded — the case closes as unsubstantiated" while the card above
+   it still read "Being investigated": the mock never mutated the case and the
+   screen never re-read it. Actions now change the case, the screen re-reads
+   it, and the server validates the action and requires the note.
+2. **The note the dialog insisted on was discarded.** It is on the case record
+   now, and an action without one is refused.
+3. **A refused read was rendered as a zero.** With `/api/ops/cases` forbidden,
+   the home screen read "Cases open 0 of 0" and "No case is open". It says the
+   read was refused and that it does not know what is open.
+4. **The reconciliation screen printed a balance it contradicted on the same
+   line** — ₦90,010.86 unaccounted for beside a balance of ₦0.00, because the
+   subtraction clamped at zero. A balance keeps its sign now and an overspent
+   period says so.
+
+**The graph.** It held 60fps while panned, and the colour rule held. But its
+money total belonged to neither the sample drawn nor the population named; its
+legend called 220 drawn wallets "220 of 400 **paid**"; the timing and amounts
+the phase asks for were in the payload and on no screen; tapping an account
+did nothing, because the surface captured the pointer; the households were
+labelled with participants' names, on a console whose own copy says it does
+not describe people; and the same concentration graph was served for every
+signal, including a shared-device one whose account count the page printed
+beside it. All fixed, and there is a movement log beside the drawing now —
+each hop, what it carried, how long after settlement — which is what the
+foundation asked for and what makes the drawing evidence rather than a shape.
+
+**Dead states:** "nothing open", a substantiated case, a closed case and a
+period awaiting settlement data were all unreachable, and four more were
+reached by falsifying the fixture — `?state=attached` rewrote every signal's
+case id, putting a Delta case on an Ekuri signal. The fixture carries the
+states now, there is a dev control for an empty console, and nothing is
+arranged by making the data say something untrue.
+
+**Also:** the ops and admin shells said you were signed in as the carbon
+developer; every detail route in the product now carries the back control spec
+patch item 12 asks for; raw record identifiers and action codes are no longer
+reader-facing text; an unresolved exception reads as unresolved rather than as
+unknown; and the plurals hold.

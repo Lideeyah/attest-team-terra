@@ -1,5 +1,6 @@
 import {
   forceCode,
+  setOpsEmpty,
   setPeriod,
   setProjectStatus,
   setRegisterSize,
@@ -19,6 +20,7 @@ const clear = async () => {
   await setProjectStatus("proj_ekuri", null);
   await setRosterSize("proj_ekuri", null);
   await setPeriod("proj_ekuri", { closesOn: null, state: null });
+  await setOpsEmpty(false);
 };
 
 export const STATE_INDEX: { path: string; states: State[] }[] = [
@@ -172,6 +174,8 @@ export const STATE_INDEX: { path: string; states: State[] }[] = [
     path: "/ops · bank operations",
     states: [
       { label: "This period", href: "/ops", arrange: clear },
+      { label: "Nothing open", href: "/ops", arrange: async () => { await clear(); await setOpsEmpty(true); } },
+      { label: "The cases could not be read", href: "/ops", arrange: async () => { await clear(); await forceCode("FORBIDDEN", "/api/ops/cases", false); } },
       { label: "Signals", href: "/ops/signals", arrange: clear },
       { label: "Signals, one class", href: "/ops/signals?class=velocity", arrange: clear },
       { label: "Signals, looked at first", href: "/ops/signals?severity=high", arrange: clear },
@@ -183,7 +187,10 @@ export const STATE_INDEX: { path: string; states: State[] }[] = [
       { label: "Movement entirely ordinary", href: "/ops/signals/sig_0231?graph=ordinary", arrange: clear },
       { label: "Cases", href: "/ops/cases", arrange: clear },
       { label: "An action awaiting authorisation", href: "/ops/cases?action=pending", arrange: clear },
-      { label: "An action refused", href: "/ops/cases?action=refused", arrange: clear },
+      { label: "An action refused", href: "/ops/cases", arrange: async () => { await clear(); await forceCode("FORBIDDEN", "/action", false); } },
+      { label: "A case substantiated", href: "/ops/cases", arrange: clear },
+      { label: "A case closed", href: "/ops/cases", arrange: clear },
+      { label: "A period awaiting settlement data", href: "/ops/reconciliation", arrange: clear },
       { label: "Verification exceptions", href: "/ops/exceptions", arrange: clear },
       { label: "No exception open", href: "/ops/exceptions?state=none", arrange: clear },
       { label: "Reconciliation", href: "/ops/reconciliation", arrange: clear },

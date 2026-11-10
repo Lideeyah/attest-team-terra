@@ -1266,3 +1266,12 @@ th[aria-sort] .sort-caret {
   align-items: baseline;
   gap: var(--stack);
 }
+
+/* The back control every detail route carries, top-left of the content
+   column and labelled with where it goes rather than with an arrow alone.
+   Spec patch 01, item 12. */
+.back-link {
+  justify-self: start;
+  align-self: start;
+  padding-inline-start: 0;
+}

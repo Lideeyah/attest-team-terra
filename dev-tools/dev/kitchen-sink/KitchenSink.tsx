@@ -41,7 +41,6 @@ import {
   formatCount,
   formatCoverage,
   formatNaira,
-  formatNairaCompact,
   formatTimestamp,
 } from "@/lib/record";
 
@@ -460,9 +459,9 @@ function Overlays() {
       >
         <div className="stack">
           <p className="prose">
-            Commitment requires {formatNairaCompact(OPEN_PERIOD.required)}. You
-            are funding {formatNairaCompact(OPEN_RUN.fundingAmount)}. Shortfall{" "}
-            {formatNairaCompact(OPEN_PERIOD.shortfall)}, recorded in this
+            Commitment requires {formatNaira(OPEN_PERIOD.required)}. You
+            are funding {formatNaira(OPEN_RUN.fundingAmount)}. Shortfall{" "}
+            {formatNaira(OPEN_PERIOD.shortfall)}, recorded in this
             period&rsquo;s attestation.
           </p>
           <p className="prose-muted">
@@ -838,9 +837,9 @@ export function KitchenSink() {
               next period.
             </Notice>
             <Notice tone="flagged" title="Shortfall">
-              Commitment requires {formatNairaCompact(OPEN_PERIOD.required)}. You
-              are funding {formatNairaCompact(OPEN_RUN.fundingAmount)}. Shortfall{" "}
-              {formatNairaCompact(OPEN_PERIOD.shortfall)}, recorded in this
+              Commitment requires {formatNaira(OPEN_PERIOD.required)}. You
+              are funding {formatNaira(OPEN_RUN.fundingAmount)}. Shortfall{" "}
+              {formatNaira(OPEN_PERIOD.shortfall)}, recorded in this
               period&rsquo;s attestation.
             </Notice>
             <Notice tone="blocked" title="Duplicate identity">

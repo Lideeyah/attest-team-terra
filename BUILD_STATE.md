@@ -13,10 +13,10 @@ Phase complete: F-5 — the developer console. Gate green, 112 of 112, verified
 and corrected after a verification that failed it.
 Phase complete: F-6 — the field app. Gate green, 44 of 44, verified and
 corrected after a verification that failed it.
-Phase complete: F-7 — the verifier portal. Gate green, 64 of 64, awaiting
-independent verification.
-Phase complete: F-8 — the bank operations console. Gate green, 44 of 44,
-awaiting independent verification.
+Phase complete: F-7 — the verifier portal. Gate green, 69 of 69, verified and
+corrected after a verification that failed it.
+Phase complete: F-8 — the bank operations console. Gate green, 54 of 54,
+verified and corrected after a verification that failed it.
 Phase complete: F-9's cluster-free portion — platform admin, the motion, state,
 copy and accessibility sweeps, the hardening checks and the demo path. Gate
 green, 50 of 50.

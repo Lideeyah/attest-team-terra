@@ -3,7 +3,7 @@ import { DeveloperShell } from "@/components/shells/DeveloperShell";
 import { Figure } from "@/components/Figure";
 import { Rule } from "@/components/Rule";
 import { OPEN_PERIOD, PROJECT } from "@/lib/sample";
-import { formatCoverage, formatCount, formatNairaCompact } from "@/lib/record";
+import { formatCoverage, formatCount, formatNaira } from "@/lib/record";
 
 export default function DeveloperShellPreview() {
   return (
@@ -40,8 +40,8 @@ export default function DeveloperShellPreview() {
           <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>
             <Figure
               label="Shortfall"
-              value={formatNairaCompact(OPEN_PERIOD.shortfall)}
-              denominator={`of ${formatNairaCompact(OPEN_PERIOD.required)} required`}
+              value={formatNaira(OPEN_PERIOD.shortfall)}
+              denominator={`of ${formatNaira(OPEN_PERIOD.required)} required`}
             />
           </div>
         </div>

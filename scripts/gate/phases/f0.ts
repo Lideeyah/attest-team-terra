@@ -97,6 +97,17 @@ export async function f0(): Promise<void> {
     OUTSIDE_TOKENS,
     [...TOKEN_FILE, "app/styles/components.css", "app/styles/base.css"],
   );
+  /* Spec patch 01 item 10: money is never abbreviated where a figure is
+     being audited, and the one exception is a chart axis label. The component
+     reference counts: it is where every surface was built from. */
+  grepAbsent(
+    "money is not abbreviated outside the chart axis",
+    /formatNairaCompact\(/,
+    ["app/**/*.tsx", "components/**/*.tsx", "dev-tools/**/*.tsx"],
+    /* The chart component is where an axis label would use it, and would be
+       the one exclusion. It does not today: its axis is a count. */
+    ["components/CoverageChart.tsx"],
+  );
   grepAbsent(
     "no rounded utility class",
     /className="[^"]*\brounded(-[a-z0-9]+)?\b/,

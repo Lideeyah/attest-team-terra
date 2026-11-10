@@ -447,6 +447,12 @@ export type RegisterRow = {
   enrolled: number;
   paid: number;
   lastClosedPeriod: string | null;
+  /** The figures for the period named above. `paid` and `enrolled` are the
+      project's current ones, which belong to the open period; printing those
+      under a closed period's label states the wrong figures for it. */
+  lastClosedPaid: number;
+  lastClosedEnrolled: number;
+  lastClosedConfirmationRate: number;
   openDisputes: number;
   status: ProjectStatus;
 };
@@ -563,6 +569,15 @@ export type ExtractionReview = {
   page: number;
   /** Set once a reviewer has decided; the extraction stays either way. */
   decision: { at: string; by: string; accepted: boolean; corrected: string | null } | null;
+};
+
+export type VerifierKey = {
+  id: string;
+  label: string;
+  prefix: string;
+  createdAt: string;
+  /** Returned once, at issue, and never again. */
+  secret: string | null;
 };
 
 export type ChainCheck = {

@@ -42,4 +42,4 @@ PASS  screenshot F-6/field-enrol
 PASS  screenshot F-6/field-queue
 PASS  screenshot F-6/field-me
 PASS  screenshot F-6/field-enrolment-enr_000001
-44 passed, 0 failed in 95.6s
+44 passed, 0 failed in 94.7s

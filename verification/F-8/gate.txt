@@ -16,6 +16,16 @@ PASS  the graph holds 60fps while it is panned
 PASS  a sampled graph says it is sampled, and says of how many
 PASS  the signals queue describes accounts and patterns, not people
 PASS  an action this account may not take is refused and says so
+PASS  an action changes the case it was taken on
+PASS  the note the action required is on the case record
+PASS  an action that is not an action, and one with no reason, are both refused
+PASS  a read that was refused is said to be refused, not counted as zero
+PASS  every reconciliation row's balance is its own arithmetic
+PASS  each account's amount is what the drawing shows reaching it
+PASS  the legend says how many wallets are drawn, of how many the period paid
+PASS  the movements are on the screen with their amounts and their timing
+PASS  a signal's graph is about the accounts that signal names
+PASS  nothing open is reachable, and says so
 PASS  accessibility on /ops
 PASS  keyboard reachability on /ops
 PASS  accessibility on /ops/signals
@@ -42,4 +52,4 @@ PASS  screenshot F-8/state-a-period-not-yet-closed
 PASS  screenshot F-8/state-the-graph-still-loading
 PASS  screenshot F-8/state-no-onward-movement-yet
 PASS  screenshot F-8/state-onward-movement-entirely-ordinary
-44 passed, 0 failed in 64.8s
+54 passed, 0 failed in 74.5s

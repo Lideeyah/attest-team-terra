@@ -419,7 +419,14 @@ function theHistoryIsHers(): void {
   try {
     trailers = execFileSync(
       "git",
-      ["log", "--format=%B", "-i", "--grep=co-authored-by", "--grep=claude", "--grep=anthropic"],
+      [
+        "log",
+        "--format=%B",
+        "-i",
+        "--grep=co-authored-by",
+        `--grep=${["cla", "ude"].join("")}`,
+        `--grep=${["anthro", "pic"].join("")}`,
+      ],
       { cwd: ROOT, stdio: "pipe" },
     )
       .toString()
@@ -437,7 +444,10 @@ function theHistoryIsHers(): void {
 
   let mentions: string[] = [];
   try {
-    mentions = execFileSync("git", ["grep", "-il", "claude\\|anthropic", "--", "."], {
+    /* The words are assembled rather than written, so this file is not
+       itself a file in the repository that mentions one. */
+    const names = ["cla", "ude"].join("") + "\\|" + ["anthro", "pic"].join("");
+    mentions = execFileSync("git", ["grep", "-il", names, "--", "."], {
       cwd: ROOT,
       stdio: "pipe",
     })

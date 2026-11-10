@@ -9,6 +9,7 @@ PASS  no hex colour outside the token stylesheet
 PASS  no millisecond literal outside the token stylesheet
 PASS  no cubic-bezier outside the token stylesheet
 PASS  no border-radius outside the token stylesheet and the radio punch
+PASS  money is not abbreviated outside the chart axis
 PASS  no rounded utility class
 PASS  no spring easing anywhere
 PASS  no shadow outside the modal scrim
@@ -32,4 +33,4 @@ PASS  screenshot F-0/shell-developer
 PASS  screenshot F-0/shell-field
 PASS  screenshot F-0/shell-masthead
 PASS  screenshot F-0/public-masthead
-34 passed, 0 failed in 30.3s
+35 passed, 0 failed in 29.4s

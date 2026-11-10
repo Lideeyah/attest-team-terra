@@ -96,3 +96,13 @@ export async function setPeriod(
     body: JSON.stringify({ projectId, ...change }),
   });
 }
+
+/** Whether the operations console has anything open, so "nothing open" is a
+    state somebody can click to. */
+export async function setOpsEmpty(empty: boolean): Promise<void> {
+  await fetch("/api/dev/ops-empty", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ empty }),
+  });
+}

@@ -63,6 +63,9 @@ export default async function DisputePage({
   return (
     <div className="console-page reading stack-lg">
       <header className="stack">
+        <Link href="/app/disputes" className="btn-quiet btn-sm back-link" prefetch={false}>
+          ← Reports
+        </Link>
         <p className="eyebrow">{dispute.id}</p>
         <h1 className="h2-display">
           {dispute.category === "not-received"

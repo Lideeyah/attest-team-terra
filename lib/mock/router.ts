@@ -1,6 +1,7 @@
 import { NOTIFICATION_EVENTS } from "@/lib/api/contract";
 import type {
   ApiKey,
+  VerifierKey,
   ChainCheck,
   ExtractionReview,
   OnboardingReview,
@@ -28,6 +29,7 @@ import { ERROR_COPY } from "@/lib/mock/errors";
 import { maskPhone } from "@/lib/record";
 import {
   readForced,
+  opsEmpty,
   projectStatusFor,
   registerSizeFor,
   rosterSizeFor,
@@ -224,7 +226,11 @@ const REGISTRY_RECORD: RegistryRecord = {
 };
 
 function registerRows(): RegisterRow[] {
-  const seeded = PROJECTS.map((project) => ({
+  const seeded = PROJECTS.map((project) => {
+    /* The period the row names, and its own figures. */
+    const closed = project.periods.filter((period) => period.state !== "open");
+    const last = closed.length > 0 ? closed[closed.length - 1] : null;
+    return {
     id: project.id,
     name: project.name,
     developerName: project.developerName,
@@ -235,9 +241,13 @@ function registerRows(): RegisterRow[] {
     enrolled: project.enrolled,
     paid: project.paid,
     lastClosedPeriod: project.lastClosedPeriod,
+    lastClosedPaid: last?.paid ?? 0,
+    lastClosedEnrolled: last?.enrolled ?? 0,
+    lastClosedConfirmationRate: last?.confirmationRate ?? 0,
     openDisputes: project.openDisputes,
     status: projectStatusFor(project.id, project.status) as RegisterRow["status"],
-  }));
+    };
+  });
 
   const total = registerSizeFor(seeded.length);
   if (total === 0) {
@@ -551,6 +561,23 @@ const enrolled = new Map<
   string,
   { clientUuid: string; accepted: boolean; code: ErrorCode | null; enrolmentId: string | null }
 >();
+
+/* The four actions this console may take on a case, and one more the desk
+   takes when it has decided. Anything else is not an action. */
+/* The reader's own watchlist, which holds across requests. */
+const watchlist = new Set<string>(["proj_ekuri", "proj_hadejia"]);
+
+/* The keys this reader has issued. Only the prefix is kept, as everywhere
+   else a key is issued in this product. */
+const verifierKeys: VerifierKey[] = [];
+
+const CASE_ACTIONS = [
+  "freeze",
+  "documentation",
+  "escalate",
+  "clear",
+  "substantiate",
+] as const;
 
 const exclusionsByRun = new Map<string, Set<string>>();
 
@@ -1510,11 +1537,30 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/verifier/watchlist",
     handler: ({ url }) => {
-      const { page, meta } = paginate(registerRows().slice(0, 2), url);
+      const rows = registerRows().filter((row) => watchlist.has(row.id));
+      const { page, meta } = paginate(rows, url);
       return success(page, meta);
     },
   },
-  { method: "POST", pattern: "/api/verifier/watchlist", handler: ({ body }) => success({ projectId: String(body.projectId ?? ""), watched: true }) },
+  {
+    method: "POST",
+    pattern: "/api/verifier/watchlist",
+    handler: ({ body }) => {
+      const projectId = String(body.projectId ?? "");
+      if (!projectById(projectId)) {
+        return notFound();
+      }
+      /* Watching is the reader's own bookmark, and it holds: a toggle that
+         forgets on reload is a toggle that lies. */
+      const watched = !watchlist.has(projectId);
+      if (watched) {
+        watchlist.add(projectId);
+      } else {
+        watchlist.delete(projectId);
+      }
+      return success({ projectId, watched });
+    },
+  },
   {
     method: "GET",
     pattern: "/api/verifier/projects/:id",
@@ -1530,14 +1576,19 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       return success({
         project,
         attestations: attestationsFor(project.id),
-        signalsByClass: SIGNALS.filter((signal) => signal.projectId === project.id).reduce<
-          Record<string, number>
-        >((counts, signal) => {
-          counts[signal.class] = (counts[signal.class] ?? 0) + 1;
-          return counts;
-        }, {}),
+        /* A count, not a breakdown. Which patterns the bank's monitoring
+           raised is the substance of the evidence rather than its published
+           form, and the rule for this surface is the count. */
+        signals: SIGNALS.filter((signal) => signal.projectId === project.id).length,
+        /* With what each agent enrolled, so a rate across them can be
+           weighted rather than averaged as though every agent enrolled the
+           same number. */
         agentFlagRates: AGENTS.filter((agent) => agent.projectId === project.id).map(
-          (agent) => ({ agentId: agent.id, flagRate: agent.flagRate }),
+          (agent) => ({
+            agentId: agent.id,
+            flagRate: agent.flagRate,
+            enrolments: agent.enrolments,
+          }),
         ),
         geography: geography(project.id),
       });
@@ -1547,10 +1598,14 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/verifier/compare",
     handler: ({ url }) => {
-      const ids = (url.searchParams.get("ids") ?? "").split(",").filter(Boolean);
+      /* One of each, and what was asked for but does not exist is named
+         rather than dropped: a column quietly missing is a comparison the
+         reader thinks they are making and are not. */
+      const ids = [...new Set((url.searchParams.get("ids") ?? "").split(",").filter(Boolean))];
       const projects = ids
         .map((id) => projectById(id))
         .filter((project) => project !== undefined);
+      const unknown = ids.filter((id) => !projectById(id));
       const periods = projects.map((project) =>
         project.periods.filter((period) => period.state !== "open").map((period) => period.period),
       );
@@ -1558,7 +1613,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         (common, list) => common.filter((period) => list.includes(period)),
         periods[0] ?? [],
       );
-      return success({ projects, comparablePeriods: shared });
+      return success({ projects, comparablePeriods: shared, unknown });
     },
   },
   {
@@ -1608,16 +1663,56 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         );
       }
 
+      const project = projectById(projectId);
+      const closed = project?.periods.find((candidate) => candidate.period === period);
+      if (!project || !closed?.attestationId) {
+        return failure("NOT_FOUND", "period");
+      }
       return success(
         {
           exportId: "exp_0041",
           format,
           state: "ready" as const,
-          url: `/attestation/${projectId === "proj_ekuri" ? "att_ekuri_2026q3" : projectId}/download`,
+          /* Each format its own file: the record as it is published, or the
+             period's figures as a table. Two formats behind one URL meant
+             the CSV was the record with a different label on it. */
+          url:
+            format === "csv"
+              ? `/verifier/export/${closed.attestationId}.csv`
+              : `/attestation/${closed.attestationId}/download`,
         },
         null,
         "Export ready",
       );
+    },
+  },
+  {
+    /* Not in backend 4.3; see BUILD_LOG.md. The phase lists API keys as one
+       of the three things the export screen is for. */
+    method: "POST",
+    pattern: "/api/verifier/keys",
+    handler: ({ body }) => {
+      const label = String(body.label ?? "").trim();
+      if (label.length === 0) {
+        return failure("INVALID_REQUEST", "label");
+      }
+      const key: VerifierKey = {
+        id: `vk_${String(verifierKeys.length + 1).padStart(4, "0")}`,
+        label,
+        prefix: "att_read",
+        createdAt: new Date().toISOString(),
+        secret: `att_read_${randomHex(32)}`,
+      };
+      verifierKeys.push({ ...key, secret: null });
+      return success(key, null, "Key issued. It is shown once.");
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/api/verifier/keys",
+    handler: ({ url }) => {
+      const { page, meta } = paginate(verifierKeys, url);
+      return success(page, meta);
     },
   },
   {
@@ -1660,7 +1755,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/ops/signals",
     handler: ({ url }) => {
-      let rows = SIGNALS;
+      let rows = opsEmpty() ? [] : SIGNALS;
       const signalClass = url.searchParams.get("class");
       const severity = url.searchParams.get("severity");
       if (signalClass) {
@@ -1687,6 +1782,10 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     handler: ({ segments }) => success(accountGraph(segments[3])),
   },
   { method: "GET", pattern: "/api/ops/cases", handler: ({ url }) => {
+    if (opsEmpty()) {
+      const { page, meta } = paginate([], url);
+      return success(page, meta);
+    }
     const { page, meta } = paginate(CASES, url);
     return success(page, meta);
   } },
@@ -1698,25 +1797,45 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       if (!openCase) {
         return notFound();
       }
-      return success(
-        {
-          ...openCase,
-          actions: [
-            ...openCase.actions,
-            {
-              at: "2026-11-09T16:20:00Z",
-              action: String(body.action ?? ""),
-              note: String(body.note ?? ""),
-              by: "Operations, Access Bank",
-            },
-          ],
-        },
-        null,
-        "Action recorded",
-      );
+      if (openCase.state === "closed") {
+        return failure("FORBIDDEN", "id");
+      }
+
+      const action = String(body.action ?? "");
+      if (!CASE_ACTIONS.includes(action as (typeof CASE_ACTIONS)[number])) {
+        return failure("INVALID_REQUEST", "action");
+      }
+      /* The note is what the case record carries afterwards, so it is
+         required here rather than only in the dialog that asks for it. */
+      const note = String(body.note ?? "").trim();
+      if (note.length < 12) {
+        return failure("INVALID_REQUEST", "note");
+      }
+
+      const at = new Date().toISOString();
+      openCase.actions = [
+        ...openCase.actions,
+        { at, action, note, by: "Operations, Access Bank" },
+      ];
+      /* What each action does to the case. Freezing and escalation are the
+         financial crime desk's to authorise, so they move the case to
+         investigating and no further; clearing and substantiating end it. */
+      if (action === "clear") {
+        openCase.state = "unsubstantiated";
+      } else if (action === "substantiate") {
+        openCase.state = "substantiated";
+      } else if (openCase.state === "open") {
+        openCase.state = "investigating";
+      }
+
+      return success(openCase, null, "Action recorded");
     },
   },
   { method: "GET", pattern: "/api/ops/exceptions", handler: ({ url }) => {
+    if (opsEmpty()) {
+      const { page, meta } = paginate([], url);
+      return success(page, meta);
+    }
     const { page, meta } = paginate(EXCEPTIONS, url);
     return success(page, meta);
   } },
@@ -1724,7 +1843,17 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/ops/reconciliation",
     handler: ({ url }) => {
-      const { page, meta } = paginate(RECONCILIATIONS, url);
+      /* With nothing open, every period reconciles: "nothing open" is the
+         state of the whole console, not of three of its four screens. */
+      const rows = opsEmpty()
+        ? RECONCILIATIONS.map((row) => ({
+            ...row,
+            state: "reconciled" as const,
+            delta: "0.00",
+            candidateCauses: [],
+          }))
+        : RECONCILIATIONS;
+      const { page, meta } = paginate(rows, url);
       return success(page, meta);
     },
   },

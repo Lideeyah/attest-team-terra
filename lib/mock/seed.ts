@@ -107,6 +107,20 @@ export function multiplyAmount(value: Amount, factor: number): Amount {
   return naira(Math.round(minorUnits * factor) / 100);
 }
 
+/* A difference that keeps its sign. `subtractAmounts` clamps at zero, which
+   is right for a shortfall — you cannot be owed less than nothing — and wrong
+   for a balance, where spending more than arrived is exactly the fact the
+   reconciliation screen exists to show. */
+export function differenceAmounts(left: Amount, right: Amount): Amount {
+  const toMinor = (value: Amount) => {
+    const [major, minor = "00"] = value.replace("-", "").split(".");
+    const magnitude = Number(major) * 100 + Number(minor.padEnd(2, "0"));
+    return value.startsWith("-") ? -magnitude : magnitude;
+  };
+  const difference = toMinor(left) - toMinor(right);
+  return `${difference < 0 ? "-" : ""}${naira(Math.abs(difference) / 100)}`;
+}
+
 export function subtractAmounts(left: Amount, right: Amount): Amount {
   const toMinor = (value: Amount) => {
     const [major, minor = "00"] = value.split(".");
@@ -1321,19 +1335,32 @@ export const SIGNALS: Signal[] = [
 ];
 
 export function accountGraph(signalId: string): AccountGraph {
-  const population = signalId === "sig_0231" ? 400 : 64;
+  /* The graph is the signal's own: its account count, and the shape its
+     class describes. A concentration graph served for a shared-device signal
+     is a drawing about something that was never alleged. */
+  const signal = SIGNALS.find((candidate) => candidate.id === signalId);
+  const population = signal?.accounts ?? (signalId === "sig_0231" ? 400 : 64);
   const sampled = population > 220;
   const householdCount = sampled ? 220 : population;
   const nodes: AccountGraph["nodes"] = [];
   const edges: AccountGraph["edges"] = [];
 
-  const concentrators = ["acc_concentrator_1", "acc_concentrator_2", "acc_concentrator_3"];
+  /* A concentration signal has accounts the money moved into; the other
+     classes describe a pattern among the households themselves. */
+  const concentratorCount = signal?.class === "onward-concentration" || !signal ? 3 : 1;
+  const concentrators = Array.from(
+    { length: concentratorCount },
+    (_, index) => `acc_concentrator_${index + 1}`,
+  );
+  /* Each concentrator's amount is filled in below, from the edges that
+     actually reach it: a figure computed from the population while the
+     drawing shows a sample is a figure about neither. */
   concentrators.forEach((id, index) => {
     nodes.push({
       id,
-      label: `Concentrating account ${index + 1}`,
+      label: `Receiving account ${index + 1}`,
       kind: "concentrator",
-      amount: multiplyAmount("21400.00", Math.round(population / 3)),
+      amount: "0.00",
     });
   });
 
@@ -1341,25 +1368,21 @@ export function accountGraph(signalId: string): AccountGraph {
   intermediaries.forEach((id, index) => {
     nodes.push({
       id,
-      label: `Intermediary account ${index + 1}`,
+      label: `Account it passed through ${index + 1}`,
       kind: "intermediary",
-      amount: multiplyAmount("21400.00", Math.round(population / 6)),
-    });
-    edges.push({
-      from: id,
-      to: concentrators[index % concentrators.length],
-      amount: multiplyAmount("21400.00", Math.round(population / 6)),
-      hop: 2,
-      minutesAfterSettlement: 180 + index * 40,
+      amount: "0.00",
     });
   });
 
   for (let index = 0; index < householdCount; index += 1) {
-    const participant = participantAt("proj_delta", index);
     const id = `acc_household_${index}`;
     nodes.push({
       id,
-      label: participant.name,
+      /* An account, not a person. This console is about where money went,
+         and a drawing that pins two hundred names to a fraud hypothesis is a
+         drawing about people. The project's own console can say who the
+         account belongs to; this one does not need to. */
+      label: `Household wallet ${String(index + 1).padStart(3, "0")}`,
       kind: "household",
       amount: "21400.00",
       });
@@ -1373,6 +1396,35 @@ export function accountGraph(signalId: string): AccountGraph {
       hop: 1,
       minutesAfterSettlement: 4 + (index % 2880),
     });
+  }
+
+  /* What passed through each intermediary goes on to a receiving account, on
+     the second hop, and carries exactly what reached it. */
+  intermediaries.forEach((id, index) => {
+    const through = edges
+      .filter((edge) => edge.to === id)
+      .reduce((sum, edge) => addAmounts(sum, edge.amount), "0.00");
+    if (through === "0.00") {
+      return;
+    }
+    edges.push({
+      from: id,
+      to: concentrators[index % concentrators.length],
+      amount: through,
+      hop: 2,
+      minutesAfterSettlement: 180 + index * 40,
+    });
+  });
+
+  /* Every account's amount is the sum of what reached it, so the figures on
+     the screen add up to the lines on it. */
+  for (const node of nodes) {
+    if (node.kind === "household") {
+      continue;
+    }
+    node.amount = edges
+      .filter((edge) => edge.to === node.id)
+      .reduce((sum, edge) => addAmounts(sum, edge.amount), "0.00");
   }
 
   return {
@@ -1435,6 +1487,52 @@ export const CASES: Case[] = [
       },
     ],
   },
+  {
+    id: "case_0204",
+    signalIds: ["sig_0234"],
+    projectId: "proj_ekuri",
+    projectName: "Ekuri Community Forest Carbon Project",
+    severity: "medium",
+    state: "substantiated",
+    openedAt: "2026-09-14T09:00:00Z",
+    actions: [
+      {
+        at: "2026-09-14T09:40:00Z",
+        action: "documentation",
+        note: "Enrolment evidence requested for the eleven wallets opened on one device.",
+        by: "Operations, Access Bank",
+      },
+      {
+        at: "2026-09-29T11:05:00Z",
+        action: "substantiate",
+        note: "Eleven enrolments share a device and an onward account. The project has acknowledged them and is removing them from the roster with a reason on each.",
+        by: "Financial crime desk, Access Bank",
+      },
+    ],
+  },
+  {
+    id: "case_0177",
+    signalIds: ["sig_0235"],
+    projectId: "proj_hadejia",
+    projectName: "Hadejia Wetlands Restoration",
+    severity: "low",
+    state: "closed",
+    openedAt: "2026-07-02T08:30:00Z",
+    actions: [
+      {
+        at: "2026-07-02T10:00:00Z",
+        action: "documentation",
+        note: "Asked for the enrolment records behind the four accounts reactivated before the run.",
+        by: "Operations, Access Bank",
+      },
+      {
+        at: "2026-07-11T14:20:00Z",
+        action: "clear",
+        note: "The four accounts are a family who bank together and were dormant over the dry season. Nothing further.",
+        by: "Financial crime desk, Access Bank",
+      },
+    ],
+  }
 ];
 
 export const EXCEPTIONS: VerificationException[] = [
@@ -1477,6 +1575,10 @@ export const RECONCILIATIONS: Reconciliation[] = [];
 
 /* Inbound funding against what households received against the charges borne.
    A mismatch is what the arithmetic produces, never a figure somebody typed. */
+/* A period the bank has closed and not yet settled the file for. It happens
+   on the last period of a quarter and the screen has to be able to say so. */
+const AWAITING_SETTLEMENT = new Set(["proj_hadejia:2026-Q3"]);
+
 function computeReconciliation(): void {
   RECONCILIATIONS.length = 0;
   for (const project of PROJECTS) {
@@ -1494,7 +1596,8 @@ function computeReconciliation(): void {
       const outbound = period.amountToHouseholds;
       const charges = period.chargesBorne;
       const spent = addAmounts(outbound, charges);
-      const balance = subtractAmounts(inbound, spent);
+      /* Signed: an overspent period reports what it overspent by. */
+      const balance = differenceAmounts(inbound, spent);
       const overspend = subtractAmounts(spent, inbound);
       const open = period.state === "open";
       RECONCILIATIONS.push({
@@ -1505,7 +1608,13 @@ function computeReconciliation(): void {
         outbound,
         charges,
         balance,
-        state: open ? "period-open" : overspend === "0.00" ? "reconciled" : "mismatch",
+        state: open
+          ? "period-open"
+          : AWAITING_SETTLEMENT.has(`${project.id}:${period.period}`)
+            ? "awaiting-settlement"
+            : overspend === "0.00"
+              ? "reconciled"
+              : "mismatch",
         delta: overspend,
         candidateCauses:
           overspend === "0.00"
