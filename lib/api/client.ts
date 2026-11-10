@@ -40,6 +40,8 @@ import type {
   VerifierAlert,
   VerifierKey,
   VerificationException,
+  ParsedBoundary,
+  BenefitSharingReport,
 } from "@/lib/api/contract";
 
 /* The typed client. One module owns the base URL, so pointing the front end
@@ -196,6 +198,12 @@ export const api = {
     request<Invite>(`/api/invites/${code}/redeem`, { method: "POST", body }),
 
   /* Project onboarding */
+  parseBoundary: (body: { kml: string; name: string }, idempotencyKey: string) =>
+    request<ParsedBoundary>("/api/registry/boundary", {
+      method: "POST",
+      body,
+      idempotencyKey,
+    }),
   lookupProject: (body: { registryId: string }) =>
     request<RegistryRecord>("/api/projects/lookup", { method: "POST", body }),
   createProject: (body: { registryRecord: RegistryRecord }) =>
@@ -445,6 +453,7 @@ export const api = {
       state: string;
       url?: string;
       bundle?: DisclosureBundle;
+      report?: BenefitSharingReport;
     }>("/api/verifier/export", { method: "POST", body, idempotencyKey }),
   verifierKeys: () => request<VerifierKey[]>("/api/verifier/keys"),
   issueVerifierKey: (body: { label: string }, idempotencyKey: string) =>

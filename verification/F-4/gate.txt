@@ -42,7 +42,7 @@ PASS  step five frames the project the wizard created, not a fallback
 PASS  a session that has ended sends the reader to sign in with where they were
 PASS  register, sign in and get started are each reachable at 390px
 PASS  wizard progress carries the route transition
-PASS  every one of the 47 contract codes has words for a reader
+PASS  every one of the 48 contract codes has words for a reader
 PASS  no contract code is shown to a reader on any F-4 surface
 PASS  no page appends the brand the root template already appends
 PASS  one footer on /attestation/att_ekuri_2026q3
@@ -84,4 +84,4 @@ PASS  screenshot F-4/state-unverified-email-with-a-resend
 PASS  screenshot F-4/state-session-expired-returning-the-reader-to-where-they-were
 PASS  screenshot F-4/state-KYB-rejected-with-the-reason-and-the-path-forward
 PASS  screenshot F-4/state-the-registry-unreachable-with-manual-entry
-86 passed, 0 failed in 114.5s
+86 passed, 0 failed in 91.0s

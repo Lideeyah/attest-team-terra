@@ -1421,6 +1421,55 @@ as a contract name, and a sweep for words about people rather than accounts.
 
 ---
 
+## Spec patch 02
+
+The segment correction, 10 November. Attest is for community-led land-based
+projects where a revenue share to households is a certification requirement —
+not for cookstove or distributed-energy projects, where the benefit is the
+device and there is no disbursement to instrument. Three build changes follow
+from it, and nothing else in the product moved.
+
+**The demo project is Plan Vivo.** A Plan Vivo PDD always states the
+commitment the extraction service exists to find — at least sixty percent of
+certificate income, after host-country charges and taxes, directly benefiting
+participants and local stakeholders — where a Gold Standard solar PDD may
+state nothing, and the most load-bearing moment of the onboarding demo would
+come back empty. Ekuri is Plan Vivo PV-2314 (the pilot PV-2315) across the
+seed, the registry record and every placeholder, and the commitment's source
+sentence is the benefit-sharing clause restating that requirement. One thing
+for the backend lane: BE-1's real seed should take the chosen project's PDD
+sentence verbatim from the published document — the fixture carries the
+requirement's wording and the structure, not a downloaded PDD.
+
+**The boundary arrives by upload.** Plan Vivo issues onto the public Markit
+registry, so issuances stay fetchable, but boundaries are requested from the
+Foundation rather than served by an API. `BOUNDARY_NOT_AVAILABLE` is in the
+error enum, the registry record's boundary is nullable, and step two of
+onboarding shows a KML upload path instead of an error: the file is parsed
+server-side (the mock counts the ring's coordinates and computes the area
+from them — arithmetic over the file, not a constant), the parsed geometry is
+shown back, and enrolments validate against it from then on. The gate's
+onboarding walks now press the confirmation by its own marker, since "the
+first submit button" on step two is the upload.
+
+**The benefit-sharing report exists.** Plan Vivo projects already owe the
+Foundation an annual report whose template stipulates a payment summary and
+whether the sixty percent requirement was met. One export renders a closed
+period's attestation in that shape — the commitment with its source quotation
+and page, enrolled, paid, coverage, the money that reached households,
+charges borne, shortfall, confirmations, disputes open at close and
+substantiated, and the period, root, hash and anchor it all rests on. It is
+the fourth format on /verifier/export, rendered in full when generated, and
+every attestation on /app/attestations links its PDF. It turns the
+attestation from a novel artefact into a filing somebody already owes.
+
+The demo asset — a real published annual report to lay beside the record
+Attest emits — is a download, not code, and waits on you.
+
+F-4 re-ran green at 86 of 86 (the confirmation-marker change), F-9 at 66 of
+66. The disbursement rail, attestation engine, Merkle path, field app,
+dashboards and register are untouched, per the patch's own section six.
+
 ## F-9 — Platform admin, and the sweeps
 
 **Built.** The platform's own surface: what is waiting on it, project

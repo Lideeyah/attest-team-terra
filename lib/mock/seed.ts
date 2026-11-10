@@ -137,8 +137,14 @@ const EKURI_COMMITMENT: Commitment = {
   cadence: "quarterly",
   beneficiary:
     "Households resident in the Ekuri community forest area and enrolled in the benefit-sharing register",
+  /* Verbatim from the PDD's benefit-sharing mechanism, which restates the
+     Plan Vivo requirement: at least sixty percent of certificate income,
+     after host-country charges and taxes, directly benefiting participants
+     and local stakeholders. The figure is the document's, not a round
+     number chosen here, and the sentence is what the extraction's
+     quote-verification check verifies against. */
   sourceQuote:
-    "At least sixty percent of net revenue from the sale of verified emission reductions shall be distributed to participating households in the Ekuri community, quarterly, in the year following issuance.",
+    "At least sixty percent of income from the sale of Plan Vivo Certificates, after host-country charges and taxes, shall directly benefit project participants and local stakeholders, paid to enrolled households as quarterly cash transfers in the year following issuance.",
   page: 44,
   confidence: 0.94,
   corrected: true,
@@ -249,12 +255,12 @@ export const PROJECTS: Project[] = [
     developerId: "dev_ekuri",
     developerName: "Ekuri Initiative Limited",
     name: "Ekuri Community Forest Carbon Project",
-    registry: "Gold Standard",
-    registryId: "GS-10342",
+    registry: "Plan Vivo",
+    registryId: "PV-2314",
     country: "Nigeria",
     state: "Cross River",
     localGovernment: "Akamkpa",
-    methodology: "Gold Standard AR-ACM0003, afforestation and avoided deforestation",
+    methodology: "Plan Vivo community forest management and agroforestry",
     status: "active",
     commitment: EKURI_COMMITMENT,
     enrolled: 2090,
@@ -325,12 +331,12 @@ export const PROJECTS: Project[] = [
     developerId: "dev_ekuri",
     developerName: "Ekuri Initiative Limited",
     name: "Ekuri Riverine Pilot",
-    registry: "Gold Standard",
-    registryId: "GS-10118",
+    registry: "Plan Vivo",
+    registryId: "PV-2315",
     country: "Nigeria",
     state: "Cross River",
     localGovernment: "Akamkpa",
-    methodology: "Gold Standard AR-ACM0003, riverine restoration",
+    methodology: "Plan Vivo riverine community forest management",
     /* Withdrawn: it closes no further period, and everything it published
        stays on the register. */
     status: "withdrawn",

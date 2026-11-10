@@ -24,6 +24,7 @@ import type {
   RegistryRecord,
   Receipt,
   Session,
+  BenefitSharingReport,
 } from "@/lib/api/contract";
 import { ERROR_COPY } from "@/lib/mock/errors";
 import { maskPhone } from "@/lib/record";
@@ -127,6 +128,7 @@ const STATUS_FOR_CODE: Partial<Record<ErrorCode, number>> = {
   BANK_UNAVAILABLE: 503,
   MODEL_UNAVAILABLE: 503,
   REGISTRY_UNREACHABLE: 503,
+  BOUNDARY_NOT_AVAILABLE: 404,
   IDENTITY_UNREACHABLE: 503,
   ANCHOR_UNREACHABLE: 503,
   TIMEOUT: 504,
@@ -210,13 +212,20 @@ const SESSION: Session = {
   emailVerified: true,
 };
 
+/* Plan Vivo, per spec patch 02: the demo project sits in the segment the
+   product is for — community-led land-based projects where a revenue share
+   to households is a certification requirement — and a Plan Vivo PDD always
+   states the commitment the extraction service exists to find. Plan Vivo
+   issues onto the Markit registry, which is public, so issuance history
+   stays fetchable; boundaries are not exposed through an API, so this record
+   carries none and onboarding offers the KML upload path. */
 const REGISTRY_RECORD: RegistryRecord = {
-  registryId: "GS-10342",
-  registry: "Gold Standard",
+  registryId: "PV-2314",
+  registry: "Plan Vivo",
   name: "Ekuri Community Forest Carbon Project",
   country: "Nigeria",
-  methodology: "Gold Standard AR-ACM0003, afforestation and avoided deforestation",
-  boundaryName: "Ekuri community forest, Akamkpa LGA, Cross River",
+  methodology: "Plan Vivo community forest management and agroforestry",
+  boundaryName: null,
   issuances: [
     { vintage: "2024", credits: 41_200, retired: 38_900 },
     { vintage: "2025", credits: 58_400, retired: 51_100 },
@@ -892,6 +901,48 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   },
 
   { method: "POST", pattern: "/api/projects/lookup", handler: () => success(REGISTRY_RECORD) },
+  {
+    /* The uploaded KML boundary, parsed server-side. Plan Vivo does not
+       expose boundaries through an API — the file is requested from the
+       Foundation and uploaded here — so this is the path a Plan Vivo
+       project's geometry arrives by. The parse counts the outer ring's
+       coordinates and computes the enclosed area, which is what the
+       enrolment boundary check runs against. */
+    method: "POST",
+    pattern: "/api/registry/boundary",
+    handler: ({ body }) => {
+      const kml = String(body.kml ?? "");
+      const name = String(body.name ?? "uploaded boundary");
+      const coordinates = /<coordinates>([\s\S]*?)<\/coordinates>/i.exec(kml);
+      if (!coordinates) {
+        return failure("INVALID_REQUEST", "kml");
+      }
+      const points = coordinates[1]
+        .trim()
+        .split(/\s+/)
+        .map((tuple) => tuple.split(",").map(Number))
+        .filter((pair) => pair.length >= 2 && pair.every((value) => Number.isFinite(value)));
+      if (points.length < 3) {
+        return failure("INVALID_REQUEST", "kml");
+      }
+      /* Shoelace over lon/lat, scaled to hectares at this latitude: a mock's
+         arithmetic, but real arithmetic — the area comes from the file, not
+         from a constant. */
+      let doubled = 0;
+      for (let index = 0; index < points.length; index += 1) {
+        const [x1, y1] = points[index];
+        const [x2, y2] = points[(index + 1) % points.length];
+        doubled += x1 * y2 - x2 * y1;
+      }
+      const degreesSquared = Math.abs(doubled) / 2;
+      const areaHectares = Math.round(degreesSquared * 111_320 * 110_574 * 0.0001);
+      return success(
+        { name, points: points.length, areaHectares },
+        null,
+        "Boundary parsed",
+      );
+    },
+  },
   { method: "POST", pattern: "/api/projects", handler: () => success(PROJECTS[0], null, "Project created") },
   {
     method: "GET",
@@ -925,7 +976,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         "Correction logged",
       ),
   },
-  { method: "POST", pattern: "/api/projects/:id/register", handler: () => success({ registered: true, reference: "GS-10342" }) },
+  { method: "POST", pattern: "/api/projects/:id/register", handler: () => success({ registered: true, reference: "PV-2314" }) },
   {
     method: "GET",
     pattern: "/api/projects/:id/mrv",
@@ -1830,6 +1881,72 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
             format,
             state: "ready" as const,
             bundle: { ...bundle, attestationId: closed.attestationId },
+          },
+          null,
+          "Export ready",
+        );
+      }
+
+      /* The payment summary the Plan Vivo annual report template stipulates,
+         rendered from the closed period's attestation: an existing filing,
+         currently satisfied by a developer's own account of its payments,
+         satisfied here by the settlement record. */
+      if (format === "benefit-sharing") {
+        const project = projectById(projectId);
+        const closed = project?.periods.find((candidate) => candidate.period === period);
+        if (!project || !closed?.attestationId) {
+          return failure("NOT_FOUND", "period");
+        }
+        const attestation = attestationsFor(projectId).find(
+          (candidate) => candidate.id === closed.attestationId,
+        );
+        if (!attestation) {
+          return failure("NOT_FOUND", "period");
+        }
+        const periodDisputes = DISPUTES.filter(
+          (dispute) => dispute.projectId === projectId && dispute.period === period,
+        );
+        const report: BenefitSharingReport = {
+          projectId,
+          projectName: project.name,
+          registry: project.registry,
+          registryId: project.registryId,
+          period,
+          commitment: {
+            percentage: project.commitment.percentage,
+            basis: project.commitment.basis,
+            sourceQuote: project.commitment.sourceQuote,
+            page: project.commitment.page,
+          },
+          enrolled: attestation.enrolled,
+          paid: attestation.paid,
+          coveragePercent: Math.round((attestation.paid / Math.max(1, attestation.enrolled)) * 100),
+          amountToHouseholds: attestation.amountToHouseholds,
+          chargesBorne: attestation.chargesBorne,
+          shortfall: attestation.shortfall,
+          confirmations: Math.round(attestation.confirmationRate * attestation.paid),
+          disputesOpenAtClose: periodDisputes.filter(
+            (dispute) =>
+              dispute.state !== "substantiated" && dispute.state !== "unsubstantiated",
+          ).length,
+          disputesSubstantiated: periodDisputes.filter(
+            (dispute) => dispute.state === "substantiated",
+          ).length,
+          merkleRoot: attestation.merkleRoot,
+          attestationHash: attestation.hash,
+          anchor: {
+            network: attestation.anchor.network,
+            topicId: attestation.anchor.topicId,
+            sequence: attestation.anchor.sequence,
+          },
+        };
+        return success(
+          {
+            exportId: "exp_0042",
+            format,
+            state: "ready" as const,
+            report,
+            url: `/attestation/${closed.attestationId}/benefit-sharing.pdf`,
           },
           null,
           "Export ready",

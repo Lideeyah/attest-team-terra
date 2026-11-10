@@ -19,6 +19,7 @@ export const ERROR_CODES = [
   "DEVICE_UNBOUND",
   "REGISTRY_NOT_FOUND",
   "REGISTRY_UNREACHABLE",
+  "BOUNDARY_NOT_AVAILABLE",
   "PDD_UNREADABLE",
   "PDD_NO_COMMITMENT",
   "EXTRACTION_LOW_CONFIDENCE",
@@ -108,8 +109,42 @@ export type RegistryRecord = {
   name: string;
   country: string;
   methodology: string;
-  boundaryName: string;
+  /** Null where the registry does not expose project boundaries through an
+      API — Plan Vivo areas are requested from the Foundation directly — in
+      which case onboarding offers the KML upload path instead. */
+  boundaryName: string | null;
   issuances: { vintage: string; credits: number; retired: number }[];
+};
+
+/** A project boundary parsed server-side from an uploaded KML file. */
+export type ParsedBoundary = {
+  name: string;
+  points: number;
+  areaHectares: number;
+};
+
+/** A closed period's attestation in the shape of the payment summary the
+    Plan Vivo annual report template stipulates: an existing obligation, with
+    a named counterparty, on a schedule. */
+export type BenefitSharingReport = {
+  projectId: string;
+  projectName: string;
+  registry: string;
+  registryId: string;
+  period: string;
+  commitment: { percentage: number; basis: string; sourceQuote: string; page: number };
+  enrolled: number;
+  paid: number;
+  coveragePercent: number;
+  amountToHouseholds: string;
+  chargesBorne: string;
+  shortfall: string;
+  confirmations: number;
+  disputesOpenAtClose: number;
+  disputesSubstantiated: number;
+  merkleRoot: string;
+  attestationHash: string;
+  anchor: { network: string; topicId: string; sequence: number | null };
 };
 
 export type ProjectStatus = "onboarding" | "active" | "suspended" | "withdrawn";

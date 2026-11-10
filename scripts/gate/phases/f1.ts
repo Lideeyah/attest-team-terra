@@ -40,7 +40,7 @@ const PROBES: Probe[] = [
   { method: "POST", path: "/api/invites/inv_7KQ2M4/redeem", body: { identity: "id", deviceKey: "key" } },
 
   /* Project onboarding */
-  { method: "POST", path: "/api/projects/lookup", body: { registryId: "GS-10342" } },
+  { method: "POST", path: "/api/projects/lookup", body: { registryId: "PV-2314" } },
   { method: "POST", path: "/api/projects", body: { registryRecord: {} } },
   { method: "GET", path: "/api/projects/proj_ekuri" },
   { method: "POST", path: "/api/projects/proj_ekuri/pdd" },

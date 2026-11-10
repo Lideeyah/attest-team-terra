@@ -64,4 +64,4 @@ PASS  forcing REGISTRY_UNREACHABLE reaches /admin — [data-admin-unread]
 PASS  screenshot F-9/admin-nothing-was-read
 PASS  forcing MODEL_UNAVAILABLE reaches /admin — [data-admin-unread]
 PASS  screenshot F-9/admin-one-queue-unread
-66 passed, 0 failed in 214.0s
+66 passed, 0 failed in 229.5s

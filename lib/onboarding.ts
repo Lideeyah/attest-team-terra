@@ -34,6 +34,14 @@ export type DeveloperWizard = {
     methodology: string;
     queuedAt: string;
   };
+  /** The project boundary, where the registry does not expose one and the
+      KML file was uploaded and parsed instead. */
+  boundary?: {
+    name: string;
+    points: number;
+    areaHectares: number;
+    uploadedAt: string;
+  };
   /** The project design document, once one has been uploaded. */
   pdd?: { filename: string; uploadedAt: string; jobId: string };
   /** Every correction made to the extracted commitment, with the figure it

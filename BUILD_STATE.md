@@ -43,7 +43,10 @@ then failed the verification. The gates now carry roughly 130 assertions
 written in response to that, and the pattern behind every one of them is the
 same: a gate asserts what a screen does, and is blind to what it leaves out.
 
-Spec patch 01 is applied in full.
+Spec patch 01 is applied in full. Spec patch 02 is applied in full: the demo
+project is Plan Vivo PV-2314, onboarding step two carries the KML boundary
+upload path behind BOUNDARY_NOT_AVAILABLE, and the benefit-sharing report
+export exists on /verifier/export and /app/attestations.
 
 The gate runs against two production builds, not a development server: a
 development server does not hydrate under the headless browser it drives.

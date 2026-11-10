@@ -22,6 +22,7 @@ export const CODE_HEADING: Record<ErrorCode, string> = {
   DISPUTE_ALREADY_OPEN: "A report is already open for this payment",
   REGISTRY_NOT_FOUND: "No project with that identifier",
   REGISTRY_UNREACHABLE: "The registry did not answer",
+  BOUNDARY_NOT_AVAILABLE: "The registry does not publish this project's boundary",
   TIMEOUT: "The request did not complete",
   BANK_UNAVAILABLE: "The bank did not answer",
 

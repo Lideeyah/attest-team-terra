@@ -170,6 +170,25 @@ export default async function AttestationsPage() {
                 </div>
               </dl>
 
+              {/* Spec patch 02: the filing the Plan Vivo annual report
+                  already owes, rendered from this record. The template
+                  stipulates a summary of payments and whether the sixty
+                  percent requirement was met; this is that summary, computed
+                  from settlement rather than self-reported. */}
+              <p className="note">
+                <a
+                  className="btn-outline btn-sm"
+                  href={`/attestation/${attestation.id}/benefit-sharing.pdf`}
+                  download
+                  data-benefit-sharing-report={attestation.id}
+                >
+                  The benefit-sharing report for {formatPeriod(attestation.period)}
+                </a>{" "}
+                — the payment summary the annual report stipulates, as a PDF
+                with the machine-readable payload, for filing with the
+                Foundation.
+              </p>
+
               {attestation.supersedes ? (
                 <p className="note" data-correction-of={attestation.supersedes}>
                   {attestation.correction

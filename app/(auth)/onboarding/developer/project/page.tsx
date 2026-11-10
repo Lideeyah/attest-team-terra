@@ -148,7 +148,7 @@ export default async function ProjectStep({
             className="input"
             data-registry-id
             defaultValue={wizard.registryId ?? ""}
-            placeholder="GS-10342"
+            placeholder="PV-2314"
           />
           <p className="field-note">Gold Standard, Verra, Plan Vivo or Acorn</p>
         </div>

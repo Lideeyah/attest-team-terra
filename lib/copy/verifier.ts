@@ -74,9 +74,13 @@ export const EXPORT_COPY = {
       "A disclosure bundle for one transfer: the transfer's own facts, its leaf, the path to the period's root and the root's reference. It proves that one payment belongs to that period and reveals no other household.",
     csv: "Every published figure for the period, as a file.",
     record: "The period's attestation as it is published, with its hash and anchor reference.",
+    "benefit-sharing":
+      "The payment summary the Plan Vivo annual report template stipulates — the commitment with its source sentence, coverage, the money that reached households, confirmations and reports — rendered from the settlement record rather than the developer's own account. A PDF carrying Registered crop marks, with the machine-readable payload.",
   },
   generating: "Generating",
   ready: "Ready. Paste it into the public verifier and it folds to the period's root.",
+  reportReady:
+    "Ready. This is the filing the annual report already owes, rendered from settlement: every figure below is computed from transfers that cleared the bank, and the record it rests on is named at the bottom.",
   failed:
     "The export was not generated. Nothing was produced and nothing was charged against your key.",
   keyOnce:

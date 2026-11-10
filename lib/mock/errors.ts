@@ -73,6 +73,11 @@ export const ERROR_COPY: Record<ErrorCode, { message: string; remediation: strin
     message: "The registry did not answer.",
     remediation: "Enter the project details manually. The entry is queued for review.",
   },
+  BOUNDARY_NOT_AVAILABLE: {
+    message: "This registry does not expose project boundaries through an API.",
+    remediation:
+      "Upload the project's KML boundary file. Plan Vivo supplies it on request, and it is parsed into the project record on upload.",
+  },
   PDD_UNREADABLE: {
     message: "The project design document could not be read.",
     remediation: "Upload a text-based PDF rather than a scan, under 40MB.",

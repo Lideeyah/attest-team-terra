@@ -273,14 +273,14 @@ async function rolesOffered(): Promise<void> {
 async function backKeepsWhatWasEntered(): Promise<void> {
   const kept = await withBrowser(async (page, baseUrl) => {
     await page.goto(`${baseUrl}/onboarding/developer/project`, { waitUntil: "networkidle" });
-    await (await settled(page, "[data-registry-id]")).fill("GS-10342");
+    await (await settled(page, "[data-registry-id]")).fill("PV-2314");
     await page.locator('button[type="submit"]:visible').first().click();
     await page.waitForURL(/verify/, { timeout: 15_000 }).catch(() => undefined);
     await page.goBack();
     await page.waitForLoadState("networkidle");
     return (await settled(page, "[data-registry-id]")).inputValue();
   });
-  record("going back keeps what was entered", kept === "GS-10342", `field reads "${kept}"`);
+  record("going back keeps what was entered", kept === "PV-2314", `field reads "${kept}"`);
 }
 
 /** The account step bounced on its own validation and came back empty. */
@@ -313,7 +313,7 @@ async function wizardResumes(): Promise<void> {
   const page = await context.newPage();
 
   await page.goto(`${baseUrl}/onboarding/developer/project`, { waitUntil: "networkidle" });
-  await (await settled(page, "[data-registry-id]")).fill("GS-10342");
+  await (await settled(page, "[data-registry-id]")).fill("PV-2314");
   await page.locator('button[type="submit"]:visible').first().click();
   await page.waitForURL(/verify/, { timeout: 15_000 }).catch(() => undefined);
 
@@ -340,10 +340,13 @@ async function goingBackDoesNotRewind(): Promise<void> {
 
   /* Walk to the account step. */
   await page.goto(`${baseUrl}/onboarding/developer/project`, { waitUntil: "networkidle" });
-  await (await settled(page, "[data-registry-id]")).fill("GS-10342");
+  await (await settled(page, "[data-registry-id]")).fill("PV-2314");
   await page.locator('button[type="submit"]:visible').first().click();
   await page.waitForURL(/verify/, { timeout: 15_000 }).catch(() => undefined);
-  await page.locator('button[type="submit"]:visible').first().click();
+  /* The confirm control by its own marker: step two now carries the KML
+     upload form above it (spec patch 02), so "the first submit button" is no
+     longer the confirmation. */
+  await page.locator("button[data-confirm-project]").first().click();
   await page.waitForURL(/commitment/, { timeout: 15_000 }).catch(() => undefined);
   await page.locator('button[type="submit"]:visible').last().click();
   await page.waitForURL(/account/, { timeout: 15_000 }).catch(() => undefined);
@@ -355,7 +358,7 @@ async function goingBackDoesNotRewind(): Promise<void> {
       `JSON.stringify(Array.from(document.querySelectorAll(".step")).map(function (node) { return node.getAttribute("data-state"); }))`,
     )) as string,
   ) as string[];
-  await (await settled(page, "[data-registry-id]")).fill("GS-10342");
+  await (await settled(page, "[data-registry-id]")).fill("PV-2314");
   await page.locator('button[type="submit"]:visible').first().click();
   await page.waitForURL(/verify/, { timeout: 15_000 }).catch(() => undefined);
 
@@ -462,10 +465,13 @@ async function stepFiveIsTheRealRoute(): Promise<void> {
 
   /* Walk the wizard so the project it framed is the one it created. */
   await page.goto(`${baseUrl}/onboarding/developer/project`, { waitUntil: "networkidle" });
-  await (await settled(page, "[data-registry-id]")).fill("GS-10342");
+  await (await settled(page, "[data-registry-id]")).fill("PV-2314");
   await page.locator('button[type="submit"]:visible').first().click();
   await page.waitForURL(/verify/, { timeout: 15_000 }).catch(() => undefined);
-  await page.locator('button[type="submit"]:visible').first().click();
+  /* The confirm control by its own marker: step two now carries the KML
+     upload form above it (spec patch 02), so "the first submit button" is no
+     longer the confirmation. */
+  await page.locator("button[data-confirm-project]").first().click();
   await page.waitForURL(/commitment/, { timeout: 15_000 }).catch(() => undefined);
 
   await page.goto(`${baseUrl}/onboarding/developer/live`, { waitUntil: "networkidle" });
@@ -651,7 +657,7 @@ async function wizardRejections(): Promise<void> {
       path: "/onboarding/developer/project",
       code: "REGISTRY_UNREACHABLE",
       fragment: "/api/projects/lookup",
-      fill: [["[data-registry-id]", "GS-10342"]],
+      fill: [["[data-registry-id]", "PV-2314"]],
       expect: /did not answer|by hand|manual/i,
     },
     {

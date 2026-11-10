@@ -75,7 +75,7 @@ export default async function VerifierProjects({
             type="search"
             name="q"
             defaultValue={search.q ?? ""}
-            placeholder="Ekuri, GS-10342, Hadejia"
+            placeholder="Ekuri, PV-2314, Hadejia"
           />
         </div>
         <div className="field" style={{ minWidth: "180px" }}>
