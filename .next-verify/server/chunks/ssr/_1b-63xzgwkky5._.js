@@ -1,3 +1,0 @@
-module.exports=[63588,a=>{"use strict";var b=a.i(7997),c=a.i(17968);a.s(["default",0,function(){return(0,b.jsx)("div",{className:"measure section",children:(0,b.jsx)(c.f,{label:"Loading"})})}])},45538,function(a){a.n(a.i(63588))},17968,a=>{"use strict";var b=a.i(7997);a.s(["f",0,function({rows:a=4,label:c}){return(0,b.jsxs)("div",{className:"skeleton","aria-busy":"true","aria-live":"polite",children:[c?(0,b.jsx)("p",{className:"eyebrow",children:c}):null,Array.from({length:a},(a,c)=>(0,b.jsx)("span",{className:"skeleton-bar",style:{width:`${100-11*c}%`}},c))]})}])}];
-
-//# sourceMappingURL=_1b-63xzgwkky5._.js.map

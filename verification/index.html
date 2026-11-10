@@ -52,6 +52,12 @@
   /* ---- Scrim ------------------------------------------------------------ */
   --scrim: rgba(24, 24, 22, 0.32);
 
+  /* Print. Paper is paper and ink is ink: a document that leaves the screen
+     stops being a warm alabaster ground and becomes a white page. */
+  --print-paper: #ffffff;
+  --print-ink: #000000;
+  --print-dim: #333333;
+
   /* ---- Typefaces -------------------------------------------------------- */
   /* All three faces are self-hosted by next/font, which exposes each as a CSS
      variable, so the token reads that variable and keeps a real fallback
@@ -127,6 +133,7 @@
   --pad-cell-x: 14px;
   --pad-panel: 22px;
 
+  --masthead-height: 64px;
   --rail-width: 240px;
   --field-width: 390px;
   --field-width-max: 430px;
@@ -234,7 +241,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Foundation</h2>
         </div>
         <p class="gate gate-passed">
-          31 passed, 0 failed in 24.7s
+          34 passed, 0 failed in 28.1s
         </p>
       </div>
       <hr class="heavy" />
@@ -243,6 +250,10 @@ header.sheet { padding-block: var(--section); }
           <figure>
             <a href="F-0/kitchen-sink.png"><img src="F-0/kitchen-sink.png" alt="Kitchen sink" loading="lazy" /></a>
             <figcaption>Kitchen sink</figcaption>
+          </figure>
+          <figure>
+            <a href="F-0/public-masthead.png"><img src="F-0/public-masthead.png" alt="Public masthead" loading="lazy" /></a>
+            <figcaption>Public masthead</figcaption>
           </figure>
           <figure>
             <a href="F-0/shell-developer.png"><img src="F-0/shell-developer.png" alt="Shell developer" loading="lazy" /></a>
@@ -265,7 +276,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Mock server, typed client and state control</h2>
         </div>
         <p class="gate gate-passed">
-          42 passed, 0 failed in 31.4s
+          42 passed, 0 failed in 39.5s
         </p>
       </div>
       <hr class="heavy" />
@@ -284,7 +295,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Landing page</h2>
         </div>
         <p class="gate gate-passed">
-          45 passed, 0 failed in 60.6s
+          45 passed, 0 failed in 70.1s
         </p>
       </div>
       <hr class="heavy" />
@@ -303,7 +314,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Public register and verification</h2>
         </div>
         <p class="gate gate-passed">
-          42 passed, 0 failed in 59.3s
+          45 passed, 0 failed in 60.1s
         </p>
       </div>
       <hr class="heavy" />
@@ -346,7 +357,7 @@ header.sheet { padding-block: var(--section); }
           <h2>Auth, role selection and onboarding</h2>
         </div>
         <p class="gate gate-passed">
-          51 passed, 0 failed in 60.4s
+          51 passed, 0 failed in 63.2s
         </p>
       </div>
       <hr class="heavy" />

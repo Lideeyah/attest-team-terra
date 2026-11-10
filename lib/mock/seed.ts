@@ -1,4 +1,5 @@
 import { fixtureShares, onSharesChanged } from "@/lib/mock/forced";
+import { leafFor, proofFor, rootOf } from "@/lib/mock/merkle";
 import type {
   AccountGraph,
   Agent,
@@ -271,7 +272,9 @@ export const PROJECTS: Project[] = [
     state: "Bayelsa",
     localGovernment: "Brass",
     methodology: "Gold Standard blue carbon, mangrove restoration",
-    status: "active",
+    /* Suspended while case 0231 is open: no new period closes, and the record
+       it already published stays readable. */
+    status: "suspended",
     commitment: DELTA_COMMITMENT,
     enrolled: 1402,
     paid: 1308,
@@ -283,6 +286,30 @@ export const PROJECTS: Project[] = [
     periods: [
       periodStub("2026-Q3", "closed", "2026-10-02T11:18:07Z", "att_delta_2026q3"),
     ],
+  },
+  {
+    id: "proj_ekuri_pilot",
+    developerId: "dev_ekuri",
+    developerName: "Ekuri Initiative Limited",
+    name: "Ekuri Riverine Pilot",
+    registry: "Gold Standard",
+    registryId: "GS-10118",
+    country: "Nigeria",
+    state: "Cross River",
+    localGovernment: "Akamkpa",
+    methodology: "Gold Standard AR-ACM0003, riverine restoration",
+    /* Withdrawn: it closes no further period, and everything it published
+       stays on the register. */
+    status: "withdrawn",
+    commitment: EKURI_COMMITMENT,
+    enrolled: 0,
+    paid: 0,
+    openDisputes: 0,
+    substantiatedDisputes: 0,
+    signalCount: 0,
+    confirmationRate: 0,
+    lastClosedPeriod: null,
+    periods: [periodStub("2026-Q1", "closed", "2026-04-01T09:40:00Z", "att_ekuri_pilot_2026q1")],
   },
   {
     id: "proj_oban",
@@ -489,7 +516,7 @@ export function participantAt(projectId: string, index: number): Participant {
     id: `ptc_${String(index + 1).padStart(6, "0")}`,
     projectId,
     name: `${given} ${family}`,
-    phoneMasked: `0${line.slice(0, 3)} *** ${line.slice(-4)}`,
+    phoneMasked: `0${line.slice(0, 2)}****${line.slice(-4)}`,
     community,
     localGovernment: project?.localGovernment ?? "Akamkpa",
     walletState:
@@ -581,6 +608,7 @@ const CONFIRMATION_RATE: Record<string, number> = {
 
 /* When each run executed. A transfer's timestamps hang off this. */
 const RUN_EXECUTION: Record<string, string> = {
+  run_pilot_q1: "2026-03-31T10:00:00Z",
   run_2026q1: "2026-03-30T09:02:00Z",
   run_2026q2: "2026-07-12T11:20:00Z",
   run_2026q3: "2026-09-29T10:14:02Z",
@@ -767,6 +795,7 @@ export const RUNS: Run[] = [
   run("run_hadejia_q2", "proj_hadejia", "2026-Q2", "complete", 720, "25396363.64", "14050000.00", "2026-06-28T08:00:00Z", "2026-06-30T10:00:00Z"),
   run("run_hadejia_q3", "proj_hadejia", "2026-Q3", "complete", 846, "29840727.27", "16500000.00", "2026-09-28T08:00:00Z", "2026-09-30T09:30:00Z"),
   run("run_delta_q3", "proj_delta", "2026-Q3", "complete", 1402, "44600000.00", "25700000.00", "2026-09-29T08:00:00Z", "2026-09-30T14:10:00Z"),
+  run("run_pilot_q1", "proj_ekuri_pilot", "2026-Q1", "complete", 184, "4600000.00", "2800000.00", "2026-03-28T08:00:00Z", "2026-03-31T10:00:00Z"),
 ];
 
 /* Coverage is computed from transfers that cleared, never typed. The fixture
@@ -852,6 +881,67 @@ function hashFor(seed: string): string {
   ).join("");
 }
 
+/* The leaves of a period: one per transfer that reached a household. */
+export function leavesFor(runId: string, projectId: string, size: number): string[] {
+  const leaves: string[] = [];
+  for (let index = 0; index < size; index += 1) {
+    const transfer = transferAt(runId, index, projectId);
+    if (transfer.state === "settled" || transfer.state === "unconfirmed") {
+      leaves.push(leafFor(transfer));
+    }
+  }
+  return leaves;
+}
+
+export function runForPeriod(projectId: string, period: string) {
+  return RUNS.find(
+    (candidate) =>
+      candidate.projectId === projectId &&
+      candidate.period === period &&
+      candidate.state !== "draft",
+  );
+}
+
+/** The disclosure bundle for one transfer: its leaf, the path to the period's
+    root, and the record that root belongs to. Nothing else about anyone. */
+export function disclosureFor(
+  attestationId: string,
+  transferId: string,
+): { leaf: string; proof: string[]; rootReference: string; period: string; projectName: string } | null {
+  for (const project of PROJECTS) {
+    for (const period of project.periods) {
+      if (period.attestationId !== attestationId) {
+        continue;
+      }
+      const periodRun = runForPeriod(project.id, period.period);
+      if (!periodRun) {
+        return null;
+      }
+      const leaves: string[] = [];
+      let found = -1;
+      for (let index = 0; index < periodRun.rosterSize; index += 1) {
+        const transfer = transferAt(periodRun.id, index, project.id);
+        if (transfer.state !== "settled" && transfer.state !== "unconfirmed") {
+          continue;
+        }
+        if (transfer.id === transferId) {
+          found = leaves.length;
+        }
+        leaves.push(leafFor(transfer));
+      }
+      const index = found >= 0 ? found : 0;
+      return {
+        leaf: leaves[index],
+        proof: proofFor(leaves, index),
+        rootReference: attestationId,
+        period: period.period,
+        projectName: project.name,
+      };
+    }
+  }
+  return null;
+}
+
 export function attestationFor(
   projectId: string,
   period: PeriodSummary,
@@ -873,7 +963,12 @@ export function attestationFor(
     confirmationRate: period.confirmationRate,
     hash: hashFor(`${projectId}-${period.period}`),
     previousHash: previous,
-    merkleRoot: hashFor(`merkle-${projectId}-${period.period}`),
+    merkleRoot: (() => {
+      const periodRun = runForPeriod(projectId, period.period);
+      return periodRun
+        ? rootOf(leavesFor(periodRun.id, projectId, periodRun.rosterSize))
+        : hashFor(`merkle-${projectId}-${period.period}`);
+    })(),
     chainPosition: position,
     anchor: {
       network: "Hedera Consensus Service",
@@ -882,12 +977,17 @@ export function attestationFor(
       at: period.closedAt,
     },
     anchorState: "anchored",
+    chainBreak: false,
     supersededBy: null,
     supersedes: null,
     closedAt: period.closedAt ?? "",
     closedLate: period.state === "closed-late",
   };
 }
+
+/* Periods whose anchor has not landed yet. The figures and the hash are final
+   either way; what is pending is when it was published. */
+const ANCHOR_PENDING = new Set(["proj_ekuri_pilot:2026-Q1"]);
 
 export function attestationsFor(projectId: string): Attestation[] {
   const project = projectById(projectId);
@@ -896,11 +996,38 @@ export function attestationsFor(projectId: string): Attestation[] {
   }
   const closed = project.periods.filter((period) => period.state !== "open");
   let previous: string | null = null;
-  return closed.map((period, index) => {
-    const attestation = attestationFor(projectId, period, index + 1, previous);
+  const records: Attestation[] = [];
+
+  for (const period of closed) {
+    const attestation = attestationFor(projectId, period, records.length + 1, previous);
+    if (ANCHOR_PENDING.has(`${projectId}:${period.period}`)) {
+      attestation.anchorState = "pending";
+      attestation.anchor = { ...attestation.anchor, sequence: null, at: null };
+    }
     previous = attestation.hash;
-    return attestation;
-  });
+    records.push(attestation);
+
+    /* A corrected period publishes two records: the one first published and
+       the correction that supersedes it. Neither is rewritten and both stay
+       readable, which is the whole point. */
+    if (period.corrected) {
+      const correction: Attestation = {
+        ...attestation,
+        id: `${attestation.id}_correction`,
+        hash: hashFor(`${projectId}-${period.period}-correction`),
+        previousHash: attestation.hash,
+        chainPosition: attestation.chainPosition + 1,
+        supersedes: attestation.id,
+        supersededBy: null,
+        closedAt: period.closedAt ?? attestation.closedAt,
+      };
+      attestation.supersededBy = correction.id;
+      previous = correction.hash;
+      records.push(correction);
+    }
+  }
+
+  return records;
 }
 
 /* ---- Disputes ------------------------------------------------------------- */
@@ -1272,6 +1399,10 @@ function computeReconciliation(): void {
 /* ---- Geography, coarse buckets only --------------------------------------- */
 
 export function geography(projectId: string): GeographyBucket[] {
+  const project = projectById(projectId);
+  if (!project || project.enrolled === 0) {
+    return [];
+  }
   const random = mulberry32(projectId.length * 7919);
   const centre =
     projectId === "proj_hadejia"
@@ -1279,14 +1410,32 @@ export function geography(projectId: string): GeographyBucket[] {
       : projectId === "proj_delta"
         ? [4.32, 6.24]
         : [5.62, 8.46];
-  return Array.from({ length: 18 }, (_, index) => ({
-    h3: `87${(index + 11).toString(16)}a4d${index}ffff`,
-    centroid: [
-      Number((centre[0] + (random() - 0.5) * 0.28).toFixed(4)),
-      Number((centre[1] + (random() - 0.5) * 0.28).toFixed(4)),
-    ] as [number, number],
-    households: 40 + Math.floor(random() * 180),
-  }));
+  /* The buckets hold the project's own enrolment and nothing else, and their
+     centroids are published to two decimal places — about a kilometre, which
+     is the size of the cell. Four would be a spurious eleven metres and would
+     invite reading a bucket as an address. */
+  const cells = Math.min(18, Math.max(3, Math.round(project.enrolled / 140)));
+  const shares = Array.from({ length: cells }, () => 0.5 + random());
+  const total = shares.reduce((sum, share) => sum + share, 0);
+  let assigned = 0;
+
+  return shares.map((share, index) => {
+    const last = index === cells - 1;
+    const households = last
+      ? project.enrolled - assigned
+      : Math.max(2, Math.round((share / total) * project.enrolled));
+    assigned += households;
+    return {
+      /* A fifteen-character H3 index at resolution 7, so the identifier the
+         page prints can be checked against the resolution it claims. */
+      h3: `87${projectId.length.toString(16)}${index.toString(16).padStart(2, "0")}a4d${index.toString(16)}ffffff`.slice(0, 15),
+      centroid: [
+        Number((centre[0] + (random() - 0.5) * 0.28).toFixed(2)),
+        Number((centre[1] + (random() - 0.5) * 0.28).toFixed(2)),
+      ] as [number, number],
+      households,
+    };
+  });
 }
 
 

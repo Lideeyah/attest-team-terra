@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { PublicFooter } from "@/components/public/PublicFooter";
 import { Coverage } from "@/components/public/Coverage";
 import { CoverageChart } from "@/components/CoverageChart";
 import { EmptyState } from "@/components/EmptyState";
-import { Loading } from "@/components/Loading";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
-import { formatCount, formatNaira } from "@/lib/record";
+import { headingFor } from "@/lib/copy/codes";
+import { Table } from "@/components/Table";
+import { formatCount, formatNaira, formatPeriod } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "Operator record — Attest",
+  title: "Operator",
   description:
     "Every project under one operator, what each committed to, and how many households each paid.",
 };
@@ -25,15 +26,15 @@ export default async function DeveloperPage({
 }: {
   params: Promise<{ developerId: string }>;
 }) {
+  await connection();
   const { developerId } = await params;
   return (
     <>
       <PublicMasthead context="Public register" />
       <div className="measure section-tight stack-lg">
-        <Suspense fallback={<Loading rows={6} label="Loading the operator" />}>
-          <DeveloperBody developerId={developerId} />
-        </Suspense>
+        <DeveloperBody developerId={developerId} />
       </div>
+      <PublicFooter />
     </>
   );
 }
@@ -47,7 +48,7 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
       notFound();
     }
     return (
-      <Notice tone="blocked" title={result.code}>
+      <Notice tone="blocked" title={headingFor(result.code, "This operator did not load")}>
         {result.message} {result.remediation}
       </Notice>
     );
@@ -57,6 +58,12 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
   const withdrawn = projects.filter((project) => project.status === "withdrawn");
   const closedPeriods = projects.flatMap((project) =>
     project.periods.filter((period) => period.state !== "open"),
+  );
+
+  const periodRows = projects.flatMap((project) =>
+    project.periods
+      .filter((period) => period.state !== "open")
+      .map((period) => ({ ...period, project: project.name })),
   );
 
   /* The trend is the operator's own closed periods in order, so a reader can
@@ -121,6 +128,34 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
             bars={trend}
             title="Households paid against households enrolled, by period, across this operator's projects"
           />
+          {/* The chart is a picture of the table beneath it, never the only
+              place the figures appear. */}
+          <Table
+            caption="Closed periods across this operator's projects"
+            columns={[
+              { key: "period", header: "Period", cell: (row) => formatPeriod(row.period) },
+              { key: "project", header: "Project", cell: (row) => row.project },
+              {
+                key: "coverage",
+                header: "Households paid",
+                cell: (row) => <Coverage paid={row.paid} enrolled={row.enrolled} />,
+              },
+              {
+                key: "received",
+                header: "Received by households",
+                numeric: true,
+                cell: (row) => formatNaira(row.amountToHouseholds),
+              },
+              {
+                key: "shortfall",
+                header: "Shortfall",
+                numeric: true,
+                cell: (row) => formatNaira(row.shortfall),
+              },
+            ]}
+            rows={periodRows}
+            rowKey={(row) => `${row.project}-${row.period}`}
+          />
         </div>
       ) : null}
 
@@ -154,8 +189,24 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
                     {formatNaira(latest.amountToHouseholds)}
                   </span>
                   <Stamp
-                    state={project.status === "withdrawn" ? "blocked" : "sealed"}
-                    label={project.status === "withdrawn" ? "Withdrawn" : latest.period}
+                    state={
+                      project.status === "withdrawn"
+                        ? "blocked"
+                        : project.status === "suspended"
+                          ? "flagged"
+                          : latest.state === "open"
+                            ? "review"
+                            : "sealed"
+                    }
+                    label={
+                      project.status === "withdrawn"
+                        ? "Withdrawn"
+                        : project.status === "suspended"
+                          ? "Suspended"
+                          : latest.state === "open"
+                            ? `${formatPeriod(latest.period)} open`
+                            : `${formatPeriod(latest.period)} sealed`
+                    }
                     recordId={project.id}
                   />
                 </div>
@@ -164,6 +215,7 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
           </div>
         )}
       </div>
+      <PublicFooter />
     </>
   );
 }

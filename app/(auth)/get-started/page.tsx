@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Rule } from "@/components/Rule";
 
 export const metadata: Metadata = {
-  title: "Get started — Attest",
+  title: "Get started",
   description:
     "Three paths: run a carbon project, assess or buy from one, or redeem a field agent invitation.",
 };

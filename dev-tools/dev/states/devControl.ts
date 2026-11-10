@@ -19,8 +19,8 @@ export async function readForcedState(): Promise<Forced> {
 
 export async function forceCode(
   code: ErrorCode | null,
-  pathFragment: string | null,
-  once: boolean,
+  pathFragment: string | null = null,
+  once = false,
 ): Promise<Forced> {
   const response = await fetch("/api/dev/force", {
     method: "POST",
@@ -54,4 +54,32 @@ export async function configureStream(
   });
   const payload = (await response.json()) as { data: StreamConfig };
   return payload.data;
+}
+
+
+export async function setRegisterSize(rows: number | null): Promise<void> {
+  await fetch("/api/dev/register-size", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ rows }),
+  });
+}
+
+export async function setRosterSize(projectId: string, rows: number | null): Promise<void> {
+  await fetch("/api/dev/roster-size", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ projectId, rows }),
+  });
+}
+
+export async function setProjectStatus(
+  projectId: string,
+  status: string | null,
+): Promise<void> {
+  await fetch("/api/dev/project-status", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ projectId, status }),
+  });
 }

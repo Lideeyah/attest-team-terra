@@ -94,7 +94,12 @@ const PROBES: Probe[] = [
   { method: "GET", path: "/api/attestations/att_ekuri_2026q3" },
   { method: "POST", path: "/api/attestations/att_ekuri_2026q3/disclosure", body: { transferId: "trf_2026q3_00001" } },
   { method: "POST", path: "/api/verify/attestation", body: { hash: "0" } },
-  { method: "POST", path: "/api/verify/disclosure", body: { bundle: {} } },
+  {
+    method: "POST",
+    path: "/api/verify/disclosure",
+    body: { bundle: { leaf: "", proof: [], rootReference: "att_ekuri_2026q3" } },
+    expectCode: "PROOF_INVALID",
+  },
 
   /* Field */
   { method: "POST", path: "/api/field/device/bind", body: { deviceKey: "key" } },
@@ -137,6 +142,11 @@ const PROBES: Probe[] = [
   { method: "POST", path: "/api/webhooks/sms-inbound", body: { from: "+2348030000000", text: "CONFIRM" } },
   { method: "POST", path: "/api/webhooks/sms-delivery", body: { id: "sms_0001", status: "Success" } },
 ];
+
+/* Three codes are facts about a record rather than failures to read it, so
+   they are answered with the record carrying that state. They are forceable
+   like any other; what differs is where the answer shows. */
+const RECORD_STATE_CODES = ["ANCHOR_PENDING", "ANCHOR_UNREACHABLE", "CHAIN_DISCONTINUITY"];
 
 /* The bank's own status table, which Attest's codes map onto. */
 const STATUS_EXPECTATION: Record<string, number> = {
@@ -283,6 +293,24 @@ export async function f1(): Promise<void> {
   const wrongStatus: string[] = [];
   for (const code of ERROR_CODES) {
     await force(baseUrl, code);
+
+    if (RECORD_STATE_CODES.includes(code)) {
+      /* Forced on the record it is about, it comes back as the record's own
+         state rather than as a failure. */
+      const probe = await fetch(`${baseUrl}/api/public/attestations/att_ekuri_2026q3`);
+      const payload = (await probe.json()) as Envelope & {
+        data?: { anchorState?: string; chainBreak?: boolean };
+      };
+      const shown =
+        code === "CHAIN_DISCONTINUITY"
+          ? payload.data?.chainBreak === true
+          : payload.data?.anchorState === (code === "ANCHOR_PENDING" ? "pending" : "unreachable");
+      if (!shown) {
+        unforceable.push(`${code} -> ${JSON.stringify(payload.data ?? payload.error)}`);
+      }
+      continue;
+    }
+
     const probe = await fetch(`${baseUrl}/api/runs/run_2026q4`);
     const payload = (await probe.json()) as Envelope;
     if (payload.error?.code !== code) {

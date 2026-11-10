@@ -16,7 +16,7 @@ const HEIGHT = 240;
 const PAD_LEFT = 44;
 const PAD_RIGHT = 8;
 const PAD_TOP = 12;
-const PAD_BOTTOM = 34;
+const PAD_BOTTOM = 48;
 const GRID_STEPS = 4;
 
 /** Rules and ink only. Bars in ink, hairline gridlines, a heavy baseline. */
@@ -32,7 +32,12 @@ export function CoverageChart({ bars, title }: CoverageChartProps) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         width="100%"
         role="img"
-        aria-label={title}
+        aria-label={`${title}. ${bars
+          .map(
+            (bar) =>
+              `${bar.label}: ${bar.paid.toLocaleString("en-NG")} of ${bar.enrolled.toLocaleString("en-NG")}`,
+          )
+          .join("; ")}`}
       >
         {Array.from({ length: GRID_STEPS + 1 }, (_, step) => {
           const ratio = step / GRID_STEPS;
@@ -69,10 +74,21 @@ export function CoverageChart({ bars, title }: CoverageChartProps) {
               <text
                 className="chart-axis"
                 x={x + barWidth / 2}
-                y={HEIGHT - PAD_BOTTOM + 18}
+                y={HEIGHT - PAD_BOTTOM + 16}
                 textAnchor="middle"
               >
                 {bar.label}
+              </text>
+              {/* The figures, not only the percentage: a bare percentage is
+                  not a coverage figure. */}
+              <text
+                className="chart-axis"
+                x={x + barWidth / 2}
+                y={HEIGHT - PAD_BOTTOM + 30}
+                textAnchor="middle"
+              >
+                {bar.paid.toLocaleString("en-NG")} of{" "}
+                {bar.enrolled.toLocaleString("en-NG")}
               </text>
             </g>
           );

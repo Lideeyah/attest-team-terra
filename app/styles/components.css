@@ -1092,3 +1092,176 @@ th[aria-sort] .sort-caret {
   border: var(--hairline) solid var(--rule-contrast);
   background: var(--canvas-paper);
 }
+
+/* ---- Formatting conventions --------------------------------------------- */
+
+/* A real zero is a fact; something unknown is a different fact. */
+.unknown {
+  color: var(--ink-dim);
+}
+
+/* Coverage: the two figures lead and the percentage is secondary and smaller. */
+.coverage-percent {
+  color: var(--ink-dim);
+  font-size: 0.85em;
+}
+
+/* ---- The public masthead ------------------------------------------------- */
+
+.public-masthead {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sheet);
+  height: var(--masthead-height);
+  display: flex;
+  align-items: center;
+  background: var(--surface-elevated);
+  border-bottom: var(--rule-weight-heavy) solid var(--rule-heavy);
+}
+
+.public-masthead-row {
+  display: flex;
+  align-items: center;
+  gap: var(--stack-lg);
+}
+
+.public-masthead-mark {
+  text-decoration: none;
+}
+
+.public-masthead-context {
+  flex: 1;
+}
+
+.public-masthead-nav {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--stack) / 2);
+  margin-inline-start: auto;
+}
+
+.public-masthead-narrow {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .public-masthead-context {
+    display: none;
+  }
+
+  .public-masthead-wide {
+    display: none;
+  }
+
+  .public-masthead-narrow {
+    display: inline-flex;
+  }
+
+  .public-masthead-row {
+    gap: var(--stack);
+  }
+}
+
+/* ---- The public footer --------------------------------------------------- */
+
+.public-footer {
+  background: var(--surface-elevated);
+  padding-block: var(--section-tight);
+  margin-block-start: var(--section);
+}
+
+.public-footer-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: var(--section-tight);
+  padding-block-start: var(--stack-lg);
+}
+
+@media (max-width: 720px) {
+  .public-footer-columns {
+    grid-template-columns: 1fr;
+    gap: var(--stack-lg);
+  }
+}
+
+/* ---- Print --------------------------------------------------------------- */
+
+/* A document surface is printed and saved as a PDF, so it prints as a
+   document: no chrome, no paper tone, the hash and the anchor in full. */
+@media print {
+  .public-masthead,
+  .public-footer,
+  .console-rail,
+  .field-tabs,
+  .tab-rail,
+  .btn,
+  .btn-outline,
+  .btn-quiet,
+  .hash-copy {
+    display: none !important;
+  }
+
+  :root {
+    --canvas-paper: var(--print-paper);
+    --surface-reading: var(--print-paper);
+    --surface-elevated: var(--print-paper);
+    --surface-sunken: var(--print-paper);
+    --ink-primary: var(--print-ink);
+    --ink-muted: var(--print-ink);
+    --ink-dim: var(--print-dim);
+  }
+
+  body {
+    background: var(--print-paper);
+  }
+
+  .document,
+  .panel {
+    border-color: var(--print-ink);
+  }
+
+  .print-full {
+    word-break: break-all;
+  }
+
+  .print-source::after {
+    content: " · " attr(data-url) " · printed " attr(data-printed);
+    font-size: var(--fs-eyebrow);
+  }
+}
+
+/* ---- Who is signed in, and what is outstanding ---------------------------- */
+
+.console-nav-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--stack);
+}
+
+/* A count is wayfinding, not an action, so it never takes the accent. */
+.console-nav-count {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--stack) / 3);
+  color: var(--ink-dim);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.console-nav-mark {
+  width: 9px;
+  height: 9px;
+  border-width: 1px;
+}
+
+.console-account {
+  color: var(--ink-dim);
+  word-break: break-all;
+}
+
+.masthead-account {
+  display: flex;
+  align-items: baseline;
+  gap: var(--stack);
+}

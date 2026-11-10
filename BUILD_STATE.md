@@ -1,12 +1,18 @@
 # Build state
 
-Phase complete: F-0 — foundation. Gate green, 31 of 31.
+Phase complete: F-0 — foundation, plus the spec patch's back-edits. Gate green,
+34 of 34.
 Phase complete: F-1 — mock server, typed client and /dev/states. Gate green,
-42 of 42, verified over four passes.
-Phase complete: F-2 — the landing page. Gate green, 45 of 45, verified over
-four passes.
-In progress: F-3 — the public register and verification surfaces. Its gate is
-written; the typefaces are scoped per surface so the receipt can carry none.
+42 of 42.
+Phase complete: F-2 — the landing page. Gate green, 45 of 45.
+Phase complete: F-3 — the public surfaces. Gate green, 45 of 45, verified and
+corrected after a verification that failed it.
+Phase complete: F-4 — role selection, auth and onboarding. Gate green, 51 of
+51, awaiting independent verification.
+Next phase: F-5 — the developer console.
+
+Spec patch 01 is applied in full. Its two carried-forward items are the roster
+import format and the notification preferences, both for F-5.
 
 The gate runs against two production builds, not a development server: a
 development server does not hydrate under the headless browser it drives.

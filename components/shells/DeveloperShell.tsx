@@ -5,7 +5,18 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lockup } from "@/components/Mark";
 
-const SECTIONS = [
+type Section = {
+  href: string;
+  label: string;
+  /** Unresolved work behind this section. Record face, dim, never the accent:
+      the accent means an action and a count is not one. */
+  outstanding?: number;
+  outstandingLabel?: string;
+  /** Work that is blocking the next payment takes the mark as well. */
+  blocking?: boolean;
+};
+
+const SECTIONS: Section[] = [
   { href: "/app", label: "Home" },
   { href: "/app/roster", label: "Roster" },
   { href: "/app/agents", label: "Agents" },
@@ -18,9 +29,11 @@ const SECTIONS = [
 
 type DeveloperShellProps = {
   children: ReactNode;
+  /** What is outstanding behind each section, keyed by its path. */
+  outstanding?: Record<string, { count: number; label?: string; blocking?: boolean }>;
+  account?: { organisation: string; email: string };
   /** The open period and the days remaining, shown on every screen. */
   period?: { label: string; daysToClose: number; closesOn: string };
-  organisation?: string;
 };
 
 /** The developer console shell: a 240px left rail with a persistent period
@@ -28,12 +41,16 @@ type DeveloperShellProps = {
     the rail does not collapse above 900px. */
 export function DeveloperShell({
   children,
+  outstanding = {},
+  account = {
+    organisation: "Ekuri Initiative Limited",
+    email: "operations@ekuri-initiative.ng",
+  },
   period = {
     label: "2026-Q4",
     daysToClose: 9,
     closesOn: "31 December 2026",
   },
-  organisation = "Ekuri Forest Initiative",
 }: DeveloperShellProps) {
   const pathname = usePathname();
 
@@ -56,6 +73,7 @@ export function DeveloperShell({
               section.href === "/app"
                 ? pathname === "/app"
                 : pathname.startsWith(section.href);
+            const work = outstanding[section.href];
             return (
               <li key={section.href}>
                 <Link
@@ -67,17 +85,29 @@ export function DeveloperShell({
                   prefetch={false}
                   aria-current={active ? "page" : undefined}
                 >
-                  {section.label}
+                  <span className="console-nav-label">{section.label}</span>
+                  {work && work.count > 0 ? (
+                    <span className="console-nav-count">
+                      {work.blocking ? (
+                        <span className="mark console-nav-mark" aria-hidden="true" />
+                      ) : null}
+                      {work.count}
+                      {work.label ? ` ${work.label}` : ""}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             );
           })}
         </ul>
         <div className="console-rail-foot">
-          <p className="eyebrow">{organisation}</p>
-          <Link href="/signin" className="btn-quiet btn-sm" prefetch={false}>
-            Sign out
-          </Link>
+          <p className="eyebrow">{account.organisation}</p>
+          <p className="record-cell console-account">{account.email}</p>
+          <form action="/signout" method="post">
+            <button type="submit" className="btn-quiet btn-sm">
+              Sign out
+            </button>
+          </form>
         </div>
       </nav>
       <div className="console-main">{children}</div>

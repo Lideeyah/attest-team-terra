@@ -297,6 +297,9 @@ export type Attestation = {
   chainPosition: number;
   anchor: { network: string; topicId: string; sequence: number | null; at: string | null };
   anchorState: "anchored" | "pending" | "unreachable";
+  /** True where this record does not chain to the period before it. The break
+      is published; neither record is rewritten. */
+  chainBreak: boolean;
   supersededBy: string | null;
   supersedes: string | null;
   closedAt: string;

@@ -1,27 +1,51 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { PublicFooter } from "@/components/public/PublicFooter";
 import { BucketMap } from "@/components/public/BucketMap";
 import { Coverage } from "@/components/public/Coverage";
 import { ButtonLink } from "@/components/Button";
 import { CoverageChart } from "@/components/CoverageChart";
-import { Loading } from "@/components/Loading";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { Table, type Column } from "@/components/Table";
 import { api } from "@/lib/api/client";
+import { headingFor } from "@/lib/copy/codes";
 import type { PeriodSummary } from "@/lib/api/contract";
-import { formatCount, formatNaira, formatTimestamp } from "@/lib/record";
+import {
+  formatCount,
+  formatCoverage,
+  formatNaira,
+  formatPeriod,
+  formatSettlement,
+} from "@/lib/record";
 
-export const metadata: Metadata = {
-  title: "Project record — Attest",
-  description:
-    "Households enrolled, households paid, what each closed period required and what it fell short by.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}): Promise<Metadata> {
+  await connection();
+  const { projectId } = await params;
+  const result = await api.publicProject(projectId);
+  if (!result.ok) {
+    return { title: "Project not found" };
+  }
+  const project = result.data.project;
+  const latest =
+    project.periods.filter((period) => period.state !== "open").at(-1) ??
+    project.periods[0];
+  const description = `${formatCoverage(latest.paid, latest.enrolled)} households paid in ${formatPeriod(latest.period)} against a ${project.commitment.percentage}% commitment. ${project.registry} ${project.registryId}.`;
+  return {
+    title: project.name,
+    description,
+    openGraph: { title: `${project.name} · Attest`, description },
+    twitter: { title: `${project.name} · Attest`, description },
+  };
+}
 
 export default async function ProjectPage({
   params,
@@ -33,10 +57,9 @@ export default async function ProjectPage({
     <>
       <PublicMasthead context="Public register" />
       <div className="measure section-tight stack-lg">
-        <Suspense fallback={<Loading rows={8} label="Loading the project" />}>
-          <ProjectBody projectId={projectId} />
-        </Suspense>
+        <ProjectBody projectId={projectId} />
       </div>
+      <PublicFooter />
     </>
   );
 }
@@ -50,7 +73,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
       notFound();
     }
     return (
-      <Notice tone="blocked" title={result.code}>
+      <Notice tone="blocked" title={headingFor(result.code, "This project did not load")}>
         {result.message} {result.remediation}
       </Notice>
     );
@@ -242,8 +265,15 @@ async function ProjectBody({ projectId }: { projectId: string }) {
           <ButtonLink href={`/attestation/${attestations[attestations.length - 1].id}`}>
             Open the latest attestation
           </ButtonLink>
+          <a
+            className="btn-outline btn-sm"
+            href={`/attestation/${attestations[attestations.length - 1].id}/download`}
+            download
+          >
+            Download the signed attestation
+          </a>
           <span className="eyebrow">
-            Sealed {formatTimestamp(attestations[attestations.length - 1].closedAt)}
+            Sealed {formatSettlement(attestations[attestations.length - 1].closedAt)}
           </span>
         </div>
       ) : null}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { PublicFooter } from "@/components/public/PublicFooter";
 import { Button } from "@/components/Button";
 import { Hash } from "@/components/Hash";
 import { Notice } from "@/components/Notice";
@@ -12,7 +13,7 @@ import { parseJson } from "@/lib/json";
 import { formatCoverage, formatNaira, formatTimestamp } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "Verify a record — Attest",
+  title: "Verify a record",
   description:
     "Check a period against its hash, or one transfer against its proof, without seeing anything else.",
 };
@@ -136,6 +137,7 @@ export default async function VerifyPage({
 
         <VerifyOutcome search={search} />
       </div>
+      <PublicFooter />
     </>
   );
 }

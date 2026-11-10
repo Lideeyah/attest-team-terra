@@ -6,8 +6,12 @@ const nextConfig: NextConfig = {
      its own output directory. */
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  /* Partial prerendering flushes a static shell before the page has looked
+     anything up, which fixes the HTTP status at 200. A public register that
+     answers 200 for a record that does not exist is wrong for a crawler, for
+     a monitor and for anyone scripting against it, so the status is kept
+     truthful and the shell is given up. */
+  cacheComponents: false,
   turbopack: {
     rules: {
       "*.css": {

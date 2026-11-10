@@ -122,3 +122,22 @@ export function setRegisterSize(rows: number | null): void {
 export function registerSizeFor(fallback: number): number {
   return registerSize ?? fallback;
 }
+
+/* A project's status, overridden for the states that depend on it. */
+const statusOverrides = new Map<string, string>();
+
+export function setProjectStatus(projectId: string, status: string | null): void {
+  if (status === null) {
+    statusOverrides.delete(projectId);
+    return;
+  }
+  statusOverrides.set(projectId, status);
+}
+
+export function projectStatusFor(projectId: string, fallback: string): string {
+  return statusOverrides.get(projectId) ?? fallback;
+}
+
+export function projectStatusOverrides(): Record<string, string> {
+  return Object.fromEntries(statusOverrides);
+}

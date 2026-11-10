@@ -4,7 +4,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { useReducedMotion } from "motion/react";
 import type { MotionValue } from "motion/react";
 import { ButtonLink } from "@/components/Button";
-import { Lockup } from "@/components/Mark";
+import { PublicMasthead } from "@/components/shells/PublicMasthead";
 import { Registered } from "@/components/Registered";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
@@ -55,14 +55,6 @@ const NARROW_ROWS = 4;
 
 function stagger(frames: number): CSSProperties {
   return { "--stagger": `${Math.round(frames * FRAME_MS)}ms` } as CSSProperties;
-}
-
-function Masthead() {
-  return (
-    <header className="measure" style={{ paddingBlock: "var(--stack-lg)" }}>
-      <Lockup size={20} />
-    </header>
-  );
 }
 
 /* Movement 1, Stillness. One sentence, one heavy rule, nothing else. It rises
@@ -439,9 +431,10 @@ function PublicRecordBody({ progress }: { progress: MotionValue<number> }) {
       </motion.p>
       <Registered>
         <motion.div style={{ opacity: rowOpacity, y: rowY }}>
-          {REGISTER_ROWS.map((row) => (
+          {REGISTER_ROWS.map((row, index) => (
             <div
               key={row.id}
+              data-overflow={index > 1 ? "true" : undefined}
               className={
                 row.id === PROJECT.id ? "register-row register-row-sealed" : "register-row"
               }
@@ -550,7 +543,7 @@ function Foot() {
 export function Landing() {
   return (
     <div className="landing">
-      <Masthead />
+      <PublicMasthead />
       <Stage count={6}>
         <Stillness />
         <Figures />

@@ -8,7 +8,13 @@ import { formatCoverage, formatCount, formatNairaCompact } from "@/lib/record";
 export default function DeveloperShellPreview() {
   return (
     <Surface>
-    <DeveloperShell>
+    <DeveloperShell
+      outstanding={{
+        "/app/roster": { count: 12, label: "flagged" },
+        "/app/runs": { count: 1, label: "in flight", blocking: true },
+        "/app/disputes": { count: 3 },
+      }}
+    >
       <div className="stack-lg">
         <p className="eyebrow">Shell reference</p>
         <h1 className="h2-display">Developer console shell</h1>

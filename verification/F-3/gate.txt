@@ -1,5 +1,6 @@
 PASS  typecheck: tsc --noEmit
 PASS  typecheck: no any
+PASS  every state the fixture carries is on the page
 PASS  route renders /register
 PASS  route renders /register/proj_ekuri
 PASS  route renders /developers/dev_ekuri
@@ -18,12 +19,14 @@ PASS  filing a report reaches each of its states
 PASS  a project with no closed period shows its commitment and explicit zeros
 PASS  coverage is always shown with its denominator
 PASS  single-transfer verification handles each outcome distinctly
+PASS  a transfer from another period is told apart from an invalid proof
 PASS  bundle under 50KB on /receipt/rct_ngozi_eyo_2026q4
 PASS  the receipt requests no web font and uses the system stack
 PASS  the geography endpoint returns coarse buckets, never a household
 PASS  no success colour on the register
 PASS  the project page states no verdict about the project
 PASS  the register states 500 projects and renders a page of them
+PASS  60fps scrolling the register at 500 projects
 PASS  no public surface renders a household coordinate
 PASS  accessibility on /register
 PASS  keyboard reachability on /register
@@ -40,4 +43,4 @@ PASS  screenshot F-3/attestation-att_ekuri_2026q3
 PASS  screenshot F-3/verify
 PASS  screenshot F-3/report
 PASS  screenshot F-3/receipt-rct_ngozi_eyo_2026q4
-42 passed, 0 failed in 59.3s
+45 passed, 0 failed in 60.1s

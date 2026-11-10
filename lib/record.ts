@@ -19,7 +19,7 @@ export function stampRotation(recordId: string): number {
   return Number((steps / 10 - ROTATION_RANGE_DEGREES / 2).toFixed(1));
 }
 
-export function truncateHash(hash: string, head = 10, tail = 6): string {
+export function truncateHash(hash: string, head = 8, tail = 6): string {
   if (hash.length <= head + tail + 1) {
     return hash;
   }
@@ -40,8 +40,8 @@ export function formatNaira(amount: string): string {
   return `₦${groupDigits(major)}.${minor.padEnd(2, "0").slice(0, 2)}`;
 }
 
-/** A compact figure for display at figure scale: ₦48.2m. The full amount is
-    always available beside it, because a rounded figure is not the record. */
+/** A compact figure, for a chart axis label and nowhere else. A figure being
+    audited is never abbreviated: ₦48.2m is not a number anyone can check. */
 export function formatNairaCompact(amount: string): string {
   const [major = "0"] = amount.split(".");
   const naira = Number(major);
@@ -75,6 +75,18 @@ export function coveragePercent(paid: number, enrolled: number): number {
   return Number(((paid / enrolled) * 100).toFixed(1));
 }
 
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const QUARTER_MONTHS: Record<string, string> = {
+  Q1: "Jan–Mar",
+  Q2: "Apr–Jun",
+  Q3: "Jul–Sep",
+  Q4: "Oct–Dec",
+};
+
 const WAT_OFFSET_MS = 60 * 60 * 1000;
 
 function watParts(iso: string): {
@@ -99,10 +111,59 @@ function watParts(iso: string): {
   };
 }
 
-/** A timestamp in the record's own format: 2026-11-09 14:22:07 WAT. */
-export function formatTimestamp(iso: string): string {
+/** A date: 09 Nov 2026. */
+export function formatDate(iso: string): string {
   const part = watParts(iso);
-  return `${part.year}-${part.month}-${part.day} ${part.hour}:${part.minute}:${part.second} WAT`;
+  return `${part.day} ${MONTHS[Number(part.month) - 1]} ${part.year}`;
+}
+
+/** A date and time, to the minute: 09 Nov 2026 · 19:45. */
+export function formatDateTime(iso: string): string {
+  const part = watParts(iso);
+  return `${formatDate(iso)} · ${part.hour}:${part.minute}`;
+}
+
+/** A settlement timestamp, which carries seconds because it is evidence:
+    09 Nov 2026 · 14:22:07 WAT. */
+export function formatSettlement(iso: string): string {
+  const part = watParts(iso);
+  return `${formatDate(iso)} · ${part.hour}:${part.minute}:${part.second} WAT`;
+}
+
+/** Kept for a record that states its timestamp in full. */
+export function formatTimestamp(iso: string): string {
+  return formatSettlement(iso);
+}
+
+/** A period as a reader says it: Q3 2026, or Jul–Sep 2026 where the quarter
+    alone would be ambiguous. */
+export function formatPeriod(period: string, spelled = false): string {
+  const match = /^(\d{4})-(Q[1-4])$/.exec(period);
+  if (!match) {
+    return period;
+  }
+  const [, year, quarter] = match;
+  return spelled ? `${QUARTER_MONTHS[quarter]} ${year}` : `${quarter} ${year}`;
+}
+
+/** A phone number as every list shows it: 080****4567. */
+export function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 7) {
+    return phone;
+  }
+  return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
+}
+
+/** A real zero is a fact and renders as one. Something unknown is a different
+    fact and renders as a dash, so the two never look alike. */
+export const UNKNOWN = "—";
+
+export function orUnknown(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") {
+    return UNKNOWN;
+  }
+  return String(value);
 }
 
 export function formatTimeOfDay(iso: string): string {

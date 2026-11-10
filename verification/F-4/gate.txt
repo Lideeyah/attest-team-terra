@@ -49,4 +49,4 @@ PASS  screenshot F-4/onboarding-developer-account
 PASS  screenshot F-4/onboarding-developer-live
 PASS  screenshot F-4/onboarding-institution-organisation
 PASS  screenshot F-4/onboarding-institution-watchlist
-51 passed, 0 failed in 60.4s
+51 passed, 0 failed in 63.2s

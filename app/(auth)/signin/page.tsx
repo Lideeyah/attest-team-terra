@@ -5,7 +5,7 @@ import { AuthForm, Field } from "@/components/auth/AuthForm";
 import { api } from "@/lib/api/client";
 
 export const metadata: Metadata = {
-  title: "Sign in — Attest",
+  title: "Sign in",
   description: "Sign in to the developer console or the verifier portal.",
 };
 

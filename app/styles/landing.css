@@ -3,7 +3,9 @@
    property that triggers layout. */
 
 .landing {
-  --movement-scroll: 100vh;
+  /* A movement is one screen of scroll below the masthead, which is always
+     there. */
+  --movement-scroll: calc(100vh - var(--masthead-height));
 }
 
 /* The movements tile the page: one screen each, each composition centred in
@@ -21,8 +23,8 @@
 
 .landing-stage {
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: var(--masthead-height);
+  height: calc(100vh - var(--masthead-height));
   display: grid;
   align-items: center;
 }
@@ -99,6 +101,20 @@
 @media (max-width: 720px) {
   .figure-row {
     grid-template-columns: 1fr;
+  }
+
+  /* A composition has one screen below the masthead to fit in, so the cells
+     tighten rather than the movement being dropped. */
+  .figure-cell {
+    padding: var(--pad-cell-y) var(--pad-cell-x);
+  }
+
+  .movement .stack-lg {
+    gap: var(--stack);
+  }
+
+  .register-row[data-overflow="true"] {
+    display: none;
   }
 
   /* The rows keep their shape at phone width: the household on one side, the

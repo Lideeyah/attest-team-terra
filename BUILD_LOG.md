@@ -686,3 +686,162 @@ fewer point than the movements between them.
 a composition covers the middle of the screen at every point on the track at
 both widths, and that a figure is its real value by the time its movement
 hands over at 900 and 2,200 pixels a second.
+
+---
+
+## F-3 — The public surfaces
+
+**Built.** The register index, searchable, sortable, filterable and paginated.
+The project page: the commitment quoted from the project design document with
+its page number and, where a field was corrected, what it originally read and
+why; coverage by period as a ruled chart whose bars carry their own figures;
+the period table; dispute and signal counts; enrolment as coarse buckets. The
+operator page with every project under one operator and its closed periods as
+a table as well as a trend. The attestation as a document with crop marks, its
+hash, the period it chains to, its Merkle root, its chain position, its anchor
+and a signed download. Verification in both modes. The public report. The
+participant receipt.
+
+**Independent verification found that F-3 did not pass**, and it was right
+about all of it. Seven failures and a set of unreachable states:
+
+1. **The 50KB receipt budget was blown roughly threefold, and the gate that
+   certified it was reading zeros.** `bundleUnder` summed `content-length`,
+   which a compressed chunked response does not carry, so it measured nothing
+   and reported 0.6KB — the figure the commit message quoted. Measured
+   properly through Resource Timing, the route was shipping 141.9KB over the
+   wire and 464.9KB decoded, because the App Router ships React and the
+   framework runtime to every page whatever the page contains.
+
+   The receipt is a route handler now, returning hand-written HTML with its
+   styles inlined. Measured: **0 scripts, 0 stylesheet requests, 0 fonts.**
+   Everything on it works with JavaScript switched off, because confirming a
+   payment is a form post. A confirmed payment carries a stamp as well as a
+   timestamp, which it did not before.
+
+2. **Single-transfer verification did not verify anything.** The handler
+   compared one leaf against one fixture and never read the proof path, so a
+   bundle with a wrong proof, or with no proof at all, came back as a match
+   and the page then said "the bundle proves that and nothing else".
+   `PROOF_INVALID` and `LEAF_NOT_IN_ROOT` were reachable only by forcing them.
+   There is one Merkle implementation now: the fixture issues bundles with it
+   and verification folds them with it, so a valid bundle matches, a wrong
+   path is `PROOF_INVALID`, and a leaf from another period is
+   `LEAF_NOT_IN_ROOT`. The gate tests those from input rather than from a
+   forced code.
+
+3. **`/dev/states` reached almost none of the listed states.** It now carries
+   an index of every state each screen lists, each line arranging what it needs
+   and opening the screen, plus controls for register size, roster size and a
+   project's status.
+
+4. **Nine states were unreachable because the fixture had nothing behind
+   them.** It now carries a withdrawn project, a suspended one, a second
+   project under one operator, an attestation whose anchor has not landed, and
+   a corrected period that publishes two records — the one first published and
+   the correction that supersedes it, neither rewritten.
+
+5. **A missing record answered 200 behind a skeleton.** The static shell
+   flushed before anything was looked up, so `notFound()` could not set a
+   status, and without JavaScript the page was a skeleton for ever. Partial
+   prerendering is off: a public register that answers 200 for a record that
+   does not exist is wrong for a crawler, a monitor and anyone scripting
+   against it. `/register/nope`, `/developers/nope` and `/attestation/nope`
+   answer 404.
+
+6. **Four states said something untrue.** A country filter that matched
+   nothing said no project had ever closed a period; a project with nothing
+   enrolled drew a map of 2,208 households; an open period was stamped
+   `SEALED` on the operator page; and an attestation whose anchor was pending
+   said "the figures are final" while showing none of them. Each is fixed:
+   the empty copy distinguishes a filter from an empty register, the map is
+   drawn from the project's own enrolment, a period is stamped for what it is,
+   and an anchor state is stated above the record rather than instead of it.
+
+7. **A raw contract code was being used as a heading** on the public surfaces
+   — `RATE_LIMITED`, `ANCHOR_PENDING`, `CHAIN_DISCONTINUITY`. Every code is
+   named for the reader now, in one module.
+
+Also: the voice note on the report was collected and silently discarded while
+the page said "it has been recorded", and every report was filed against one
+hard-coded project. Both fixed. The signed attestation download did not exist.
+The geography endpoint invented enrolment for any identifier, including ones
+that do not exist, and published centroids to eleven metres for cells
+kilometres wide.
+
+**One thing the verifier found that was not F-3's at all:** `.next-verify`, a
+build directory, was committed — 716 files — because `.gitignore` named the
+two directories the gate uses and not the pattern. It is `/.next-*/` now and
+the files are untracked.
+
+**Gate.** `npm run gate -- F-3`: 45 assertions, 45 passed.
+
+---
+
+## Spec patch 01
+
+Lydia's patch landed mid-F-4. Everything in it is applied.
+
+**Tier 1.** The public masthead is the fourth shell: sticky, 64px, on every
+public route including the landing page, and it does not drop on a phone — the
+mark stays, Register and Sign in collapse behind one link, Get started stays a
+button. Every pinned composition is sized against the screen below it. Sign out
+is in all three authenticated shells. `/404` and `/500` are real pages on
+paper. The mark is the favicon and the app icon, drawn in SVG, and a static
+Open Graph card carries the wordmark and the hero sentence; a shared project
+link previews with that project's own coverage figures. Every public route has
+its own title and description. The footer is three columns with About, Privacy
+and Terms behind it. A print stylesheet drops the chrome, the paper tone and
+the ink, keeps the crop marks and prints the hash in full.
+
+**Tier 2.** A pagination component reads every list the contract paginates.
+The display conventions are in `lib/record.ts`: money in full with separators
+and never abbreviated except on a chart axis, dates as `09 Nov 2026`, times to
+the minute except a settlement timestamp which carries seconds because it is
+evidence, periods as `Q3 2026`, coverage as two figures with the percentage
+secondary, phones masked as `080****4567`, hashes as eight and six, and a real
+zero rendered as `0` against an unknown rendered as a dash. Every shell says
+who is signed in. The loading convention is skeleton rows at the real row
+height and a figure whose value is suppressed rather than zeroed; there is no
+spinner in the product.
+
+**Tier 3, as decided.** English only, with every participant-facing string —
+the receipt, the SMS templates and the USSD menu — in `lib/copy/participant.ts`
+so a second language is a second file. The USSD language step stays in the menu
+with one option. There is no language switcher. No inbox: the developer rail
+carries outstanding counts in record face and `--ink-dim`, never the accent,
+with the mark on a section whose work is blocking the next payment.
+
+**Carried forward.** The roster import format (item 9) is recorded for F-5 and
+BE-3: CSV, UTF-8, header row required, columns in any order, extra columns
+ignored — `first_name, last_name, date_of_birth, phone, identity_type,
+identity_number, account_number, bank_code, community, enrolled_by`, with
+`date_of_birth` as `YYYY-MM-DD`, `identity_type` as `BVN` or `NIN`, `bank_code`
+as the NIP code, and `enrolled_by` an agent email that already exists on the
+project. The failure download is the same file with `error_code` and
+`error_message` appended, carrying only the rows that failed. The notification
+preferences on `/app/settings` (item 15) are out-of-app email delivery for five
+events — a dispute raised, a run finished with terminal failures, funding
+received, a period closing in seven days, a reconciliation mismatch — each on
+or off, defaulting to on, per user rather than per organisation.
+
+**Manual review needed.** Privacy and Terms carry a heading and one paragraph
+each and are waiting on Lydia's text.
+
+---
+
+## F-4 — Role selection, auth and onboarding
+
+**Built.** Role selection as three full-screen paths with no way into bank
+operations or platform admin and copy saying plainly that households do not
+sign up. Sign-up, sign-in and reset, deliberately clean, never stating which
+of the email and the password is wrong. Invitation redemption with identity
+verification and device binding, and separate screens for an invitation that
+expired, was redeemed or was revoked. The developer's five steps and the
+institution's two, with the wizard's state in a cookie so going back keeps what
+was entered and somebody who closes the tab lands where they left off. The
+commitment step shows the extracted figure beside the sentence and page it came
+from, and a correction is logged with its reason while the original stays
+readable. Step five renders the project's real public register page at zero.
+
+**Gate.** `npm run gate -- F-4`: 51 assertions, 51 passed.

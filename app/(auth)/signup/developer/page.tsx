@@ -5,7 +5,7 @@ import { AuthForm, Field } from "@/components/auth/AuthForm";
 import { api } from "@/lib/api/client";
 
 export const metadata: Metadata = {
-  title: "Create a developer account — Attest",
+  title: "Create a developer account",
   description: "Email, password, organisation. Nothing else.",
 };
 

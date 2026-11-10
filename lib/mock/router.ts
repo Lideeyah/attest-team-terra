@@ -1,7 +1,7 @@
 import type {
   Arithmetic,
-  Payment,
   Attestation,
+  Payment,
   DisclosureBundle,
   ErrorCode,
   Envelope,
@@ -15,7 +15,13 @@ import type {
   Session,
 } from "@/lib/api/contract";
 import { ERROR_COPY } from "@/lib/mock/errors";
-import { readForced, registerSizeFor, rosterSizeFor } from "@/lib/mock/forced";
+import {
+  readForced,
+  projectStatusFor,
+  registerSizeFor,
+  rosterSizeFor,
+} from "@/lib/mock/forced";
+import { foldProof } from "@/lib/mock/merkle";
 import {
   AGENTS,
   AMOUNT_PER_HOUSEHOLD,
@@ -36,6 +42,9 @@ import {
   participantAt,
   participants,
   projectById,
+  disclosureFor,
+  leavesFor,
+  runForPeriod,
   runTransfers,
   transferAt,
   subtractAmounts,
@@ -208,12 +217,17 @@ function registerRows(): RegisterRow[] {
     paid: project.paid,
     lastClosedPeriod: project.lastClosedPeriod,
     openDisputes: project.openDisputes,
-    status: project.status,
+    status: projectStatusFor(project.id, project.status) as RegisterRow["status"],
   }));
 
   const total = registerSizeFor(seeded.length);
+  if (total === 0) {
+    /* An empty register is a state the index has to show, so zero means zero
+       rather than "unset". */
+    return [];
+  }
   if (total <= seeded.length) {
-    return seeded;
+    return seeded.slice(0, total);
   }
 
   /* Padding projects, so the index can be profiled at the size the register
@@ -319,8 +333,29 @@ const INVITE: Invite = {
   expiresAt: "2026-11-23T23:59:59Z",
 };
 
-function receiptFor(token: string): Receipt {
-  const participant = participantAt("proj_ekuri", 330);
+const RECEIPT_TOKENS: Record<string, { projectId: string; index: number }> = {
+  rct_ngozi_eyo_2026q4: { projectId: "proj_ekuri", index: 330 },
+  rct_adaeze_okonkwo_2026q4: { projectId: "proj_ekuri", index: 0 },
+  rct_unpaid_2026q4: { projectId: "proj_oban", index: 4 },
+};
+
+function receiptFor(token: string): Receipt | null {
+  const entry = RECEIPT_TOKENS[token];
+  if (!entry) {
+    return null;
+  }
+  const participant = participantAt(entry.projectId, entry.index);
+  /* A household enrolled in a project that has paid nobody has a receipt with
+     no payments on it, which is its own state and not an error. */
+  if (entry.projectId === "proj_oban") {
+    return {
+      token,
+      participantName: participant.name,
+      projectName: projectById(entry.projectId)?.name ?? "",
+      payments: [],
+      disputeOpen: false,
+    };
+  }
   return {
     token,
     participantName: participant.name,
@@ -345,24 +380,52 @@ function receiptFor(token: string): Receipt {
   };
 }
 
-const DISCLOSURE: DisclosureBundle = {
-  leaf: "7b41d0c2f6a9e85310bb4c7d2e91f0a6c5d83b42e7f1908a6cd25b3e47f0912a",
-  proof: [
-    "3f9c0a71e4b85d26c1f0a93b7d4e25608fa1c3d9b06e472f85a1cd30b9e74f62",
-    "a1d47f02c93e65b8071da4f3e26c58901bd7a4e6f30c92b815e7d04a3fc61b28",
-    "5e2b93c7041fa86d35b0c91e7d4a2b6083bd1c47e90a2f638d5bc1047e92a3f6",
-  ],
-  rootReference: "att_ekuri_2026q3",
-  attestationId: "att_ekuri_2026q3",
-  period: "2026-Q3",
-  projectName: "Ekuri Community Forest Carbon Project",
-};
+
+/* A leaf that exists in a period other than the one the bundle names. */
+function isLeafOfAnotherPeriod(leaf: string, rootReference: string): boolean {
+  for (const project of PROJECTS) {
+    for (const period of project.periods) {
+      if (period.attestationId === rootReference) {
+        continue;
+      }
+      const periodRun = runForPeriod(project.id, period.period);
+      if (!periodRun) {
+        continue;
+      }
+      if (leavesFor(periodRun.id, project.id, periodRun.rosterSize).includes(leaf)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* An anchor that has not landed, one that cannot be reached, and a chain that
+   does not join are facts about a record rather than failures to read it, so
+   forcing one returns the record carrying that state. */
+const RECORD_STATES = new Set(["ANCHOR_PENDING", "ANCHOR_UNREACHABLE", "CHAIN_DISCONTINUITY"]);
+
+function withRecordState(attestation: Attestation, code: ErrorCode): Attestation {
+  if (code === "ANCHOR_PENDING") {
+    return {
+      ...attestation,
+      anchorState: "pending",
+      anchor: { ...attestation.anchor, sequence: null, at: null },
+    };
+  }
+  if (code === "ANCHOR_UNREACHABLE") {
+    return { ...attestation, anchorState: "unreachable" };
+  }
+  return { ...attestation, chainBreak: true };
+}
 
 type Handler = (context: {
   url: URL;
   segments: string[];
   method: string;
   body: Record<string, unknown>;
+  /** A forced code that the endpoint answers with rather than fails on. */
+  forced: ErrorCode | null;
 }) => Envelope<unknown>;
 
 function notFound(): Envelope<never> {
@@ -814,15 +877,25 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/attestations/:id",
-    handler: ({ segments }) => {
+    handler: ({ segments, forced }) => {
       const attestation = attestationById(segments[2]);
-      return attestation ? success(attestation) : notFound();
+      if (!attestation) {
+        return notFound();
+      }
+      return success(
+        forced && RECORD_STATES.has(forced) ? withRecordState(attestation, forced) : attestation,
+      );
     },
   },
   {
     method: "POST",
     pattern: "/api/attestations/:id/disclosure",
-    handler: ({ segments }) => success({ ...DISCLOSURE, attestationId: segments[2] }),
+    handler: ({ segments, body }) => {
+      const bundle = disclosureFor(segments[2], String(body.transferId ?? ""));
+      return bundle
+        ? success({ ...bundle, attestationId: segments[2] })
+        : notFound();
+    },
   },
   {
     method: "POST",
@@ -844,12 +917,41 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     pattern: "/api/verify/disclosure",
     handler: ({ body }) => {
       const bundle = body.bundle as Partial<DisclosureBundle> | undefined;
-      const matched = bundle?.leaf === DISCLOSURE.leaf;
+
+      if (
+        !bundle ||
+        typeof bundle.leaf !== "string" ||
+        !Array.isArray(bundle.proof) ||
+        typeof bundle.rootReference !== "string"
+      ) {
+        return failure("INVALID_REQUEST", "bundle");
+      }
+
+      /* The proof is computed, not compared. A bundle whose path does not
+         fold to the root it names proves nothing, and a leaf that folds to a
+         different root belongs to another period. */
+      const attestation = attestationById(bundle.rootReference);
+      if (!attestation) {
+        return failure("LEAF_NOT_IN_ROOT");
+      }
+
+      const folded = foldProof(bundle.leaf, bundle.proof);
+      if (folded !== attestation.merkleRoot) {
+        /* A leaf that belongs to this period with a path that does not fold
+           is an invalid proof. A leaf that belongs to another period is a
+           foreign leaf. They are different facts and are told apart. */
+        return failure(
+          isLeafOfAnotherPeriod(bundle.leaf, bundle.rootReference)
+            ? "LEAF_NOT_IN_ROOT"
+            : "PROOF_INVALID",
+        );
+      }
+
       return success({
-        outcome: matched ? ("match" as const) : ("no-match" as const),
-        period: matched ? DISCLOSURE.period : null,
-        projectName: matched ? DISCLOSURE.projectName : null,
-        anchorReachable: true,
+        outcome: "match" as const,
+        period: attestation.period,
+        projectName: attestation.projectName,
+        anchorReachable: attestation.anchorState === "anchored",
         checkedAt: "2026-11-09T16:12:00Z",
       });
     },
@@ -935,10 +1037,14 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/public/projects/:id",
     handler: ({ segments }) => {
-      const project = projectById(segments[3]);
-      if (!project) {
+      const found = projectById(segments[3]);
+      if (!found) {
         return notFound();
       }
+      const project = {
+        ...found,
+        status: projectStatusFor(found.id, found.status) as typeof found.status,
+      };
       return success({
         project,
         attestations: attestationsFor(project.id),
@@ -971,9 +1077,14 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
   {
     method: "GET",
     pattern: "/api/public/attestations/:id",
-    handler: ({ segments }) => {
+    handler: ({ segments, forced }) => {
       const attestation = attestationById(segments[3]);
-      return attestation ? success(attestation) : notFound();
+      if (!attestation) {
+        return notFound();
+      }
+      return success(
+        forced && RECORD_STATES.has(forced) ? withRecordState(attestation, forced) : attestation,
+      );
     },
   },
   {
@@ -995,10 +1106,14 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
     method: "GET",
     pattern: "/api/verifier/projects/:id",
     handler: ({ segments }) => {
-      const project = projectById(segments[3]);
-      if (!project) {
+      const found = projectById(segments[3]);
+      if (!found) {
         return notFound();
       }
+      const project = {
+        ...found,
+        status: projectStatusFor(found.id, found.status) as typeof found.status,
+      };
       return success({
         project,
         attestations: attestationsFor(project.id),
@@ -1201,7 +1316,14 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       ),
   },
 
-  { method: "GET", pattern: "/api/receipt/:token", handler: ({ segments }) => success(receiptFor(segments[2])) },
+  {
+    method: "GET",
+    pattern: "/api/receipt/:token",
+    handler: ({ segments }) => {
+      const receipt = receiptFor(segments[2]);
+      return receipt ? success(receipt) : notFound();
+    },
+  },
   {
     method: "POST",
     pattern: "/api/receipt/:token/confirm",
@@ -1245,7 +1367,9 @@ export function handle(
   const segments = path.split("/").filter(Boolean);
 
   const forced = readForced(path);
-  if (forced) {
+  /* Most codes are failures. A few are facts about the record, and those are
+     handed to the endpoint to answer with. */
+  if (forced && !RECORD_STATES.has(forced)) {
     return { envelope: failure(forced), replayed: false };
   }
 
@@ -1273,7 +1397,7 @@ export function handle(
     return { envelope: notFound(), replayed: false };
   }
 
-  const envelope = route.handler({ url, segments, method, body });
+  const envelope = route.handler({ url, segments, method, body, forced });
 
   if (key && mutating) {
     idempotency.set(key, { bodyFingerprint: mark, envelope });

@@ -12,8 +12,12 @@ import {
   forceCode,
   readForcedState,
   readStreamConfig,
+  setProjectStatus,
+  setRegisterSize,
+  setRosterSize,
   type Forced,
 } from "./devControl";
+import { STATE_INDEX } from "./stateIndex";
 
 /* The state control panel. Every error state in every phase is reachable from
    here by clicking rather than by editing a fixture. It is copied into the
@@ -232,6 +236,68 @@ export function DevStates() {
           </Button>
         </div>
         <p className="record-cell">{streamState}</p>
+      </div>
+
+      <div className="stack">
+        <p className="eyebrow">Fixture controls</p>
+        <Rule weight="contrast" />
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <Button small variant="outline" onClick={() => void setRegisterSize(0)}>
+            Register: empty
+          </Button>
+          <Button small variant="outline" onClick={() => void setRegisterSize(500)}>
+            Register: 500 projects
+          </Button>
+          <Button small variant="outline" onClick={() => void setRegisterSize(null)}>
+            Register: seeded
+          </Button>
+          <Button small variant="outline" onClick={() => void setRosterSize("proj_ekuri", 10000)}>
+            Roster: 10,000 rows
+          </Button>
+          <Button small variant="outline" onClick={() => void setRosterSize("proj_ekuri", null)}>
+            Roster: seeded
+          </Button>
+          <Button small variant="outline" onClick={() => void setProjectStatus("proj_ekuri", "suspended")}>
+            Ekuri: suspended
+          </Button>
+          <Button small variant="outline" onClick={() => void setProjectStatus("proj_ekuri", "withdrawn")}>
+            Ekuri: withdrawn
+          </Button>
+          <Button small variant="outline" onClick={() => void setProjectStatus("proj_ekuri", null)}>
+            Ekuri: active
+          </Button>
+        </div>
+      </div>
+
+      <div className="stack">
+        <p className="eyebrow">Every state, by the screen it belongs to</p>
+        <Rule weight="contrast" />
+        <p className="prose-muted">
+          Each line forces what it needs and opens the screen. This is the
+          index the exit checklists mean by reachable from this panel.
+        </p>
+        {STATE_INDEX.map((surface) => (
+          <div className="stack" key={surface.path}>
+            <p className="record-cell">{surface.path}</p>
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              {surface.states.map((state) => (
+                <Button
+                  key={state.label}
+                  small
+                  variant="outline"
+                  onClick={() => {
+                    void (async () => {
+                      await state.arrange();
+                      window.location.href = state.href;
+                    })();
+                  }}
+                >
+                  {state.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="stack">

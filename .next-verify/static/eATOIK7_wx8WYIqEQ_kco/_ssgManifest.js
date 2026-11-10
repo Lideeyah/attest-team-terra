@@ -1,1 +1,0 @@
-self.__SSG_MANIFEST=new Set(["\u002Fattestation\u002F[attestationId]","\u002Fdevelopers\u002F[developerId]","\u002Freceipt\u002F[token]","\u002Fregister\u002F[projectId]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()

@@ -8,12 +8,15 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
+import { Pagination } from "@/components/Pagination";
+import { PublicFooter } from "@/components/public/PublicFooter";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
+import { headingFor } from "@/lib/copy/codes";
 import { formatCount } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "The register — Attest",
+  title: "Register",
   description:
     "Every project that has closed a period, what it committed to, how many households it enrolled and how many it paid.",
 };
@@ -31,6 +34,7 @@ type Search = {
   country?: string;
   sort?: string;
   page?: string;
+  per_page?: string;
 };
 
 export default async function RegisterPage({
@@ -71,10 +75,26 @@ export default async function RegisterPage({
               placeholder="Ekuri, GS-10342, Hadejia"
             />
           </div>
+          <div className="field" style={{ minWidth: "180px" }}>
+            <label className="label" htmlFor="register-country">
+              Country
+            </label>
+            <select
+              id="register-country"
+              name="country"
+              className="select"
+              defaultValue={search.country ?? ""}
+            >
+              <option value="">Every country</option>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Kenya">Kenya</option>
+              <option value="Ghana">Ghana</option>
+            </select>
+          </div>
           <button type="submit" className="btn-outline btn-sm">
             Search
           </button>
-          {search.q ? (
+          {search.q || search.country ? (
             <Link href="/register" className="btn-quiet btn-sm">
               Clear
             </Link>
@@ -85,6 +105,7 @@ export default async function RegisterPage({
           <RegisterRows search={search} />
         </Suspense>
       </div>
+      <PublicFooter />
     </>
   );
 }
@@ -94,17 +115,18 @@ async function RegisterRows({ search }: { search: Search }) {
      what it publishes changes when a period closes. */
   await connection();
   const page = Math.max(1, Number(search.page ?? 1) || 1);
+  const perPage = Math.min(100, Math.max(1, Number(search.per_page ?? PER_PAGE) || PER_PAGE));
   const result = await api.register({
     q: search.q,
     country: search.country,
     sort: search.sort,
     page,
-    per_page: PER_PAGE,
+    per_page: perPage,
   });
 
   if (!result.ok) {
     return (
-      <Notice tone={result.code === "RATE_LIMITED" ? "flagged" : "blocked"} title={result.code}>
+      <Notice tone={result.code === "RATE_LIMITED" ? "flagged" : "blocked"} title={headingFor(result.code, "The register did not load")}>
         {result.message} {result.remediation}
       </Notice>
     );
@@ -113,16 +135,20 @@ async function RegisterRows({ search }: { search: Search }) {
   const rows = result.data;
   const meta = result.meta;
 
+  const filtered = Boolean(search.q || search.country);
+
   if (rows.length === 0) {
     return (
       <EmptyState
         line={
-          search.q
-            ? `No project matches “${search.q}”. The register holds projects that have registered with Attest and closed at least one period.`
+          filtered
+            ? `No project matches ${[search.q && `“${search.q}”`, search.country && `country ${search.country}`]
+                .filter(Boolean)
+                .join(" and ")}. Other projects are on the register.`
             : "No project has closed a period yet. The register lists a project once its first period is sealed."
         }
         action={
-          search.q ? (
+          filtered ? (
             <Link href="/register" className="btn-outline btn-sm">
               Show every project
             </Link>
@@ -158,6 +184,7 @@ async function RegisterRows({ search }: { search: Search }) {
                   </Link>
                 </th>
               ))}
+              <th scope="col">Country</th>
               <th scope="col">Registry</th>
               <th scope="col" className="numeric">
                 Commitment
@@ -180,6 +207,7 @@ async function RegisterRows({ search }: { search: Search }) {
                   <Coverage paid={row.paid} enrolled={row.enrolled} />
                 </td>
                 <td className="numeric">{formatCount(row.enrolled)}</td>
+                <td>{row.country}</td>
                 <td>
                   {row.registry} {row.registryId}
                 </td>
@@ -203,33 +231,27 @@ async function RegisterRows({ search }: { search: Search }) {
         </table>
       </div>
 
-      {meta && meta.total_pages > 1 ? (
-        <nav className="pagination" aria-label="Register pages">
-          <span className="eyebrow">
-            Page {meta.page} of {meta.total_pages} · {formatCount(meta.total)} projects
-          </span>
-          <span className="row">
-            {meta.page > 1 ? (
-              <Link
-                href={{ pathname: "/register", query: { ...search, page: meta.page - 1 } }}
-                className="btn-outline btn-sm"
-              >
-                Previous
-              </Link>
-            ) : null}
-            {meta.page < meta.total_pages ? (
-              <Link
-                href={{ pathname: "/register", query: { ...search, page: meta.page + 1 } }}
-                className="btn-outline btn-sm"
-              >
-                Next
-              </Link>
-            ) : null}
-          </span>
-        </nav>
-      ) : (
-        <p className="eyebrow">{formatCount(meta?.total ?? rows.length)} projects</p>
-      )}
+      {meta ? (
+        <Pagination
+          meta={meta}
+          label="Register pages"
+          hrefFor={(next) => {
+            const query = new URLSearchParams();
+            for (const [key, value] of Object.entries(search)) {
+              if (value) {
+                query.set(key, String(value));
+              }
+            }
+            if (next.page) {
+              query.set("page", String(next.page));
+            }
+            if (next.per_page) {
+              query.set("per_page", String(next.per_page));
+            }
+            return `/register?${query.toString()}`;
+          }}
+        />
+      ) : null}
     </div>
   );
 }

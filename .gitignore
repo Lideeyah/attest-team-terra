@@ -17,8 +17,7 @@
 
 # next.js
 /.next/
-/.next-tooling/
-/.next-live/
+/.next-*/
 /out/
 next-env.d.ts
 

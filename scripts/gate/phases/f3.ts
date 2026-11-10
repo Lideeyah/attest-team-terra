@@ -1,6 +1,7 @@
 import {
   a11y,
   forceCode,
+  fps,
   bundleUnder,
   elementAbsent,
   grepAbsent,
@@ -40,6 +41,9 @@ const STATES: { path: string; code: string; expect: RegExp }[] = [
 
 export async function f3(): Promise<void> {
   typecheck();
+
+  /* The states the fixture carries rather than forces. */
+  await fixtureStates();
 
   for (const path of ROUTES) {
     await routeRenders(path);
@@ -162,45 +166,79 @@ async function coverageCarriesItsDenominator(): Promise<void> {
 }
 
 /** A valid bundle, an invalid proof path and a leaf from another period are
-    each handled distinctly. */
+    each handled distinctly, from the input rather than from a forced code. */
 async function verifyModes(): Promise<void> {
-  const { chromium } = await import("@playwright/test");
   const { baseUrl } = await server();
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
 
-  const outcomes: Record<string, string> = {};
-  for (const [name, code] of [
-    ["valid", ""],
-    ["invalid proof", "PROOF_INVALID"],
-    ["foreign leaf", "LEAF_NOT_IN_ROOT"],
-    ["anchor unreachable", "ANCHOR_UNREACHABLE"],
-  ] as [string, string][]) {
-    await fetch(`${baseUrl}/api/dev/force`, {
+  /* A bundle the product itself issued. */
+  const issued = (await (
+    await fetch(`${baseUrl}/api/attestations/att_ekuri_2026q3/disclosure`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ code: code || null, pathFragment: "/api/verify" }),
-    });
-    await page.goto(`${baseUrl}/verify`, { waitUntil: "networkidle" });
-    await page.locator("[data-verify-bundle]").fill('{"leaf":"7b41d0c2f6a9e85310bb4c7d2e91f0a6c5d83b42e7f1908a6cd25b3e47f0912a"}');
-    await page.locator("[data-verify-submit]").click();
-    await page.waitForTimeout(500);
-    outcomes[name] = (await page.locator("[data-verify-outcome]").innerText())
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-  await fetch(`${baseUrl}/api/dev/force`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code: null }),
-  });
-  await browser.close();
+      headers: { "content-type": "application/json", "Idempotency-Key": "gate-disclosure" },
+      body: JSON.stringify({ transferId: "trf_2026q3_00001" }),
+    })
+  ).json()) as { data?: { leaf: string; proof: string[]; rootReference: string } };
 
-  const distinct = new Set(Object.values(outcomes)).size;
+  const bundle = issued.data;
+  if (!bundle) {
+    record("single-transfer verification handles each outcome distinctly", false, "no bundle issued");
+    return;
+  }
+
+  const check = async (body: unknown): Promise<string> => {
+    const response = await fetch(`${baseUrl}/api/verify/disclosure`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "Idempotency-Key": `gate-verify-${Math.random()}`,
+      },
+      body: JSON.stringify({ bundle: body }),
+    });
+    const payload = (await response.json()) as {
+      data?: { outcome?: string };
+      error?: { code?: string };
+    };
+    return payload.error?.code ?? payload.data?.outcome ?? "none";
+  };
+
+  const outcomes = {
+    valid: await check(bundle),
+    badProof: await check({ ...bundle, proof: ["00".repeat(32)] }),
+    noProof: await check({ ...bundle, proof: [] }),
+    foreignLeaf: await check({ ...bundle, leaf: "aa".repeat(32) }),
+    malformed: await check({}),
+  };
+
   record(
     "single-transfer verification handles each outcome distinctly",
-    distinct === 4,
-    Object.entries(outcomes).map(([name, text]) => `${name}: ${text.slice(0, 40)}`).join(" | "),
+    outcomes.valid === "match" &&
+      outcomes.badProof === "PROOF_INVALID" &&
+      outcomes.noProof === "PROOF_INVALID" &&
+      outcomes.foreignLeaf === "PROOF_INVALID" &&
+      outcomes.malformed === "INVALID_REQUEST",
+    Object.entries(outcomes).map(([name, value]) => `${name}: ${value}`).join(" | "),
+  );
+
+  /* A leaf that is real but belongs to another period is its own answer. */
+  const otherPeriod = (await (
+    await fetch(`${baseUrl}/api/attestations/att_ekuri_2026q2/disclosure`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "Idempotency-Key": "gate-disclosure-2" },
+      body: JSON.stringify({ transferId: "trf_2026q2_00001" }),
+    })
+  ).json()) as { data?: { leaf: string; proof: string[] } };
+
+  const foreign = otherPeriod.data
+    ? await check({
+        leaf: otherPeriod.data.leaf,
+        proof: otherPeriod.data.proof,
+        rootReference: bundle.rootReference,
+      })
+    : "none";
+  record(
+    "a transfer from another period is told apart from an invalid proof",
+    foreign === "LEAF_NOT_IN_ROOT",
+    foreign,
   );
 }
 
@@ -280,6 +318,29 @@ async function registerAtScale(rows: number): Promise<void> {
     reported >= rows && rendered > 0 && rendered < rows && elapsed < 4000,
     `reported ${reported}, rendered ${rendered}, ${elapsed}ms`,
   );
+
+  /* And it stays at sixty frames a second while a reader scrolls it. */
+  await fetch(`${baseUrl}/api/dev/register-size`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ rows }),
+  });
+  await fps(
+    "/register?per_page=100",
+    async (scrolling) => {
+      for (let step = 0; step < 20; step += 1) {
+        await scrolling.mouse.wheel(0, 400);
+        await scrolling.waitForTimeout(40);
+      }
+    },
+    60,
+    `60fps scrolling the register at ${rows} projects`,
+  );
+  await fetch(`${baseUrl}/api/dev/register-size`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ rows: null }),
+  });
 }
 
 
@@ -299,6 +360,7 @@ async function reportStates(): Promise<void> {
     await forceCode(code || null, "/api/disputes");
     const page = await browser.newPage();
     await page.goto(`${baseUrl}/report`, { waitUntil: "networkidle" });
+    await page.locator('select[name="projectId"]').selectOption({ index: 1 });
     await page.locator('input[name="category"]').first().check();
     await page.locator('button[type="submit"]').click();
     /* The action redirects on the client, so the result is the new URL rather
@@ -317,5 +379,40 @@ async function reportStates(): Promise<void> {
     "filing a report reaches each of its states",
     broken.length === 0,
     broken.map((outcome) => `${outcome.name}: ${outcome.text}`).join(" | "),
+  );
+}
+
+
+/** The states that are facts about a project rather than failures: a
+    withdrawn project, a suspended one, an operator with several, an anchor
+    that has not landed, and a period whose correction supersedes it. */
+async function fixtureStates(): Promise<void> {
+  const { chromium } = await import("@playwright/test");
+  const { baseUrl } = await server();
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  const reads = async (path: string, pattern: RegExp): Promise<boolean> => {
+    await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+    const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    return pattern.test(body);
+  };
+
+  const results: [string, boolean][] = [
+    ["a withdrawn project keeps its record", await reads("/register/proj_ekuri_pilot", /withdrawn/i)],
+    ["a suspended project is marked", await reads("/register/proj_delta", /suspended/i)],
+    ["an operator with several projects", await reads("/developers/dev_ekuri", /Ekuri Riverine Pilot/i)],
+    ["an anchor that has not landed", await reads("/attestation/att_ekuri_pilot_2026q1", /waiting to anchor|anchor pending/i)],
+    ["a correction supersedes a record", await reads("/attestation/att_ekuri_2026q3", /correction supersedes/i)],
+    ["the correction names what it supersedes", await reads("/attestation/att_ekuri_2026q3_correction", /2026-Q3|Q3 2026/i)],
+    ["a receipt with no payment yet", await reads("/receipt/rct_unpaid_2026q4", /no payment yet/i)],
+  ];
+  await browser.close();
+
+  const missing = results.filter(([, ok]) => !ok).map(([name]) => name);
+  record(
+    "every state the fixture carries is on the page",
+    missing.length === 0,
+    missing.join(", "),
   );
 }

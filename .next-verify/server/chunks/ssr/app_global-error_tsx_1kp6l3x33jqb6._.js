@@ -1,3 +1,0 @@
-module.exports=[3171,a=>{"use strict";var b=a.i(87924);a.s(["default",0,function({error:a,reset:c}){return(0,b.jsx)("html",{lang:"en",children:(0,b.jsx)("body",{children:(0,b.jsxs)("main",{children:[(0,b.jsx)("h1",{children:"Attest did not load"}),(0,b.jsx)("p",{children:"The application failed before it could be drawn. Nothing was submitted and no record was changed."}),a.digest?(0,b.jsxs)("p",{children:["Reference ",a.digest]}):null,(0,b.jsx)("button",{type:"button",onClick:c,children:"Try again"})]})})})}])}];
-
-//# sourceMappingURL=app_global-error_tsx_1kp6l3x33jqb6._.js.map

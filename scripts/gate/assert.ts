@@ -206,17 +206,31 @@ export async function screenshot(phase: string, path: string, label: string): Pr
 export async function bundleUnder(path: string, kilobytes: number): Promise<void> {
   await withPage(
     async (page, baseUrl) => {
-      let bytes = 0;
-      page.on("response", (response) => {
-        const url = response.url();
-        if (/\.js(\?|$)/.test(url)) {
-          const length = Number(response.headers()["content-length"] ?? 0);
-          bytes += length;
-        }
-      });
       await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
-      const kb = bytes / 1024;
-      record(`bundle under ${kilobytes}KB on ${path}`, kb <= kilobytes, `${kb.toFixed(1)}KB`);
+      /* Resource Timing, not Content-Length: a compressed chunked response
+         carries no Content-Length at all, so summing that header measures
+         nothing and reports zero. */
+      const measured = JSON.parse(
+        (await page.evaluate(
+          `JSON.stringify((function () {
+            var scripts = performance.getEntriesByType("resource").filter(function (entry) {
+              return entry.initiatorType === "script" || /\\.js(\\?|$)/.test(entry.name);
+            });
+            return {
+              count: scripts.length,
+              transferred: scripts.reduce(function (sum, entry) { return sum + (entry.transferSize || 0); }, 0),
+              decoded: scripts.reduce(function (sum, entry) { return sum + (entry.decodedBodySize || 0); }, 0)
+            };
+          })())`,
+        )) as string,
+      ) as { count: number; transferred: number; decoded: number };
+
+      const kb = measured.transferred / 1024;
+      record(
+        `bundle under ${kilobytes}KB on ${path}`,
+        kb <= kilobytes,
+        `${measured.count} scripts, ${kb.toFixed(1)}KB transferred, ${(measured.decoded / 1024).toFixed(1)}KB decoded`,
+      );
     },
     { production: true },
   );

@@ -5,7 +5,7 @@ import { AuthForm, Field } from "@/components/auth/AuthForm";
 import { api } from "@/lib/api/client";
 
 export const metadata: Metadata = {
-  title: "Reset a password — Attest",
+  title: "Reset a password",
   description: "Ask for a reset link, or set a new password with one.",
 };
 

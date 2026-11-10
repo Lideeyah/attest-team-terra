@@ -1,1 +1,0 @@
-{"status":200,"headers":{"content-type":"application/json","x-next-cache-tags":"_N_T_/layout,_N_T_/healthz/layout,_N_T_/healthz/route,_N_T_/healthz"},"routeCache":{"key":"/route-cache/APP_ROUTE/e0b2bf67a1fc5ca87831d386781c9568b031649d285dfba56978588353422c71/$/healthz","owner":{"kind":"APP_ROUTE","sourceRoute":"/healthz/route"},"isFallback":false}}

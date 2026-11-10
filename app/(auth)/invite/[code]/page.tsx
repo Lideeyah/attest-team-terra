@@ -9,7 +9,7 @@ import { api } from "@/lib/api/client";
 import { formatTimestamp } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "Redeem an invitation — Attest",
+  title: "Redeem an invitation",
   description:
     "Redeem a field agent invitation: verify who you are and bind the phone you will enrol households on.",
 };

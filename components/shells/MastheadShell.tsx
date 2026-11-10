@@ -14,6 +14,7 @@ type MastheadShellProps = {
   sections: MastheadSection[];
   /** Shown at the right of the masthead, in record face. */
   context?: string;
+  account?: { organisation: string; email: string };
 };
 
 /** The read-oriented shell shared by the verifier portal, bank operations and
@@ -23,6 +24,10 @@ export function MastheadShell({
   surface,
   sections,
   context,
+  account = {
+    organisation: "Lagos Climate Finance",
+    email: "desk@lagosclimatefinance.ng",
+  },
 }: MastheadShellProps) {
   const pathname = usePathname();
 
@@ -35,7 +40,16 @@ export function MastheadShell({
               <Lockup size={18} />
               <span className="eyebrow">{surface}</span>
             </div>
-            {context ? <span className="record-cell">{context}</span> : null}
+            <span className="masthead-account">
+              {context ? <span className="record-cell">{context}</span> : null}
+              <span className="eyebrow">{account.organisation}</span>
+              <span className="record-cell console-account">{account.email}</span>
+              <form action="/signout" method="post">
+                <button type="submit" className="btn-quiet btn-sm">
+                  Sign out
+                </button>
+              </form>
+            </span>
           </div>
         </div>
       </header>

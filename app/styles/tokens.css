@@ -45,6 +45,12 @@
   /* ---- Scrim ------------------------------------------------------------ */
   --scrim: rgba(24, 24, 22, 0.32);
 
+  /* Print. Paper is paper and ink is ink: a document that leaves the screen
+     stops being a warm alabaster ground and becomes a white page. */
+  --print-paper: #ffffff;
+  --print-ink: #000000;
+  --print-dim: #333333;
+
   /* ---- Typefaces -------------------------------------------------------- */
   /* All three faces are self-hosted by next/font, which exposes each as a CSS
      variable, so the token reads that variable and keeps a real fallback
@@ -120,6 +126,7 @@
   --pad-cell-x: 14px;
   --pad-panel: 22px;
 
+  --masthead-height: 64px;
   --rail-width: 240px;
   --field-width: 390px;
   --field-width-max: 430px;

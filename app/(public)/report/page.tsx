@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { PublicFooter } from "@/components/public/PublicFooter";
 import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { api } from "@/lib/api/client";
 
 export const metadata: Metadata = {
-  title: "Report a problem — Attest",
+  title: "Report a problem",
   description:
     "Tell Attest that a payment did not arrive, arrived short, or that a household was left off the register. No account needed.",
 };
@@ -36,15 +37,27 @@ const CATEGORIES = [
 async function fileReport(formData: FormData) {
   "use server";
   const category = String(formData.get("category") ?? "");
-  const projectId = String(formData.get("projectId") ?? "proj_ekuri");
+  const projectId = String(formData.get("projectId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
+  const voice = formData.get("voiceNote");
 
   if (!CATEGORIES.some((option) => option.value === category)) {
     redirect("/report?state=invalid");
   }
+  if (!projectId) {
+    redirect("/report?state=no-project");
+  }
+
+  /* A voice note is the point of the option: somebody who cannot write the
+     claim records it, and it is submitted with the claim rather than
+     collected and dropped. */
+  const voiceNote =
+    voice instanceof File && voice.size > 0
+      ? `${voice.name} (${Math.round(voice.size / 1024)}KB)`
+      : undefined;
 
   const result = await api.fileDispute(
-    { projectId, category, body: body || undefined },
+    { projectId, category, body: body || undefined, voiceNote },
     `report-${Date.now()}`,
   );
 
@@ -60,6 +73,8 @@ export default async function ReportPage({
   searchParams: Promise<{ state?: string; code?: string; id?: string }>;
 }) {
   const search = await searchParams;
+  const register = await api.register({ per_page: 100 });
+  const projects = register.ok ? register.data : [];
 
   if (search.state === "submitted") {
     return (
@@ -109,6 +124,13 @@ export default async function ReportPage({
           </Notice>
         ) : null}
 
+        {search.state === "no-project" ? (
+          <Notice tone="flagged" title="Choose the project">
+            A claim is checked against one project&rsquo;s own transfers, so it has
+            to say which project it is about.
+          </Notice>
+        ) : null}
+
         {search.state === "error" ? (
           <Notice
             tone={search.code === "RATE_LIMITED" ? "flagged" : "blocked"}
@@ -129,7 +151,25 @@ export default async function ReportPage({
         ) : null}
 
         <form action={fileReport} className="stack-lg" style={{ maxWidth: "var(--measure-reading)" }}>
-          <input type="hidden" name="projectId" value="proj_ekuri" />
+          <div className="field">
+            <label className="label" htmlFor="report-project">
+              Which project
+            </label>
+            <select id="report-project" name="projectId" className="select" defaultValue="">
+              <option value="" disabled>
+                Choose the project
+              </option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <p className="field-note">
+              The one that said it would pay you. If you are not sure, choose the
+              closest and say so below.
+            </p>
+          </div>
           <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="label">What happened</legend>
             <div className="grid-ruled">
@@ -177,6 +217,7 @@ export default async function ReportPage({
           </div>
         </form>
       </div>
+      <PublicFooter />
     </>
   );
 }

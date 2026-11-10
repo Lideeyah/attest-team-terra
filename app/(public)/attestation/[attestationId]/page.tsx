@@ -1,25 +1,44 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PublicMasthead } from "@/components/public/PublicMasthead";
+import { PublicFooter } from "@/components/public/PublicFooter";
 import { Coverage } from "@/components/public/Coverage";
 import { ButtonLink } from "@/components/Button";
 import { Hash } from "@/components/Hash";
-import { Loading } from "@/components/Loading";
 import { Notice } from "@/components/Notice";
 import { Registered } from "@/components/Registered";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
-import { formatNaira, formatTimestamp } from "@/lib/record";
+import { headingFor } from "@/lib/copy/codes";
+import {
+  formatCoverage,
+  formatNaira,
+  formatPeriod,
+  formatSettlement,
+} from "@/lib/record";
 
-export const metadata: Metadata = {
-  title: "Attestation — Attest",
-  description:
-    "One closed period: households enrolled, households paid, what the commitment required, the hash, its place in the chain and where it is anchored.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ attestationId: string }>;
+}): Promise<Metadata> {
+  await connection();
+  const { attestationId } = await params;
+  const result = await api.publicAttestation(attestationId);
+  if (!result.ok) {
+    return { title: "Attestation not found" };
+  }
+  const record = result.data;
+  const description = `${formatCoverage(record.paid, record.enrolled)} households paid. ${formatNaira(record.amountToHouseholds)} received against ${formatNaira(record.required)} required.`;
+  return {
+    title: `${record.projectName} ${formatPeriod(record.period)} attestation`,
+    description,
+    openGraph: { title: `${record.projectName} · ${formatPeriod(record.period)}`, description },
+  };
+}
 
 export default async function AttestationPage({
   params,
@@ -31,10 +50,9 @@ export default async function AttestationPage({
     <>
       <PublicMasthead context="Attestation" />
       <div className="measure section-tight stack-lg">
-        <Suspense fallback={<Loading rows={8} label="Loading the record" />}>
-          <AttestationBody attestationId={attestationId} />
-        </Suspense>
+        <AttestationBody attestationId={attestationId} />
       </div>
+      <PublicFooter />
     </>
   );
 }
@@ -56,19 +74,38 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
     if (result.code === "NOT_FOUND") {
       notFound();
     }
-    /* The figures and the hash are final whatever the anchor is doing, so a
-       pending or unreachable anchor is stated rather than hiding the record. */
     return (
-      <Notice
-        tone={result.code === "CHAIN_DISCONTINUITY" ? "blocked" : "flagged"}
-        title={result.code}
-      >
+      <Notice tone="blocked" title={headingFor(result.code, "This record did not load")}>
         {result.message} {result.remediation}
       </Notice>
     );
   }
 
   const record = result.data;
+
+  /* The figures and the hash are final whatever the anchor is doing, so a
+     pending anchor, an unreachable one or a break in the chain is stated
+     above the record rather than shown instead of it. */
+  const aboutTheRecordNotice =
+    record.chainBreak ? (
+      <Notice tone="blocked" title="This record does not chain to the period before it">
+        The break is published rather than repaired. Neither record was
+        rewritten, and both remain readable: what is in question is the join
+        between them, not the figures in either.
+      </Notice>
+    ) : record.anchorState === "pending" ? (
+      <Notice tone="flagged" title="This record is waiting to anchor">
+        The figures and the hash below are final. What has not landed yet is
+        the anchor, which is the public timestamp saying when they were
+        published.
+      </Notice>
+    ) : record.anchorState === "unreachable" ? (
+      <Notice tone="flagged" title="The anchoring network could not be reached">
+        The hash and the proof still verify against this record, so the
+        arithmetic holds. What cannot be checked right now is when it was
+        published.
+      </Notice>
+    ) : null;
 
   return (
     <>
@@ -94,6 +131,8 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
         </div>
         <Rule weight="heavy" />
       </div>
+
+      {aboutTheRecordNotice}
 
       {record.supersededBy ? (
         <Notice tone="flagged" title="A correction supersedes this record">
@@ -141,7 +180,7 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
 
           <div className="definition">
             <Row label="Period">{record.period}</Row>
-            <Row label="Closed">{formatTimestamp(record.closedAt)}</Row>
+            <Row label="Closed">{formatSettlement(record.closedAt)}</Row>
             <Row label="Hash">
               <Hash value={record.hash} full />
             </Row>
@@ -177,10 +216,18 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
         <ButtonLink href={`/verify?hash=${record.hash}`}>
           Verify this record
         </ButtonLink>
+        <a
+          className="btn-outline btn-sm"
+          href={`/attestation/${record.id}/download`}
+          download
+        >
+          Download the signed attestation
+        </a>
         <Link href={`/register/${record.projectId}`} className="btn-quiet btn-sm">
           Back to the project
         </Link>
       </div>
+      <PublicFooter />
     </>
   );
 }

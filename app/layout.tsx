@@ -7,10 +7,28 @@ import "./globals.css";
    them: it is built for a cheap phone on an intermittent connection, and
    anything attached here would be attached there. */
 
+const DESCRIPTION =
+  "Attest moves carbon revenue to households through the bank and emits a record of what was paid, what was not, and against which commitment.";
+
 export const metadata: Metadata = {
-  title: "Attest — a settlement record for carbon project payments",
-  description:
-    "Attest moves carbon revenue to households through the bank and emits a record of what was paid, what was not, and against which commitment.",
+  title: {
+    default: "Attest · a settlement record for carbon project payments",
+    template: "%s · Attest",
+  },
+  description: DESCRIPTION,
+  metadataBase: new URL(process.env.ATTEST_PUBLIC_URL ?? "https://attest.ng"),
+  openGraph: {
+    title: "Attest · a settlement record for carbon project payments",
+    description: DESCRIPTION,
+    type: "website",
+    images: [{ url: "/og.svg", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Attest",
+    description: DESCRIPTION,
+    images: ["/og.svg"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
