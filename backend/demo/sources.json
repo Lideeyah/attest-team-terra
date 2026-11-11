@@ -1,0 +1,22 @@
+{
+  "documents": [
+    {
+      "file": "tgb-pdd.pdf",
+      "url": "https://s3.eu-west-2.amazonaws.com/assets.planvivo.org/documents/PV-Climate-Certified-Projects/TGB-Project-Documents/trees-for-global-benefits_project-design-document.pdf",
+      "sha256": "6b4ec1211a9acf1d091c8a91b0301d98f16102d8286bdaa727523dc4ff29988f",
+      "bytes": 1629244
+    },
+    {
+      "file": "tgb-annual-report-2024.pdf",
+      "url": "https://s3.eu-west-2.amazonaws.com/assets.planvivo.org/documents/PV-Climate-Certified-Projects/TGB-Project-Documents/trees-for-global-benefits-annual-report-2024.pdf",
+      "sha256": "de8789efc4bad750b8f50ea3311284ddfd9878f9a22adb03951c3bf9f499f70c",
+      "bytes": 1914222
+    }
+  ],
+  "commitment": {
+    "sourceLocator": "J2.1",
+    "page": 47,
+    "specifiedSourceLocator": "A.13.1 / Table 5",
+    "sourceAlignment": "edition_pending"
+  }
+}

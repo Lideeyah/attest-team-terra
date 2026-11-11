@@ -1,0 +1,52 @@
+{
+  "record": {
+    "registryId": "trees-for-global-benefits-uganda",
+    "name": "Trees for Global Benefits",
+    "registry": "Plan Vivo",
+    "country": "UG",
+    "methodology": "Afforestation/reforestation, agroforestry, assisted natural regeneration and improved land management",
+    "boundary": null,
+    "boundaryStatus": "upload_required",
+    "issuances": [],
+    "sources": [
+      {
+        "url": "https://s3.eu-west-2.amazonaws.com/assets.planvivo.org/documents/PV-Climate-Certified-Projects/TGB-Project-Documents/trees-for-global-benefits_project-design-document.pdf",
+        "sha256": "6b4ec1211a9acf1d091c8a91b0301d98f16102d8286bdaa727523dc4ff29988f",
+        "retrievedAt": "2026-11-10T19:19:15.681621+00:00"
+      }
+    ],
+    "projectUrl": "https://www.planvivo.org/projects/trees-for-global-benefits-uganda",
+    "issuanceStatus": "A current Markit issuance export has not been imported; no issuance history is fabricated.",
+    "operator": "Environmental Conservation Trust of Uganda (ECOTRUST)",
+    "markitProjectId": "100000000000171",
+    "markitUrl": "https://mer.markit.com/br-reg/public/project.jsp?project_id=100000000000171",
+    "referenceStatistics": {
+      "participants": 51874,
+      "certificatesIssued": 7518071,
+      "projectStartYear": 2003,
+      "sourceUrl": "https://s3.eu-west-2.amazonaws.com/assets.planvivo.org/documents/PV-Climate-Certified-Projects/TGB-Project-Documents/trees-for-global-benefits-annual-report-2024.pdf",
+      "retrievedAt": "2026-11-10T23:09:42.625369+00:00",
+      "sourcePage": 5,
+      "asOf": "2024-12-31",
+      "sourceHash": "de8789efc4bad750b8f50ea3311284ddfd9878f9a22adb03951c3bf9f499f70c"
+    }
+  },
+  "commitment": {
+    "source_quote": "whose price is designed to give the \ncommunity at least 60% of the purchase price",
+    "page": 47,
+    "basis": "gross",
+    "cadence": "staged",
+    "beneficiary_definition": "Participating farmers",
+    "sourceUrl": "https://s3.eu-west-2.amazonaws.com/assets.planvivo.org/documents/PV-Climate-Certified-Projects/TGB-Project-Documents/trees-for-global-benefits_project-design-document.pdf",
+    "reviewNote": "The backend specification names A.13.1/Table 5. The available verified May 2020 edition uses J2.1 on page 47 and Table 12 for performance milestones. No matching A.13.1 edition or unverified 60/30/7 allocation is fabricated. Annual is the reporting cadence; payment cadence is staged.",
+    "reportingCadence": "annual",
+    "sourceLocator": "J2.1",
+    "paymentSchedule": {
+      "type": "verification_milestones",
+      "description": "Staged against verified performance milestones; individual payments follow the published PES agreements.",
+      "sourceLocator": "J2 Payments & Benefit Sharing, Table 12"
+    },
+    "specifiedSourceLocator": "A.13.1 / Table 5",
+    "sourceAlignment": "edition_pending"
+  }
+}

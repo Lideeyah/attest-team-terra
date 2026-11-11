@@ -12,7 +12,13 @@
     "contact-sheet": "node scripts/contact-sheet.mjs",
     "gate": "tsx scripts/gate.ts",
     "test": "vitest run",
-    "demo": "tsx demo/record.ts"
+    "demo": "tsx demo/record.ts",
+    "backend:install": "npm ci --prefix backend",
+    "backend:build": "npm run build --prefix backend",
+    "backend:local": "npm run local --prefix backend",
+    "backend:check": "npm run check --prefix backend",
+    "backend:test": "npm test --prefix backend",
+    "dev:integrated": "node scripts/integrated-dev.mjs"
   },
   "dependencies": {
     "motion": "^14.11.1",

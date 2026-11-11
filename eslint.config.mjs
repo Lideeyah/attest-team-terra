@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     /* The gate and a reviewer build further configurations side by side. */
     ".next-*/**",
+    "backend/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

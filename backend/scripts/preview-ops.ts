@@ -1,0 +1,14 @@
+import { MemoryStore } from '../src/store.js';
+import { createApp } from '../src/app.js';
+import { passwordHash } from '../src/auth.js';
+import { row, hash } from '../src/core.js';
+if(process.env.NODE_ENV==='production')throw Error('Local preview only');
+process.env.AUTH_SECRET='synthetic-local-preview-secret-32-characters-long';process.env.PUBLIC_URL='http://localhost:8080';
+const db=new MemoryStore();const email='ops@example.test';
+await db.put('users',row({id:hash(email),email,passwordHash:passwordHash('Synthetic-preview-2026'),verified:true,role:'bank_ops',organisationId:'synthetic-ops'}));
+const project=await db.put('projects',row({name:'Synthetic Community Forest',organisationId:'synthetic-org',registryId:'SYNTHETIC-001',country:'NG'}));
+const signal=await db.put('signals',row({projectId:project.id,class:'onward_concentration',severity:'review',participantIds:['synthetic-household-1','synthetic-household-2','synthetic-household-3'],detail:{to:'synthetic-destination'}}));
+await db.put('cases',row({projectId:project.id,signalId:signal.id,status:'open',actions:[]}));
+await db.put('participants',row({projectId:project.id,name:'Synthetic Household',identityHash:'synthetic',flags:['NAME_MISMATCH']}));
+const app=await createApp(db);await app.listen({host:'127.0.0.1',port:8080});
+console.log('Local synthetic preview: http://localhost:8080/ops\nEmail: ops@example.test\nPassword: Synthetic-preview-2026\nData resets when this process stops.');

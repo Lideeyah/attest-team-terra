@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    if (process.env.ATTEST_API_MODE !== "live") return [];
+    const upstream = process.env.ATTEST_API_ORIGIN || "http://localhost:8080";
+    return { beforeFiles: [
+      { source: "/api/:path*", destination: `${upstream}/api/:path*` },
+      { source: "/auth/:path*", destination: `${upstream}/auth/:path*` },
+      { source: "/receipt/:path*", destination: `${upstream}/receipt/:path*` },
+    ] };
+  },
   /* The gate builds two configurations — one carrying the developer tooling
      and the mock, one without — and serves them side by side, so each needs
      its own output directory. */
