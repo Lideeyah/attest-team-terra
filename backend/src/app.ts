@@ -250,7 +250,8 @@ export async function createApp(db: Store, suppliedService?: Service) {
     };
     await poll();const timer=setInterval(poll,2000);const heartbeat=setInterval(()=>reply.raw.write(': heartbeat\n\n'),15000);
     const expiry=setInterval(async()=>{try{await session(db,req.headers.authorization,req.headers.cookie);}catch{reply.raw.end();}},60000);
-    reply.raw.on('close',()=>{clearInterval(timer);clearInterval(heartbeat);clearInterval(expiry);});
+    const lifetime=process.env.VERCEL?setTimeout(()=>reply.raw.end(),25000):undefined;
+    reply.raw.on('close',()=>{clearInterval(timer);clearInterval(heartbeat);clearInterval(expiry);if(lifetime)clearTimeout(lifetime);});
   });
   route('GET','/api/tariff',async c=>c.s.providers.bank.call('GET','/tariff'),dev);
   for(const suffix of ['funding','reconciliation'])route('GET',`/api/projects/:id/${suffix}`,async c=>{

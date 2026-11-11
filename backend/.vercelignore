@@ -1,0 +1,8 @@
+.local-state
+node_modules
+dist
+output
+tmp
+*.log
+.env*
+!.env.example

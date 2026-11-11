@@ -1,0 +1,10 @@
+backend/.local-state
+backend/node_modules
+backend/dist
+backend/.vercel
+.next*
+verification
+demo
+*.log
+.env*
+!.env.example

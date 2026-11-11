@@ -5,6 +5,7 @@ export class BackendError extends Error {
 }
 export async function backendRequest<T>(path:string,options:{method?:string;body?:unknown;key?:string;signal?:AbortSignal}={}):Promise<{data:T;meta:unknown}> {
   const method=options.method??'GET',multipart=options.body instanceof FormData;
+  if(multipart)for(const value of (options.body as FormData).values())if(value instanceof Blob&&value.size>4*1024*1024)throw new Error('Use a file no larger than 4 MiB.');
   const headers:Record<string,string>={Accept:'application/json',...await requestContext()};
   if(method!=='GET'&&!multipart){headers['Content-Type']='application/json';headers['Idempotency-Key']=options.key??crypto.randomUUID();}
   const origin=typeof window==='undefined'?(process.env.ATTEST_INTERNAL_URL??'http://localhost:3000'):'';
