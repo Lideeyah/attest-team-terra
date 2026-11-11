@@ -28,9 +28,9 @@ const CATEGORIES = [
     body: "Something was paid and the amount does not match what the notice said.",
   },
   {
-    value: "not-enrolled",
-    title: "A household was left off the register",
-    body: "Somebody who lives and works here was not enrolled, so they were never on the list to be paid.",
+    value: process.env.ATTEST_API_MODE==='live'?"someone-else-collected":"not-enrolled",
+    title: process.env.ATTEST_API_MODE==='live'?"Someone else collected the payment":"A household was left off the register",
+    body: process.env.ATTEST_API_MODE==='live'?"The payment appears to have gone to someone other than the intended recipient.":"Somebody who lives and works here was not enrolled, so they were never on the list to be paid.",
   },
 ];
 
@@ -207,9 +207,10 @@ export default async function ReportPage({
               name="voiceNote"
               type="file"
               accept="audio/*"
+              disabled={process.env.ATTEST_API_MODE==='live'}
               className="input"
             />
-            <p className="field-note">Optional · a voice note in any language</p>
+            <p className="field-note">{process.env.ATTEST_API_MODE==='live'?'Voice evidence requires your scoped payment receipt link. Use that link to attach MP3, Ogg or WAV audio.':'Optional · a voice note in any language'}</p>
           </div>
 
           <div className="row">

@@ -32,7 +32,7 @@ export async function generateMetadata({
   const latest =
     project.periods.filter((period) => period.state !== "open").at(-1) ??
     project.periods[0];
-  const description = `${formatCoverage(latest.paid, latest.enrolled)} households paid in ${formatPeriod(latest.period)} against a ${project.commitment.percentage}% commitment. ${project.registry} ${project.registryId}.`;
+  const description = latest ? `${formatCoverage(latest.paid, latest.enrolled)} households paid in ${formatPeriod(latest.period)} against a ${project.commitment.percentage}% commitment. ${project.registry} ${project.registryId}.` : `${project.name}. No reporting period has closed yet.`;
   return {
     title: project.name,
     description,
@@ -144,6 +144,9 @@ async function ProjectBody({ projectId }: { projectId: string }) {
         </p>
         <div className="row-between" style={{ alignItems: "flex-start" }}>
           <h1 className="h2-display">{project.name}</h1>
+          {project.commitment.sourceAlignment==='edition_pending'?<p className="note">Source edition pending: the verified quotation is retained at its actual location. The requested {project.commitment.specifiedSourceLocator} edition has not been provided.</p>:null}
+          {project.referenceStatistics?<section className="panel stack"><h2 className="h3-display">Published project reference</h2><p>{project.referenceStatistics.participants?.toLocaleString()} participants · {project.referenceStatistics.certificatesIssued?.toLocaleString()} certificates issued · project start year {project.referenceStatistics.projectStartYear}</p><p className="note">These source statistics are separate from the synthetic payment demonstration and are never its coverage denominator.</p><a href={project.referenceStatistics.sourceUrl} target="_blank" rel="noreferrer">Published annual report, page {project.referenceStatistics.sourcePage} · as of {project.referenceStatistics.asOf}</a></section>:null}
+          {project.isDemonstration?<Notice title="Synthetic payment demonstration"><p>{project.demonstrationNotice}</p></Notice>:null}
           {project.status === "withdrawn" ? (
             <Stamp state="blocked" label="Withdrawn" recordId={project.id} />
           ) : project.status === "suspended" ? (
@@ -253,6 +256,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
         <div className="stack">
           <h2 className="h3-display">Where households are enrolled</h2>
           <BucketMap
+            demonstration={project.isDemonstration}
             buckets={geography.data.buckets}
             resolution={geography.data.resolution}
           />

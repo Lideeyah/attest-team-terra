@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
 import { api } from "@/lib/api/client";
@@ -45,7 +45,7 @@ export function ExportPanel({
 }) {
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [period, setPeriod] = useState(projects[0]?.periods[0] ?? "");
-  const [format, setFormat] = useState<"disclosure" | "csv" | "record" | "benefit-sharing">("disclosure");
+  const [format, setFormat] = useState<"disclosure" | "csv" | "record" | "benefit-sharing">(process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?'record':'disclosure');
   const [state, setState] = useState<State>(
     initial === "ready"
       ? { kind: "ready", bundle: null, url: null, report: null }
@@ -60,6 +60,7 @@ export function ExportPanel({
   );
 
   const project = projects.find((candidate) => candidate.id === projectId) ?? null;
+  useEffect(()=>{const url=state.kind==='ready'?state.url:null;return()=>{if(url?.startsWith('blob:'))URL.revokeObjectURL(url);};},[state]);
 
   async function generate(): Promise<void> {
     if (!project) {
@@ -141,7 +142,7 @@ export function ExportPanel({
 
           <fieldset className="stack-tight">
             <legend className="label">Format</legend>
-            {FORMATS.map((option) => (
+            {FORMATS.filter(option=>process.env.NEXT_PUBLIC_ATTEST_API_MODE!=='live'||option.value!=='disclosure').map((option) => (
               <label key={option.value} className="punch-label">
                 <input
                   className="punch"
@@ -250,7 +251,7 @@ export function ExportPanel({
         </Notice>
       ) : null}
 
-      <VerifierKeys />
+      {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<p className="note">Selective disclosure is issued by an authorised developer for a specific transfer. Verifier API-key issuance is not supplied by the backend.</p>:<VerifierKeys />}
     </section>
   );
 }

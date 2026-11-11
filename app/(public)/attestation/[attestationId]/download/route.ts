@@ -11,6 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ attestationId: string }> },
 ) {
   const { attestationId } = await params;
+  if(process.env.ATTEST_API_MODE==='live')return Response.redirect(new URL(`/api/public/attestations/${encodeURIComponent(attestationId)}/pdf`,_request.url));
   const result = await api.publicAttestation(attestationId);
 
   if (!result.ok) {

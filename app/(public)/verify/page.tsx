@@ -9,6 +9,7 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
+import { LiveVerify } from "@/components/public/LiveVerify";
 import { parseJson } from "@/lib/json";
 import { formatCoverage, formatDateTime, formatNaira, formatPeriod } from "@/lib/record";
 
@@ -71,6 +72,7 @@ export default async function VerifyPage({
   searchParams: Promise<Search & { period?: string; project?: string; anchor?: string }>;
 }) {
   const search = await searchParams;
+  if(process.env.ATTEST_API_MODE==='live')return <><PublicMasthead context="Verification"/><LiveVerify/><PublicFooter/></>;
 
   return (
     <>

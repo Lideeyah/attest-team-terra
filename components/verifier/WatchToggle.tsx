@@ -31,7 +31,7 @@ export function WatchToggle({
       type="button"
       variant={on ? "quiet" : "outline"}
       small
-      disabled={working}
+      disabled={working || (process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'&&on)}
       onClick={() => void toggle()}
       data-watch={projectId}
     >

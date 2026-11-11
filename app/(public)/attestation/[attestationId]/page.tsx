@@ -116,6 +116,7 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
         </p>
         <div className="row-between" style={{ alignItems: "flex-start" }}>
           <h1 className="h2-display">The record for {formatPeriod(record.period, true)}</h1>
+          {record.isDemonstration?<p className="note">{record.demonstrationNotice??"Synthetic payment demonstration"}</p>:null}
           <span className="row">
             {record.closedLate ? (
               <Stamp state="flagged" label="Closed late" recordId={`${record.id}-late`} />

@@ -41,6 +41,7 @@ export function AlertBuilder({ projects }: { projects: { id: string; name: strin
   return (
     <section className="panel stack" aria-label="Add an alert">
       <h2 className="h3-display">Add an alert</h2>
+      {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<p className="note">The coverage threshold measures money received against the commitment, not the fraction of households paid. Rule removal is not currently supported.</p>:null}
       <Rule />
       <div className="field">
         <label className="label" htmlFor="alert-project">

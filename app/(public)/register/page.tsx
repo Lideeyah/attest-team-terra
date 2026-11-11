@@ -50,7 +50,7 @@ export default async function RegisterPage({
         <div className="stack">
           <p className="eyebrow">Register</p>
           <h1 className="h2-display">
-            Every project that has closed a period
+            {process.env.ATTEST_API_MODE==='live'?'Every enrolled project, including those not yet paid':'Every project that has closed a period'}
           </h1>
           <p className="lede">
             What each project committed to in its own project design document,
@@ -64,7 +64,7 @@ export default async function RegisterPage({
         <form className="search-row" method="get" action="/register">
           <div className="field" style={{ minWidth: "280px" }}>
             <label className="label" htmlFor="register-search">
-              Search by project, operator or registry ID
+              {process.env.ATTEST_API_MODE==='live'?'Search by project name':'Search by project, operator or registry ID'}
             </label>
             <input
               id="register-search"
@@ -86,9 +86,10 @@ export default async function RegisterPage({
               defaultValue={search.country ?? ""}
             >
               <option value="">Every country</option>
-              <option value="Nigeria">Nigeria</option>
-              <option value="Kenya">Kenya</option>
-              <option value="Ghana">Ghana</option>
+              <option value={process.env.ATTEST_API_MODE==='live'?'NG':'Nigeria'}>Nigeria</option>
+              <option value={process.env.ATTEST_API_MODE==='live'?'KE':'Kenya'}>Kenya</option>
+              <option value={process.env.ATTEST_API_MODE==='live'?'GH':'Ghana'}>Ghana</option>
+              {process.env.ATTEST_API_MODE==='live'?<option value="UG">Uganda</option>:null}
             </select>
           </div>
           <button type="submit" className="btn-outline btn-sm">
@@ -173,7 +174,7 @@ async function RegisterRows({ search }: { search: Search }) {
                   scope="col"
                   aria-sort={search.sort === sort.key ? "descending" : undefined}
                 >
-                  <Link
+                  {process.env.ATTEST_API_MODE==='live'&&sort.key!=='name'?<span>{sort.label}</span>:<Link
                     href={{ pathname: "/register", query: { ...search, sort: sort.key } }}
                     className="record-cell"
                   >
@@ -181,7 +182,7 @@ async function RegisterRows({ search }: { search: Search }) {
                     <span aria-hidden="true" className="sort-caret">
                       ▾
                     </span>
-                  </Link>
+                  </Link>}
                 </th>
               ))}
               <th scope="col">Country</th>
@@ -201,6 +202,7 @@ async function RegisterRows({ search }: { search: Search }) {
               <tr key={row.id}>
                 <td>
                   <Link href={`/register/${row.id}`}>{row.name}</Link>
+                  {row.isDemonstration?<p className="note">{row.demonstrationNotice??"Synthetic payment demonstration"}</p>:null}
                   <div className="eyebrow">{row.developerName}</div>
                 </td>
                 <td>
