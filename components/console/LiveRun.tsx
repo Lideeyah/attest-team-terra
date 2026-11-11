@@ -29,6 +29,7 @@ type LiveRunProps = {
 const STATE_LABEL: Record<TransferState, string> = {
   queued: "Queued",
   in_flight: "In flight",
+  settling: "Settling",
   settled: "Settled",
   failed: "Failed",
   reversed: "Reversed",
@@ -38,6 +39,7 @@ const STATE_LABEL: Record<TransferState, string> = {
 const STREAMED_STATES: TransferState[] = [
   "queued",
   "in_flight",
+  "settling",
   "settled",
   "failed",
   "reversed",
@@ -66,7 +68,9 @@ const STAMP_MS = Math.round((16 / 24) * 1000);
    Events land in a buffer and one animation frame merges them, so the table
    re-renders at most once a frame, and it renders only the rows the viewport
    can see. */
-export function LiveRun({ run, first }: LiveRunProps) {
+export function LiveRun({ run: initialRun, first }: LiveRunProps) {
+  const [snapshot,setSnapshot]=useState<Run|null>(null);
+  const run=snapshot??initialRun;
   const [rows, setRows] = useState<Map<number, Transfer>>(() => {
     const seeded = new Map<number, Transfer>();
     first.forEach((transfer, index) => seeded.set(index, transfer));
@@ -79,7 +83,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
   const [connection, setConnection] = useState<Connection>("connecting");
   const [complete, setComplete] = useState(run.state === "complete");
   const [retrying, setRetrying] = useState<ErrorCode | null>(null);
-  const [retried, setRetried] = useState<{ failureClass: ErrorCode; count: number } | null>(
+  const [retried, setRetried] = useState<{ failureClass: ErrorCode; count: number | null } | null>(
     null,
   );
 
@@ -88,6 +92,19 @@ export function LiveRun({ run, first }: LiveRunProps) {
   const [rowHeight, setRowHeight] = useState(44);
   const [viewport, setViewport] = useState(620);
   const [scrollTop, setScrollTop] = useState(0);
+  useEffect(()=>{
+    if(process.env.NEXT_PUBLIC_ATTEST_API_MODE!=='live')return;
+    let active=true;let timer:ReturnType<typeof setTimeout>;
+    const refresh=async()=>{
+      const [status,transfers]=await Promise.all([api.run(initialRun.id),api.transfers(initialRun.id,{page:1,per_page:100})]);
+      if(!active)return;
+      if(status.ok)setSnapshot(status.data);
+      if(transfers.ok)setRows(previous=>{const next=new Map(previous);transfers.data.forEach((transfer,index)=>next.set(index,transfer));return next;});
+      if((!status.ok&&['UNAUTHORIZED','FORBIDDEN'].includes(status.code))||(!transfers.ok&&['UNAUTHORIZED','FORBIDDEN'].includes(transfers.code)))return;
+      timer=setTimeout(refresh,!status.ok&&status.code==='RATE_LIMITED'?15000:5000);
+    };
+    timer=setTimeout(refresh,2000);return()=>{active=false;clearTimeout(timer);};
+  },[initialRun.id]);
 
   useEffect(() => {
     const node = scroller.current;
@@ -158,6 +175,17 @@ export function LiveRun({ run, first }: LiveRunProps) {
       const stream = new EventSource(api.streamUrl(run.id));
       source = stream;
       stream.onopen = () => setConnection("open");
+      if (process.env.NEXT_PUBLIC_ATTEST_API_MODE === "live") {
+        stream.onmessage = (message) => {
+          let data: { type?: string; transferId?: string };
+          try { data = JSON.parse(message.data); } catch { return; }
+          if (data.type === "run.complete") setComplete(true);
+          const next = data.type?.replace("transfer.", "");
+          if (data.transferId && STREAMED_STATES.includes(next as TransferState)) {
+            buffer.set(data.transferId, next as TransferState); schedule();
+          }
+        };
+      }
       for (const state of STREAMED_STATES) {
         stream.addEventListener(`transfer.${state}`, (event) => {
           const data = JSON.parse((event as MessageEvent).data) as { id?: string };
@@ -240,7 +268,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
   const counts = useMemo(() => {
     const tally: Record<TransferState, number> = {
       queued: 0,
-      in_flight: 0,
+      in_flight: 0, settling: 0,
       settled: 0,
       failed: 0,
       reversed: 0,
@@ -255,9 +283,10 @@ export function LiveRun({ run, first }: LiveRunProps) {
   const streamed = patches.state.size;
   /* The run's own counts are the floor: a figure never goes backwards because
      this screen opened late. */
-  const settled = Math.max(settledOf(run), counts.settled + counts.unconfirmed);
-  const failed = Math.max(run.counts.failed, counts.failed);
-  const inFlight = counts.in_flight;
+  const live=process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live';
+  const settled = live ? run.counts.settled : Math.max(settledOf(run), counts.settled + counts.unconfirmed);
+  const failed = live ? run.counts.failed : Math.max(run.counts.failed, counts.failed);
+  const inFlight = live ? run.counts.in_flight+run.counts.settling : counts.in_flight+counts.settling;
 
   const visible = useMemo(() => {
     const items: { index: number; transfer: Transfer | null }[] = [];
@@ -272,7 +301,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
     const result = await api.retry(run.id, { failureClass }, newIdempotencyKey());
     setRetrying(null);
     if (result.ok) {
-      setRetried({ failureClass, count: result.data.retried });
+      setRetried({ failureClass, count: live ? null : result.data.retried });
     }
   }
 
@@ -352,7 +381,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
                     </p>
                     <p className="note">{copy?.remediation ?? ""}</p>
                   </div>
-                  {copy?.retryable ? (
+                  {(live?['INSUFFICIENT_FUNDS','BANK_UNAVAILABLE','ACCOUNT_RESTRICTED','LIMIT_EXCEEDED'].includes(failure.class):copy?.retryable) ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -383,7 +412,7 @@ export function LiveRun({ run, first }: LiveRunProps) {
         {retried ? (
           <Notice title="Retry queued">
             <p>
-              {formatCount(retried.count)} transfers in{" "}
+              {retried.count===null?'A retry job for':`${formatCount(retried.count)} transfers in`}{" "}
               {FAILURE_COPY[retried.failureClass]?.heading ??
                 headingFor(retried.failureClass, "that class")}{" "}
               were

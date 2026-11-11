@@ -5,6 +5,7 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { ArithmeticPanel } from "@/components/console/ArithmeticPanel";
 import { ExecuteRun } from "@/components/console/ExecuteRun";
+import { LiveRunBuilder } from "@/components/console/LiveRunBuilder";
 import { PreflightExclusions } from "@/components/console/PreflightExclusions";
 import { api } from "@/lib/api/client";
 import { RUN_COPY } from "@/lib/copy/console";
@@ -102,6 +103,7 @@ export default async function NewRunPage({
   }
 
   const project = projectResult.ok ? projectResult.data : null;
+  if(process.env.ATTEST_API_MODE==='live' && project) return <LiveRunBuilder projectId={projectId} basis={project.commitment.basis} initialPeriod={project.periods.find(p=>p.state==='open')?.period??String(new Date().getUTCFullYear())}/>;
 
   /* A suspended project cannot create a run, and the run builder is where
      that has to be said: home saying it is not the same as this screen

@@ -104,6 +104,7 @@ const TRANSFER_STAMP: Record<RecordState, { state: StampState; label: string }> 
   reversed: { state: "blocked", label: "Reversed" },
   queued: { state: "review", label: "Queued" },
   in_flight: { state: "review", label: "In flight" },
+  settling: { state: "review", label: "Settling" },
 };
 
 const STRIP_STATE: Record<RecordState, "flagged" | "blocked" | "review" | undefined> = {
@@ -113,6 +114,7 @@ const STRIP_STATE: Record<RecordState, "flagged" | "blocked" | "review" | undefi
   reversed: "blocked",
   queued: "review",
   in_flight: "review",
+  settling: "review",
 };
 
 function Section({

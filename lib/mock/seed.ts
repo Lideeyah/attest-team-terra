@@ -778,7 +778,7 @@ function tally(runId: string, projectId: string, size: number): {
 } {
   const counts: Run["counts"] = {
     queued: 0,
-    in_flight: 0,
+    in_flight: 0, settling: 0,
     settled: 0,
     failed: 0,
     reversed: 0,
@@ -812,7 +812,7 @@ function run(
   executedAt: string | null,
 ): Run {
   const { counts, failures } = rosterSize === 0
-    ? { counts: { queued: 0, in_flight: 0, settled: 0, failed: 0, reversed: 0, unconfirmed: 0 }, failures: [] }
+    ? { counts: { queued: 0, in_flight: 0, settling: 0, settled: 0, failed: 0, reversed: 0, unconfirmed: 0 }, failures: [] }
     : tally(id, projectId, rosterSize);
   return {
     id,
