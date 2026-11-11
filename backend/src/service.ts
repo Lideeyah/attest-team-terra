@@ -379,7 +379,7 @@ export class Service {
       const participants=await this.db.list('participants',{projectId:jobText(data,'projectId')});for(const p of participants)await this.enqueue('onward-account',{projectId:jobText(data,'projectId'),participantId:p.id,page:1},'onward:'+job.id+':'+p.id+':1');return;
     }
     if(type==='onward-account'){
-      ensure(!(await this.db.list('runs')).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
+      ensure(!(await this.db.list('runs',{projectId:jobText(data,'projectId')})).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
       const p=await this.required('participants',jobText(data,'participantId'));const path=process.env.BANK_FLOW_PATH?capabilityPath(process.env.BANK_FLOW_PATH,p.accountNumber).replaceAll('{page}',String(jobPage(data))):null;
       const response=path?await this.providers.bank.call<ListResult<Flow>|Flow[]>('GET',path):await onwardPage(this,p.id,jobPage(data));const records=Array.isArray(response)?response:response.items;ensure(Array.isArray(records)&&records.length<=1000,'INVALID_BANK_RESPONSE',502);
       await this.db.put('tokens',row({id:'onward-flows:'+p.id+':'+jobPage(data),projectId:jobText(data,'projectId'),type:'onward-flows',flows:records.map(f=>({...f,participantId:p.id}))}));
@@ -400,14 +400,14 @@ export class Service {
     else if(type==='reconciliation'){const result=await this.reconciliation(jobText(data,'projectId'));await this.db.put('notifications',row({...result,type:'reconciliation'}));if(result.status==='mismatch')await this.audit('worker','reconciliation.mismatch',jobText(data,'projectId'),result);}
     else if(type==='recover-webhooks')await this.recoverWebhooks();
     else if(type==='name-review'||type==='triage'){
-      ensure(!(await this.db.list('runs')).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
+      ensure(!(await this.db.list('runs',{projectId:jobText(data,'projectId')})).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
       if(type==='name-review'){
         const p=await this.required('participants',jobText(data,'participantId'));const proposal=await this.providers.adjudicate(p.name,p.resolvedAccountName??'');
         await this.db.put('participants',{...p,nameAdjudication:proposal});
       }else{const d=await this.required('disputes',jobText(data,'disputeId'));const proposal=await this.providers.triage(d.body);await this.db.put('disputes',{...d,triageSuggestion:proposal});}
     }
     else if(type==='extraction') {
-      if(await this.db.get('commitments','extraction:'+job.id))return;ensure(!(await this.db.list('runs')).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
+      if(await this.db.get('commitments','extraction:'+job.id))return;ensure(!(await this.db.list('runs',{projectId:jobText(data,'projectId')})).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
       try{const result=await this.providers.extract(jobPages(data));await this.db.put('commitments',row({id:'extraction:'+job.id,projectId:jobText(data,'projectId'),...result,accepted:false,original:true,reviewStatus:result.confidence<0.8?'pending':'developer_review'}));}
       catch(error){if(!(error instanceof Fault)||!['EXTRACTION_LOW_CONFIDENCE','PDD_NO_COMMITMENT','PDD_UNREADABLE'].includes(error.code))throw error;const proposal=await this.db.get('tokens','proposal:extract:v2:'+hash(canonical(jobPages(data))));await this.db.put('commitments',row({id:'extraction:'+job.id,projectId:jobText(data,'projectId'),original:true,accepted:false,reviewStatus:'pending',errorCode:error.code,proposal:proposal?.proposal??null}));}
     }
@@ -459,12 +459,11 @@ export class Service {
     for(const delivery of deliveries){if(!['pending','failed','withheld'].includes(delivery.status)||replayed>=10)continue;ensure(typeof delivery.event_id==='string','INVALID_BANK_RESPONSE',502);const response=await this.providers.bank.call<{accepted:boolean;payload?:ForgeEvent}>('POST',`/webhooks/deliveries/${encodeURIComponent(delivery.event_id)}/replay`,{},hash('replay:'+delivery.event_id));if(process.env.BANK_PROVIDER!=='live'&&response.payload)await this.enqueue('forge-event',response.payload,'replayed:'+delivery.event_id);replayed++;}
     return {replayed};
   }
-  async tick() {
-    if(process.env.WEBHOOK_RECOVERY_ENABLED==='true')await this.enqueue('recover-webhooks',{},'recover-webhooks:'+Math.floor(Date.now()/60000));
+  async processQueuedJobs(options:{type?:Job['type'];limit?:number}={}) {
     // DB-backed jobs survive Redis loss; serialized claims avoid concurrent remote execution.
-    let processedJobs=0;for(const pending of await this.db.list('jobs')) {
+    let processedJobs=0;for(const pending of await this.db.list('jobs',options.type?{type:options.type}:{})) {
       if(['done','failed'].includes(pending.state)||Date.parse(pending.nextAt)>Date.now())continue;
-      if(processedJobs++>=50)break;
+      if(processedJobs++>=(options.limit??50))break;
       const claimed=await this.db.lock('job:'+pending.id,async tx=>{
         const job=await tx.get('jobs',pending.id);if(!job||['done','failed'].includes(job.state)||Date.parse(job.nextAt)>Date.now())return;
         const claim:Job={...job,state:'running',nextAt:new Date(Date.now()+180_000).toISOString()};await tx.put('jobs',claim);return claim;
@@ -473,6 +472,10 @@ export class Service {
       try{await this.processJob(claimed);await this.db.put('jobs',{...claimed,data:claimed.type==='auth-email'?{...claimed.data,token:undefined}:claimed.data,state:'done',completedAt:now()});}
       catch(e){const permanent=e instanceof Fault&&['INVALID_REQUEST','FORBIDDEN','PERIOD_CLOSED','NOT_FOUND','LIMIT_EXCEEDED','ACCOUNT_RESTRICTED','PREFLIGHT_EXCLUSIONS_REQUIRED'].includes(e.code);await this.db.put('jobs',{...claimed,state:permanent?'failed':'pending',attempts:claimed.attempts+1,lastError:e instanceof Fault?e.code:'JOB_FAILED',nextAt:new Date(Date.now()+Math.min(3600_000,2**Math.min(claimed.attempts,10)*5000)).toISOString()});}
     }
+  }
+  async tick() {
+    if(process.env.WEBHOOK_RECOVERY_ENABLED==='true')await this.enqueue('recover-webhooks',{},'recover-webhooks:'+Math.floor(Date.now()/60000));
+    await this.processQueuedJobs();
     for(const run of await this.db.list('runs')) {
       // Include settled transfers for late reversal detection.
       if(['executing','partially_complete','complete'].includes(run.state)){await submitPendingBatches(this,run.id);await this.requery(run.id);}

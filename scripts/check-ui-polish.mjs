@@ -11,7 +11,11 @@ try{
  const {csrfToken}=await (await context.request.get(base+'/auth/csrf')).json();await context.request.post(base+'/auth/callback/credentials',{form:{email:'local@example.test',password,csrfToken,callbackUrl:base+'/app'},headers:{'X-Auth-Return-Redirect':'1'}});
  const page=await context.newPage();page.setDefaultTimeout(30000);
  const reply=(route,data)=>route.fulfill({json:{status:'success',data,meta:null,request_id:'ui-check'}});
- let creations=0;
+ let creations=0,ready=false;
+ const proposal={id:'ui-proposal',percentage:60,basis:'gross',cadence:'annual',reportingCadence:'annual',beneficiary_definition:'enrolled households',source_quote:'The community receives 60% of gross revenue annually.',page:1,confidence:0.9,reviewStatus:'developer_review',accepted:false};
+ await page.route('**/api/projects/ui-preview-only',route=>reply(route,{registryId:'trees-for-global-benefits-uganda',name:'UI test project'}));
+ await page.route('**/api/projects/ui-preview-only/pdd',route=>reply(route,{jobId:'ui-job'}));
+ await page.route('**/api/projects/ui-preview-only/extraction/status',route=>reply(route,{id:'ui-job',state:ready?'done':'pending',error:null,proposal:ready?proposal:null}));
  await page.route('**/api/projects/lookup',async route=>{await new Promise(r=>setTimeout(r,500));await reply(route,{name:'UI test project',country:'Uganda',methodology:'Agroforestry',boundaryStatus:'available'});});
  await page.route('**/api/projects',async route=>{if(route.request().method()==='POST'){creations++;await reply(route,{id:'ui-preview-only'});}else await route.continue();});
  await page.goto(base+'/onboarding/developer/project',{waitUntil:'domcontentloaded',timeout:90000});
@@ -28,5 +32,17 @@ try{
  for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'C:/Users/HomePC/.codex/visualizations/2026/11/10/01a1c7bb-ed92-7403-b2d3-7cfa6fdf6515/attest-polished-onboarding.png'});
  console.log('PASS delayed request feedback, onboarding Back/Continue preserves values, prevents duplicate creation, locks review until ready, and fits four widths (requests mocked; no project was created)');
+ await page.getByLabel('Project design document (PDF, up to 4 MB)').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 synthetic browser test')});
+ await page.getByRole('button',{name:'Upload project document',exact:true}).click();
+ await page.getByText(/safely uploaded and waiting/).waitFor();
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.getByText('Step 2 of 3',{exact:true}).waitFor();
+ assert.equal(creations,1);
+ ready=true;await page.getByText('Step 3 of 3',{exact:true}).waitFor();
+ await page.getByLabel('Reason for review or correction').fill('Checked the source document.');
+ await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Continue to review',exact:true}).click();
+ assert.equal(await page.getByLabel('Reason for review or correction').inputValue(),'Checked the source document.');
+ assert.equal(await page.locator('form').filter({has:page.getByRole('heading',{name:'Review your commitment'})}).evaluate(form=>form.checkValidity()),false);
+ console.log('PASS uploaded work resumes after reload, processing reaches review, review values survive Back/Continue and source confirmation remains required');
  await page.unrouteAll({behavior:'wait'});
 }finally{await browser.close();}

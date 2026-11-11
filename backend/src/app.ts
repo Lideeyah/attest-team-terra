@@ -158,6 +158,14 @@ export async function createApp(db: Store, suppliedService?: Service) {
     const parser=new PDFParse({data:buffer});try{const text=await parser.getText();ensure(text.pages.length>0&&text.pages.length<=300,'PDD_UNREADABLE',422);return {jobId:(await c.s.enqueue('extraction',{projectId:c.params.id,pages:text.pages.map(p=>p.text)})).id};}finally{await parser.destroy();}
   },dev);
   route('GET','/api/projects/:id/extraction',async c=>{await c.s.project(c.p,c.params.id);return (await c.s.db.list('commitments',{projectId:c.params.id})).at(-1)??null;},dev);
+  route('GET','/api/projects/:id/extraction/status',async c=>{
+    await c.s.project(c.p,c.params.id);const job=(await c.s.db.list('jobs',{type:'extraction'})).filter(job=>job.data.projectId===c.params.id).at(-1);
+    return {id:job?.id??null,state:job?.state??'not_uploaded',error:job?.lastError??null,proposal:(await c.s.db.list('commitments',{projectId:c.params.id})).at(-1)??null};
+  },dev);
+  route('GET','/api/projects/:id/extraction/jobs/:jobId',async c=>{
+    await c.s.project(c.p,c.params.id);const job=await c.s.required('jobs',c.params.jobId);ensure(job.type==='extraction'&&job.data.projectId===c.params.id,'NOT_FOUND',404);
+    return {id:job.id,state:job.state,error:job.lastError??null,proposal:await c.s.db.get('commitments','extraction:'+job.id)??null};
+  },dev);
   route('GET','/api/admin/extractions',async c=>list(c,(await c.s.db.list('commitments')).filter(r=>r.reviewStatus==='pending')),['platform_admin']);
   route('POST','/api/admin/extractions/:id/review',async c=>{
     const original=await c.s.required('commitments',c.params.id);ensure(c.b.reason&&typeof c.b.reason==='string','INVALID_REQUEST');

@@ -21,3 +21,10 @@ Public/verifier geography stays H3 resolution 4 with cells below five suppressed
 the private GIS endpoint is not a public boundary or household-location API.
 
 See [integration status and gaps](integration-status.md) for unsupported routes.
+
+
+## Resumable document processing
+
+`GET /api/projects/:id/extraction/status` returns `{ id, state, error, proposal }` for the most recent uploaded document. `id` is null and `state` is `not_uploaded` before upload; job states are `pending`, `running`, `done`, or `failed`. A completed job can return a proposal requiring manual review instead of an automatically extracted commitment. Never treat a successful HTTP response as a completed document check. Project access is checked before exposing the status.
+
+`GET /api/projects/:id/extraction/jobs/:jobId` returns the same status shape for a particular extraction job and validates both project access and job ownership. Existing `GET /api/projects/:id/extraction` behaviour remains unchanged. Hosted document jobs have a separate lane from payment reconciliation; claims remain durable and mutually exclusive.

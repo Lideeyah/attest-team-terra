@@ -28,14 +28,19 @@ async function initialize(){
       await service.tick();
     }finally{await client.query('ROLLBACK');client.release();}
   }
+  let documentsInFlight:Promise<void>|undefined;
+  function documents(){
+    // A separate lane prevents slow bank status checks from starving uploads.
+    return documentsInFlight??=(service.processQueuedJobs({type:'extraction',limit:3}).finally(()=>{documentsInFlight=undefined;}));
+  }
   app.get('/internal/tick',async(req,reply)=>{
     const actual=Buffer.from(req.headers.authorization??''),expected=Buffer.from('Bearer '+process.env.CRON_SECRET);
     if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return reply.code(401).send({error:'Unauthorized'});
-    await work();return {status:'ok'};
+    await documents();await work();return {status:'ok'};
   });
   app.addHook('onResponse',async(req,reply)=>{
     if(reply.statusCode<400&&req.url.startsWith('/api/')&&!req.url.startsWith('/api/public/')&&req.headers.cookie?.includes('attest.session-token=')){
-      waitUntil(work().catch(()=>console.error('Hosted worker deferred; durable jobs remain queued.')));
+      waitUntil(Promise.allSettled([documents(),work()]).then(results=>{if(results.some(result=>result.status==='rejected'))console.error('Hosted worker deferred; durable jobs remain queued.');}));
     }
   });
   await app.ready();return app;
