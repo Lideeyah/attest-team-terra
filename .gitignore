@@ -69,3 +69,4 @@ kubeconfig.*
 /app/hooks
 .next-demo/
 demo/deck-visual.png
+demo/deck-visual-square.png
