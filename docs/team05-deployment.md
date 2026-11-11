@@ -47,3 +47,17 @@ gh run rerun 43022124294 --failed --repo Lideeyah/attest-team-terra
 ```
 
 Then run the hosted walkthrough against `https://team05.xtradot.co` with `ATTEST_CHECK_ORIGIN` and the locally retained initial login password. Runtime readiness, public login and the complete hosted workflow have not been verified for this cluster rollout.
+
+## Later retry: storage provisioning blocked
+
+Cluster access briefly recovered. The encrypted runtime secrets, ConfigMaps, `postgres-data` PVC, PostgreSQL Deployment and its internal Service were applied. Existing managed secrets were preserved. The application workloads have not reached deployment because the rollout correctly waits for PostgreSQL and migrations first.
+
+The diagnostic log in [run 43083176200](https://github.com/Lideeyah/attest-team-terra/actions/runs/43083176200) identifies the current blocker:
+
+> Cannot create a new Volume with an outstanding balance on your account
+
+This is the storage provider's `ProvisioningFailed` response. PVC `postgres-data` remains Pending with storage class `linode-block-storage-retain`, and the PostgreSQL pod is unschedulable due to the unbound claim. Increasing application timeouts will not resolve volume provisioning. The volume has not been deleted, replaced with ephemeral storage, or migrated to an external database. Platform storage must be restored, or the operator must explicitly approve an external PostgreSQL/PostGIS database, before continuing.
+
+The namespace quota was increased by the platform to requests of 1 CPU / 2 GiB and limits of 3 CPU / 3 GiB; the prepared workload budget remains within it. TLS access is still intermittent, so deployment commands now retry transient connection errors and emit read-only pod/PVC diagnostics on database-readiness failure.
+
+The public origin is protected by Cloudflare Access, and the user confirmed that the platform login should remain. An HTTP 200 Cloudflare sign-in page is not evidence of application readiness. No access policy was changed or bypassed.
