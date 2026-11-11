@@ -36,3 +36,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "team05-${GITHUB_SHA}" .release/frontend.tar.gz .release/backend.tar.gz .release/SHA256SUMS --target "$GITHUB_SHA" --prerelease --title "team05 ${GITHUB_SHA}" --notes "Linux Node 24 runtime bundles for the team05 Kubernetes deployment."
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TEAM05_BOOTSTRAP_JSON: ${{ secrets.TEAM05_BOOTSTRAP_JSON }}
+      GODEBUG: tlsmlkem=0,http2client=0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.35.0
+      - name: Install deployment kubeconfig
+        env:
+          TEAM05_KUBECONFIG: ${{ secrets.TEAM05_KUBECONFIG }}
+        run: |
+          test -n "$TEAM05_KUBECONFIG"
+          mkdir -p "$RUNNER_TEMP/attest"
+          printf '%s' "$TEAM05_KUBECONFIG" > "$RUNNER_TEMP/attest/config"
+          chmod 600 "$RUNNER_TEMP/attest/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/attest/config" >> "$GITHUB_ENV"
+      - run: python deploy/team05/apply.py
