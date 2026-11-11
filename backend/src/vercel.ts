@@ -28,6 +28,8 @@ async function initialize(){
       await service.tick();
     }finally{await client.query('ROLLBACK');client.release();}
   }
+  let maintenanceInFlight:Promise<void>|undefined;
+  function maintenance(){return maintenanceInFlight??=(work().finally(()=>{maintenanceInFlight=undefined;}));}
   let documentsInFlight:Promise<void>|undefined;
   function documents(){
     // A separate lane prevents slow bank status checks from starving uploads.
@@ -36,12 +38,17 @@ async function initialize(){
   app.get('/internal/tick',async(req,reply)=>{
     const actual=Buffer.from(req.headers.authorization??''),expected=Buffer.from('Bearer '+process.env.CRON_SECRET);
     if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return reply.code(401).send({error:'Unauthorized'});
-    await documents();await work();return {status:'ok'};
+    await documents();await maintenance();return {status:'ok'};
   });
-  app.addHook('onResponse',async(req,reply)=>{
+  // Register work before the response is flushed so Vercel retains its lifetime.
+  app.addHook('onSend',async(req,reply,payload)=>{
     if(reply.statusCode<400&&req.url.startsWith('/api/')&&!req.url.startsWith('/api/public/')&&req.headers.cookie?.includes('attest.session-token=')){
-      waitUntil(Promise.allSettled([documents(),work()]).then(results=>{if(results.some(result=>result.status==='rejected'))console.error('Hosted worker deferred; durable jobs remain queued.');}));
+      const tasks:Promise<void>[]=[];
+      if(/^\/api\/projects\/[^/]+\/(pdd|extraction)(?:[/?]|$)/.test(req.url))tasks.push(documents());
+      if(/^\/api\/(runs|ops|admin)(?:[/?]|$)/.test(req.url))tasks.push(maintenance());
+      if(tasks.length)waitUntil(Promise.allSettled(tasks).then(results=>{if(results.some(result=>result.status==='rejected'))console.error('Hosted worker deferred; durable jobs remain queued.');}));
     }
+    return payload;
   });
   await app.ready();return app;
 }
