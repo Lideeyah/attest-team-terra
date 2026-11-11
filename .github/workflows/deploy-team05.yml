@@ -1,0 +1,38 @@
+name: Build team05 runtime
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: team05-build
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ATTEST_API_MODE: live
+      ATTEST_API_ORIGIN: http://api:8080
+      ATTEST_DEV_TOOLS: '0'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix backend
+      - run: npm run build:production --prefix backend
+      - run: npm run build
+      - run: npm prune --omit=dev --prefix backend
+      - run: node scripts/package-team05.mjs
+      - name: Publish immutable runtime bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "team05-${GITHUB_SHA}" .release/frontend.tar.gz .release/backend.tar.gz .release/SHA256SUMS --target "$GITHUB_SHA" --prerelease --title "team05 ${GITHUB_SHA}" --notes "Linux Node 24 runtime bundles for the team05 Kubernetes deployment."

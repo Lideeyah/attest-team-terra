@@ -1,4 +1,5 @@
 .git
+.release
 **/node_modules
 .next*
 **/.local-state

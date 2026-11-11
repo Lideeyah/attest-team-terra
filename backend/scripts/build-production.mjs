@@ -8,3 +8,4 @@ for(const [name,entry]of Object.entries({main:'src/main.ts',worker:'src/worker.t
  const source=await readFile(output,'utf8');for(const marker of ['/api/dev/trigger','/dev/states','registerDevTools','embedded-db','local-settings.json'])if(source.includes(marker))throw Error(`Development tooling leaked into ${name}`);
 }
 console.log('Production API, worker and migrator built; development tools absent.');
+await build({entryPoints:['scripts/bootstrap-team05.ts'],outfile:'dist/production/bootstrap-team05.mjs',bundle:true,platform:'node',format:'esm',target:'node24',packages:'external',define:{__ATTEST_DEV__:'false'},minifySyntax:true,sourcemap:false});

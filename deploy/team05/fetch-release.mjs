@@ -1,0 +1,15 @@
+import {createWriteStream} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {Readable,Transform} from 'node:stream';
+import {pipeline} from 'node:stream/promises';
+import {execFileSync} from 'node:child_process';
+const kind=process.env.BUNDLE_KIND?.toUpperCase();
+const url=process.env[kind+'_ASSET_URL'],expected=process.env[kind+'_SHA256'];
+if(!url?.startsWith('https://api.github.com/repos/Lideeyah/attest-team-terra/releases/assets/')||!/^[a-f0-9]{64}$/.test(expected??''))throw Error('Invalid pinned release configuration');
+const response=await fetch(url,{headers:{Authorization:'Bearer '+process.env.GITHUB_DOWNLOAD_TOKEN,Accept:'application/octet-stream'},signal:AbortSignal.timeout(180000)});
+if(!response.ok||!response.body)throw Error('Release download failed: HTTP '+response.status);
+const hash=createHash('sha256');
+await pipeline(Readable.fromWeb(response.body),new Transform({transform(chunk,_encoding,callback){hash.update(chunk);callback(null,chunk);}}),createWriteStream('/tmp/runtime.tar.gz'));
+if(hash.digest('hex')!==expected)throw Error('Runtime bundle checksum mismatch');
+execFileSync('tar',['-xzf','/tmp/runtime.tar.gz','--no-same-owner','-C','/runtime']);
+console.log('Verified '+kind.toLowerCase()+' runtime extracted.');

@@ -37,7 +37,12 @@ export class Providers {
       const response=await fetch((process.env.MAAS_URL??'http://huawei-maas.ingress-apisix.svc.cluster.local/openai/v1')+'/chat/completions',{method:'POST',signal:AbortSignal.timeout(110_000),headers:{apikey:process.env.GATEWAY_KEY??'','Content-Type':'application/json'},body:JSON.stringify({model,chat_template_kwargs:{thinking:false},max_tokens:1500,response_format:{type:'json_object'},messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(data)}]})});
       if(response.status===404)continue;
       ensure(response.ok,'MODEL_UNAVAILABLE',503);const result=record(await response.json());ensure(Array.isArray(result.choices),'MODEL_UNAVAILABLE',503);const choice=record((result.choices as unknown[])[0]);const message=record(choice.message);
-      try{return {...record(JSON.parse(text(message.content))),model:optionalText(result.model)??model} as T&{model:string};}catch{throw new Fault('EXTRACTION_LOW_CONFIDENCE',422);}
+      try{
+        const content=text(message.content).trim();
+        // The gateway may return a single Markdown JSON fence despite JSON response mode.
+        const fenced=/^```(?:json)?\s*\r?\n([\s\S]*?)\r?\n```$/i.exec(content);
+        return {...record(JSON.parse(fenced?fenced[1]:content)),model:optionalText(result.model)??model} as T&{model:string};
+      }catch{throw new Fault('EXTRACTION_LOW_CONFIDENCE',422);}
     }
     throw new Fault('MODEL_UNAVAILABLE',503);
   }
@@ -107,8 +112,20 @@ export class Providers {
   async anchorProof(anchor:{status:string;provider?:string;topicId?:string;sequence?:string},h:string){
     if(anchor.status==='mock')return {status:'mock',verified:false};
     ensure(anchor.provider==='hedera-testnet'&&anchor.topicId&&anchor.sequence,'ANCHOR_UNREACHABLE',503);
-    const response=await fetch(`https://testnet.mirrornode.hedera.com/api/v1/topics/${encodeURIComponent(anchor.topicId)}/messages/${encodeURIComponent(anchor.sequence)}`,{signal:AbortSignal.timeout(10_000)});
-    ensure(response.ok,'ANCHOR_UNREACHABLE',503);const data=record(await response.json());ensure(Buffer.from(text(data.message),'base64').toString()===h,'PROOF_INVALID',422);return {status:'anchored',verified:true,consensusTimestamp:data.consensus_timestamp};
+    // Consensus can complete before the mirror has indexed the message. Only retry reads.
+    const deadline=Date.now()+30_000;
+    for(let attempt=0;attempt<6;attempt++){
+      const remaining=deadline-Date.now();if(remaining<=0)break;
+      let response:Response|undefined;
+      try{response=await fetch(`https://testnet.mirrornode.hedera.com/api/v1/topics/${encodeURIComponent(anchor.topicId)}/messages/${encodeURIComponent(anchor.sequence)}`,{signal:AbortSignal.timeout(Math.min(10_000,remaining))});}
+      catch{/* Retry a transient connection failure within the same verification window. */}
+      if(response?.ok){const data=record(await response.json());ensure(Buffer.from(text(data.message),'base64').toString()===h,'PROOF_INVALID',422);return {status:'anchored',verified:true,consensusTimestamp:data.consensus_timestamp};}
+      if(response){await response.body?.cancel();ensure([404,408,429].includes(response.status)||response.status>=500,'ANCHOR_UNREACHABLE',503);}
+      const delay=Math.min(1000*2**attempt,5000,deadline-Date.now());
+      if(attempt===5||delay<=0)break;
+      await new Promise(resolve=>setTimeout(resolve,delay));
+    }
+    throw new Fault('ANCHOR_UNREACHABLE',503);
   }
   async extract(pages: string[]):Promise<ExtractionResult> {
     const cacheId='extract:v2:'+hash(canonical(pages)); const cached=await this.store.get('tokens',cacheId); if(cached) return cached.result as ExtractionResult;
