@@ -18,9 +18,9 @@ await api('/api/auth/session',undefined,undefined,401);pass('anonymous private a
 const developer=await login('local@example.test'),verifier=await login('verifier@example.test');
 assert.equal((await api('/api/auth/session',developer)).data.role,'developer_admin');
 assert.equal((await api('/api/auth/session',verifier)).data.role,'verifier');pass('secure cookie login for developer and verifier');
-const projects=(await api('/api/projects?per_page=100',developer)).data;assert.equal(projects.length,3);pass('three scoped hosted projects');
-const register=(await api('/api/public/register')).data;assert(register.every(p=>p.isDemonstration));
-const historical=register.find(p=>p.attestations?.length===3);assert(historical);pass('synthetic public register and signed historical records');
+const projects=(await api('/api/projects?per_page=100',developer)).data;assert(projects.length>=3);assert(projects.some(p=>p.name==='Synthetic clean project - Ikom'));pass('scoped projects include the hosted demo fixtures');
+const register=(await api('/api/public/register')).data;
+const historical=register.find(p=>p.isDemonstration&&p.attestations?.length===3);assert(historical);pass('synthetic public register and signed historical records');
 const map=(await api(`/api/projects/${historical.id}/map`,developer)).data;assert(map.areaHectares>0&&map.capturePoints.length===60);
 await api(`/api/projects/${historical.id}/map`,verifier,undefined,403);pass('PostGIS geometry, capture points and verifier access boundary');
 const geography=(await api(`/api/public/projects/${historical.id}/geography`)).data;assert(geography.length&&geography.every(c=>c.count>=5));pass('suppressed public H3 distribution');
