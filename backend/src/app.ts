@@ -3,7 +3,7 @@ import multipart from '@fastify/multipart';
 import { PDFParse } from 'pdf-parse';
 import { createPublicKey } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { Fault, ensure, row, id, now, hash, canonical, bankMoney, identityHash, maskPhone, nameMatch, verifyWebhook, verifyProof, verifyAttestationRecord, type Principal, type Row } from './core.js';
+import { Fault, ensure, row, id, now, hash, canonical, cents, money, bankMoney, identityHash, maskPhone, nameMatch, verifyWebhook, verifyProof, verifyAttestationRecord, type Principal, type Row } from './core.js';
 import { passwordHash, passwordValid, session, issueSession } from './auth.js';
 import { authHandler } from './authjs.js';
 import { Service } from './service.js';
@@ -136,14 +136,15 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('GET','/api/projects',async c=>paged(c,'projects',{organisationId:c.p.organisationId}),dev);
   route('GET','/api/projects/:id',async c=>{
     const project=await c.s.project(c.p,c.params.id);
-    const runs=await c.s.db.list('runs',{projectId:project.id});
+    const runs=await Promise.all((await c.s.db.list('runs',{projectId:project.id})).map(r=>runView(c.s,r))); 
     return {...project,...await c.s.publicProject(project.id),commitment:(await c.s.db.list('commitments',{projectId:project.id,accepted:true})).at(-1)??null,runs};
   });
   route('GET','/api/projects/:id/boundary',async c=>{const p=await c.s.project(c.p,c.params.id);ensure(p.boundary,'BOUNDARY_NOT_AVAILABLE',409);return {boundary:p.boundary,boundaryStatus:'available'};},dev);
   route('GET','/api/projects/:id/map',async c=>{
     const p=await c.s.project(c.p,c.params.id);ensure(p.boundary,'BOUNDARY_NOT_AVAILABLE',409);
     const areaHectares=await c.s.db.boundaryArea(p.boundary);
-    return {boundary:p.boundary,name:p.name,synthetic:record(p.boundarySource??{}).synthetic===true,areaHectares};
+    const captures=await c.s.db.list('participants',{projectId:p.id,...(c.p.role==='agent'?{agentId:c.p.id}:{})});
+    return {boundary:p.boundary,name:p.name,synthetic:record(p.boundarySource??{}).synthetic===true,areaHectares,capturePoints:captures.filter(c=>c.point).slice(0,5000).map(c=>({point:c.point,flags:c.flags,capturedAt:c.capturedAt})),sampled:captures.length>5000};
   },[...dev,...ops,'agent']);
   route('POST','/api/projects/:id/boundary',async c=>{
     await c.s.project(c.p,c.params.id,true);const file=await c.req.file();ensure(file&&/\.kml$/i.test(file.filename),'INVALID_BOUNDARY');
@@ -190,7 +191,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
     const enrolments=await s.db.list('participants',{projectId:a.projectId,agentId:a.id});
     return {id:a.id,projectId:a.projectId,name:a.name,email:a.email,status:a.status,verification:a.verification,deviceBound:!!a.deviceKey,enrolments:enrolments.map(p=>({id:p.id,flags:p.flags,syncDelayMs:p.syncDelayMs}))};
   };
-  route('GET','/api/projects/:id/agents',async c=>{await c.s.project(c.p,c.params.id);const result=await c.s.db.page('agents',{where:{projectId:c.params.id},page:Number(c.q.page??1),perPage:Math.min(100,Number(c.q.per_page??20))});return ok(c.req,await Promise.all(result.rows.map(a=>agentView(c.s,a))),{page:Number(c.q.page??1),per_page:Number(c.q.per_page??20),total:result.total,total_pages:Math.ceil(result.total/Number(c.q.per_page??20))});},dev);
+  route('GET','/api/projects/:id/agents',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'agents',{projectId:c.params.id},a=>agentView(c.s,a));},dev);
   route('GET','/api/projects/:id/notifications/summary',async c=>{await c.s.project(c.p,c.params.id);const participants=await c.s.db.list('participants',{projectId:c.params.id});const notifications=await c.s.db.list('notifications',{projectId:c.params.id});const failed=new Set(notifications.filter(n=>['Failed','Rejected','Undelivered','failed','rejected'].includes(n.deliveryStatus??'')).map(n=>n.participantId));return {enrolled:participants.length,noticePending:participants.filter(p=>p.noticeStatus!=='sent').length,noReachableNumber:participants.filter(p=>!p.phone||failed.has(p.id)).length};},[...dev,...ops]);
   route('POST','/api/projects/:id/agents/invite',async c=>{await c.s.project(c.p,c.params.id,true);const code=id()+id();await c.s.db.put('invites',row({id:hash(code),projectId:c.params.id,organisationId:c.p.organisationId,name:c.b.name,email:c.b.email,expiresAt:new Date(Date.now()+2*86400_000).toISOString(),used:false,revoked:false}));return {code};},['developer_admin']);
   route('GET','/api/invites/:code',async c=>{const invite=await c.s.required('invites',hash(c.params.code));ensure(!invite.used&&!invite.revoked&&Date.parse(invite.expiresAt)>Date.now(),'TOKEN_EXPIRED',410);return {projectId:invite.projectId,expiresAt:invite.expiresAt};},undefined,true);
@@ -214,9 +215,12 @@ export async function createApp(db: Store, suppliedService?: Service) {
     const counts:Record<string,number>={queued:0,in_flight:0,settling:0,settled:0,failed:0,reversed:0,unconfirmed:0};
     const failures=new Map<string,number>();
     for(const t of transfers){counts[t.state]=(counts[t.state]??0)+1;if(t.state==='failed'&&t.failureClass)failures.set(t.failureClass,(failures.get(t.failureClass)??0)+1);}
-    return {...r,rosterSize:roster?.participantIds.length??0,counts,failures:[...failures].map(([failureClass,count])=>({class:failureClass,count}))};
+    const settled=transfers.filter(t=>t.state==='settled'),received=settled.reduce((n,t)=>n+cents(t.amount),0n),charges=settled.reduce((n,t)=>n+cents(t.fee)+cents(t.vat)+cents(t.stampDuty),0n);
+    const calculation=r.arithmetic??await s.arithmetic(r),required=cents(calculation.required),settledIds=new Set(settled.map(t=>t.id)),confirmations=(await s.db.list('confirmations',{projectId:r.projectId})).filter(c=>settledIds.has(c.transferId));
+    const periodSummary={period:r.period,state:'open',enrolled:roster?.participantIds.length??0,paid:new Set(settled.map(t=>t.participantId)).size,amountToHouseholds:money(received),chargesBorne:money(charges),required:calculation.required,shortfall:money(required>received?required-received:0n),surplus:money(received>required?received-required:0n),closesOn:r.closesAt,closedAt:null,attestationId:null,corrected:false,confirmationRate:settled.length?confirmations.length/settled.length:0};
+    return {...r,periodSummary,rosterSize:roster?.participantIds.length??0,counts,failures:[...failures].map(([failureClass,count])=>({class:failureClass,count}))};
   };
-  route('GET','/api/projects/:id/runs',async c=>{await c.s.project(c.p,c.params.id);const result=await c.s.db.page('runs',{where:{projectId:c.params.id},page:Number(c.q.page??1),perPage:Math.min(100,Number(c.q.per_page??20))});return ok(c.req,await Promise.all(result.rows.map(r=>runView(c.s,r))),{page:Number(c.q.page??1),per_page:Number(c.q.per_page??20),total:result.total,total_pages:Math.ceil(result.total/Number(c.q.per_page??20))});},dev);
+  route('GET','/api/projects/:id/runs',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'runs',{projectId:c.params.id},r=>runView(c.s,r));},dev);
   route('POST','/api/projects/:id/runs',async c=>c.s.createRun(c.p,c.params.id,c.b),dev);
   route('GET','/api/runs/:id',async c=>runView(c.s,await c.s.scoped(c.p,'runs',c.params.id)),dev);
   route('GET','/api/runs/:id/arithmetic',async c=>c.s.arithmetic(await c.s.scoped(c.p,'runs',c.params.id)),dev);
@@ -228,7 +232,8 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('GET','/api/runs/:id/transfers',async c=>{await c.s.scoped(c.p,'runs',c.params.id);return paged(c,'transfers',{runId:c.params.id},r=>({...r,accountNumber:'******'+r.accountNumber.slice(-4)}));},dev);
   app.get('/api/runs/:id/stream',async(req,reply)=>{
     const p=await session(db,req.headers.authorization,req.headers.cookie);ensure(dev.includes(p.role),'FORBIDDEN',403);const run=await root.scoped(p,'runs',(req.params as {id:string}).id);
-    reply.hijack();reply.raw.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache',Connection:'keep-alive'});
+    reply.hijack();reply.raw.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','X-Accel-Buffering':'no',Connection:'keep-alive'});
+    reply.raw.flushHeaders();reply.raw.write(': connected\n\n');
     const send=(event:Row)=>reply.raw.write(`id: ${event.id}\ndata: ${JSON.stringify({type:event.type,transferId:event.transferId??undefined})}\n\n`);
     let cursor=String(req.headers['last-event-id']??''),polling=false,initialized=false;
     const poll=async()=>{
@@ -259,8 +264,8 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('GET','/api/projects/:id/disputes',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'disputes',{projectId:c.params.id});},dev);
   route('GET','/api/disputes/:id',async c=>c.s.scoped(c.p,'disputes',c.params.id),dev);
   route('POST','/api/disputes/:id/respond',async c=>{const d=await c.s.scoped(c.p,'disputes',c.params.id,true);ensure(!c.b.status&&!c.b.resolutionBasis,'DISPUTE_RESOLUTION_BASIS_REQUIRED',403);ensure(typeof c.b.body==='string'&&c.b.body.length<=4000,'INVALID_REQUEST');await c.s.audit(c.p.id,'dispute.response',d.projectId,{disputeId:d.id,body:c.b.body});return c.s.db.put('disputes',{...d,status:'developer_responded'});},dev);
-  route('GET','/api/projects/:id/attestations',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'attestations',{projectId:c.params.id},a=>c.s.publicAttestation(a));},dev);
-  route('GET','/api/attestations/:id',async c=>c.s.publicAttestation(await c.s.scoped(c.p,'attestations',c.params.id)),dev);
+  route('GET','/api/projects/:id/attestations',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'attestations',{projectId:c.params.id},a=>c.s.attestationView(a));},dev);
+  route('GET','/api/attestations/:id',async c=>c.s.attestationView(await c.s.scoped(c.p,'attestations',c.params.id)),dev);
   app.get('/api/attestations/:id/report',async(req,reply)=>{
     const p=await session(db,req.headers.authorization,req.headers.cookie);ensure([...dev,'verifier'].includes(p.role),'FORBIDDEN',403);
     const a=await root.required('attestations',(req.params as {id:string}).id);if(p.role!=='verifier')await root.project(p,a.projectId);
@@ -288,7 +293,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('GET','/api/public/register',async c=>paged(c,'projects',c.q.country?{country:c.q.country}:{},p=>c.s.publicProject(p.id),{search:c.q.q?{field:'name',value:c.q.q}:undefined}),undefined,true);
   route('GET','/api/public/projects/:id',async c=>c.s.publicProject(c.params.id),undefined,true);
   route('GET','/api/public/developers/:id',async c=>({projects:await Promise.all((await c.s.db.list('projects',{organisationId:c.params.id})).map(p=>c.s.publicProject(p.id)))}),undefined,true);
-  route('GET','/api/public/attestations/:id',async c=>c.s.publicAttestation(await c.s.required('attestations',c.params.id)),undefined,true);
+  route('GET','/api/public/attestations/:id',async c=>c.s.attestationView(await c.s.required('attestations',c.params.id)),undefined,true);
   route('GET','/api/public/projects/:id/geography',async c=>c.s.geography(c.params.id),undefined,true);
   route('GET','/api/verifier/projects/:id',async c=>c.s.publicProject(c.params.id),['verifier']);
   route('GET','/api/verifier/compare',async c=>{const ids=String(c.q.ids??'').split(',');ensure(ids.length<=10,'INVALID_REQUEST');return Promise.all(ids.map(id=>c.s.publicProject(id)));},['verifier']);

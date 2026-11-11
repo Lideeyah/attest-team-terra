@@ -36,6 +36,7 @@ function groupDigits(digits: string): string {
 }
 
 export function formatNaira(amount: string): string {
+  if(typeof amount!=='string'||! /^-?\d+\.\d{2}$/.test(amount))return "—";
   /* A negative amount is a real fact — a period that spent more than arrived
      — and it reads as one rather than as a figure with a stray character in
      front of the currency. */

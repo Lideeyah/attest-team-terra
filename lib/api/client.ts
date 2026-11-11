@@ -1,4 +1,5 @@
 import { requestContext } from "#api-context";
+import { cache } from "react";
 import { adaptResponse, adaptRequest } from "@/lib/api/wire";
 import type {
   AccountGraph,
@@ -123,7 +124,12 @@ function transportFailure(): Fail {
   };
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<Result<T>> {
+const serverRead=cache((path:string,query:string)=>requestUncached<unknown>(path,{query:JSON.parse(query)}));
+async function request<T>(path:string,options:RequestOptions={}):Promise<Result<T>>{
+  if(typeof window==='undefined'&&(!options.method||options.method==='GET')&&!options.signal)return serverRead(path,JSON.stringify(options.query??{})) as Promise<Result<T>>;
+  return requestUncached<T>(path,options);
+}
+async function requestUncached<T>(path: string, options: RequestOptions = {}): Promise<Result<T>> {
   const method = options.method ?? "GET";
   const attempts = method === "GET" ? READ_RETRIES + 1 : 1;
 
