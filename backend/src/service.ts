@@ -446,7 +446,8 @@ export class Service {
     const debits=transfers.filter(t=>t.state==='settled').reduce((total,t)=>total+cents(t.totalDebit),0n);
     const pending=transfers.filter(t=>['queued','in_flight','settling'].includes(t.state)).length;const available=bankMoney(balance.available_balance);
     const expected=project.openingBalance?cents(project.openingBalance)+credits-debits:null;const difference=expected===null?null:expected-cents(available);
-    return {projectId,openingBalance:project.openingBalance??null,inbound:money(credits),outbound:money(debits),bankBalance:available,expectedBalance:expected===null?null:money(expected),difference:difference===null?null:money(difference),pendingTransfers:pending,status:pending||expected===null?'pending':difference===0n?'matched':'mismatch'};
+    const charges=transfers.filter(t=>t.state==='settled').reduce((total,t)=>total+cents(t.fee)+cents(t.vat)+cents(t.stampDuty),0n);
+    return {projectId,openingBalance:project.openingBalance??null,inbound:money(credits),outbound:money(debits),charges:money(charges),bankBalance:available,expectedBalance:expected===null?null:money(expected),difference:difference===null?null:money(difference),pendingTransfers:pending,status:pending||expected===null?'pending':difference===0n?'matched':'mismatch'};
   }
   async recoverWebhooks(){
     const result=await this.providers.bank.call<ListResult<Delivery>|Delivery[]>('GET','/webhooks/deliveries');const deliveries=Array.isArray(result)?result:result.items;
