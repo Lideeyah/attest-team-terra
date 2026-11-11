@@ -1860,4 +1860,3 @@ earlier version only appeared to make.
 Imported the separate backend into backend/ without merging unrelated root histories. Connected cookie sessions, scoped projects, onboarding, encrypted signed field capture, batch import, OpenStreetMap/PostGIS/H3 maps, run preflight and settlement streaming, signed documents, verifier exports and operations. Added shared contracts and repeatable local acceptance checks. Feature commits record each integration area.
 
 Validation: 72 backend tests, 17 frontend tests, 13 local HTTP integration checks and production frontend build passed. Changed-code lint and type checks passed. The SSE acceptance failure was fixed by flushing the connection handshake. Providers and seeded household/payment records remain mocked/synthetic. Existing fixture-only visual gates were not represented as live-integration passes. See docs/integration-status.md for missing APIs and production limitations, and docs/run-integrated.md for startup.
-

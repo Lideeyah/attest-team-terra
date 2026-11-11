@@ -136,7 +136,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('GET','/api/projects',async c=>paged(c,'projects',{organisationId:c.p.organisationId}),dev);
   route('GET','/api/projects/:id',async c=>{
     const project=await c.s.project(c.p,c.params.id);
-    const runs=await Promise.all((await c.s.db.list('runs',{projectId:project.id})).map(r=>runView(c.s,r))); 
+    const runs=await Promise.all((await c.s.db.list('runs',{projectId:project.id})).map(r=>runView(c.s,r)));
     return {...project,...await c.s.publicProject(project.id),commitment:(await c.s.db.list('commitments',{projectId:project.id,accepted:true})).at(-1)??null,runs};
   });
   route('GET','/api/projects/:id/boundary',async c=>{const p=await c.s.project(c.p,c.params.id);ensure(p.boundary,'BOUNDARY_NOT_AVAILABLE',409);return {boundary:p.boundary,boundaryStatus:'available'};},dev);
