@@ -312,6 +312,9 @@
 
 /* ---- Panels and cards -------------------------------------------------- */
 
+.gis-map { height: clamp(320px, 55vh, 560px); width: 100%; min-width: 0; z-index: 0; border: var(--hairline) solid var(--rule-contrast); font-family: var(--font-editorial); }
+.gis-map .leaflet-control-layers, .gis-map .leaflet-control-zoom a { background: var(--surface-reading); color: var(--ink-primary); }
+
 .panel {
   background: var(--surface-reading);
   border: var(--hairline) solid var(--rule-hairline);
@@ -990,6 +993,8 @@ th[aria-sort] .sort-caret {
 .table td[data-wrap="true"] {
   white-space: normal;
 }
+
+.table td .note { white-space: normal; max-width: 48ch; min-width: 24ch; }
 
 /* ---- Two-column collapse -------------------------------------------------- */
 

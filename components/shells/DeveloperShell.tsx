@@ -20,6 +20,7 @@ type Section = {
 const SECTIONS: Section[] = [
   { href: "/app", label: "Home" },
   { href: "/app/roster", label: "Roster" },
+  { href: "/app/map", label: "Project map" },
   { href: "/app/agents", label: "Agents" },
   { href: "/app/runs", label: "Runs" },
   { href: "/app/funding", label: "Funding" },
