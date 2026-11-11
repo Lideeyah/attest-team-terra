@@ -105,7 +105,7 @@ export class Service {
       const participant=await tx.put('participants',row({id:input.clientId,projectId:project.id,organisationId:project.organisationId,agentId:p.id,name:input.name,phone:input.phone,identityHash:digest,identityLastFour:input.identity.slice(-4),identityType:input.identityType,verification,point:input.point??null,capturedAt:input.capturedAt,receivedAt:now(),syncDelayMs:Date.now()-Date.parse(input.capturedAt),consent:true,accountNumber:wallet.account_number,walletId:wallet.wallet_id,bankCode,kycLevel:enquiry.kyc_level??wallet.kyc_level??1,resolvedAccountName:enquiry.account_name??null,nameMatch:match,maskedBvn:enquiry.bvn_masked??null,flags,status:'active',noticeAttempted:false,noticeStatus:'pending'}));
       await tx.put('participants',{...participant,language,photographId:input.photographId??null,consentEvidenceId:input.consentEvidenceId??null});
       await tx.put('jobs',row({id:'enrol-notice:'+participant.id,type:'enrol-notice',data:{participantId:participant.id},state:'pending',attempts:0,nextAt:now()}));
-      if(match==='uncertain'&&enquiry.account_name)await tx.put('jobs',row({id:'name-review:'+participant.id,type:'name-review',data:{participantId:participant.id},state:'pending',attempts:0,nextAt:now()}));
+      if(match==='uncertain'&&enquiry.account_name)await tx.put('jobs',row({id:'name-review:'+participant.id,type:'name-review',data:{projectId:project.id,participantId:participant.id},state:'pending',attempts:0,nextAt:now()}));
       await tx.put('audit',row({principal:p.id,action:'participant.enrolled',projectId:project.id,detail:{participantId:participant.id,flags}}));
       return participant;
     });
@@ -340,7 +340,7 @@ export class Service {
     ensure(['not_received','someone_else_collected','wrong_amount'].includes(input.category),'INVALID_REQUEST');
     if(receipt) ensure(!(await this.db.list('disputes',{transferId:receipt.transferId})).some(d=>!d.resolvedAt),'DISPUTE_ALREADY_OPEN',409);
     const dispute=await this.db.put('disputes',row({projectId,transferId:receipt?.transferId??null,participantId:receipt?.participantId??null,category:input.category,body:typeof input.body==='string'?input.body.slice(0,4000):'',voiceNoteId:input.voiceNoteId??null,requiresListening:!!input.voiceNoteId,status:'open'}));
-    if(dispute.body)await this.enqueue('triage',{disputeId:dispute.id},'triage:'+dispute.id);return dispute;
+    if(dispute.body)await this.enqueue('triage',{projectId:dispute.projectId,disputeId:dispute.id},'triage:'+dispute.id);return dispute;
   }
   async detect(projectId: string, flows: Flow[] = []) {
     const participants=await this.db.list('participants',{projectId}); const found: Signal[]=[];
@@ -360,6 +360,11 @@ export class Service {
     const targets=new Map<string,Set<string>>(); for(const f of flows)if(Date.parse(f.sentAt)-Date.parse(f.receivedAt)<=48*3600_000&&Date.parse(f.sentAt)>=Date.parse(f.receivedAt)){if(!targets.has(f.to))targets.set(f.to,new Set());targets.get(f.to)!.add(f.participantId);if((f.dormantDays??0)>=30)await add('dormancy_sweep',[f.participantId],{to:f.to});}
     for(const [to,ids]of targets)if(ids.size>=10)await add('onward_concentration',[...ids],{to,count:ids.size,edges:flows.filter(f=>f.to===to&&ids.has(f.participantId)).map(f=>({from:f.participantId,to:f.to,amount:f.amount??null,occurredAt:f.sentAt})),sampled:true});
     return found;
+  }
+  private async requireIdleProject(projectId:string,jobProjectId?:string){
+    // Legacy review jobs lack projectId; the subject record is authoritative.
+    ensure(jobProjectId===undefined||jobProjectId===projectId,'FORBIDDEN',403);
+    ensure(!(await this.db.list('runs',{projectId})).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
   }
   async processJob(job:Pick<Job,'id'|'createdAt'|'type'|'data'>) {
     const {type,data}=job;
@@ -400,11 +405,11 @@ export class Service {
     else if(type==='reconciliation'){const result=await this.reconciliation(jobText(data,'projectId'));await this.db.put('notifications',row({...result,type:'reconciliation'}));if(result.status==='mismatch')await this.audit('worker','reconciliation.mismatch',jobText(data,'projectId'),result);}
     else if(type==='recover-webhooks')await this.recoverWebhooks();
     else if(type==='name-review'||type==='triage'){
-      ensure(!(await this.db.list('runs',{projectId:jobText(data,'projectId')})).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
       if(type==='name-review'){
-        const p=await this.required('participants',jobText(data,'participantId'));const proposal=await this.providers.adjudicate(p.name,p.resolvedAccountName??'');
+        const p=await this.required('participants',jobText(data,'participantId'));await this.requireIdleProject(p.projectId,data.projectId);
+        const proposal=await this.providers.adjudicate(p.name,p.resolvedAccountName??'');
         await this.db.put('participants',{...p,nameAdjudication:proposal});
-      }else{const d=await this.required('disputes',jobText(data,'disputeId'));const proposal=await this.providers.triage(d.body);await this.db.put('disputes',{...d,triageSuggestion:proposal});}
+      }else{const d=await this.required('disputes',jobText(data,'disputeId'));await this.requireIdleProject(d.projectId,data.projectId);const proposal=await this.providers.triage(d.body);await this.db.put('disputes',{...d,triageSuggestion:proposal});}
     }
     else if(type==='extraction') {
       if(await this.db.get('commitments','extraction:'+job.id))return;ensure(!(await this.db.list('runs',{projectId:jobText(data,'projectId')})).some(r=>['executing','partially_complete'].includes(r.state)),'RATE_LIMITED',429);
@@ -459,9 +464,25 @@ export class Service {
     for(const delivery of deliveries){if(!['pending','failed','withheld'].includes(delivery.status)||replayed>=10)continue;ensure(typeof delivery.event_id==='string','INVALID_BANK_RESPONSE',502);const response=await this.providers.bank.call<{accepted:boolean;payload?:ForgeEvent}>('POST',`/webhooks/deliveries/${encodeURIComponent(delivery.event_id)}/replay`,{},hash('replay:'+delivery.event_id));if(process.env.BANK_PROVIDER!=='live'&&response.payload)await this.enqueue('forge-event',response.payload,'replayed:'+delivery.event_id);replayed++;}
     return {replayed};
   }
+  private async recoverLegacyReviewJob(candidate:Job):Promise<Job>{
+    const recoverable=(job:Job)=>job.state==='failed'&&job.lastError==='INVALID_REQUEST'&&job.data.projectId===undefined&&['name-review','triage'].includes(job.type);
+    if(!recoverable(candidate))return candidate;
+    return this.db.lock('job:'+candidate.id,async tx=>{
+      const current=await tx.get('jobs',candidate.id);
+      if(!current)return candidate;
+      if(!recoverable(current))return current;
+      const reference=current.type==='name-review'?current.data.participantId:current.data.disputeId;
+      if(typeof reference!=='string')return current;
+      const subject=current.type==='name-review'?await tx.get('participants',reference):await tx.get('disputes',reference);
+      if(!subject)return current;
+      // Recover only the known missing-project failure, once, under the claim lock.
+      return tx.put('jobs',{...current,data:{...current.data,projectId:subject.projectId},state:'pending',lastError:undefined,nextAt:now(),recoveryReason:'missing_review_project',recoveredAt:now()});
+    });
+  }
   async processQueuedJobs(options:{type?:Job['type'];limit?:number}={}) {
     // DB-backed jobs survive Redis loss; serialized claims avoid concurrent remote execution.
-    let processedJobs=0;for(const pending of await this.db.list('jobs',options.type?{type:options.type}:{})) {
+    let processedJobs=0;for(const candidate of await this.db.list('jobs',options.type?{type:options.type}:{})) {
+      const pending=await this.recoverLegacyReviewJob(candidate);
       if(['done','failed'].includes(pending.state)||Date.parse(pending.nextAt)>Date.now())continue;
       if(processedJobs++>=(options.limit??50))break;
       const claimed=await this.db.lock('job:'+pending.id,async tx=>{

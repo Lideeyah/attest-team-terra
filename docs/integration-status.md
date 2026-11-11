@@ -1,5 +1,7 @@
 # Integration status and remaining API gaps
 
+The combined main update includes the [review-job project-context fix](review-queue-fix.md), including compatibility for pending legacy jobs and locked recovery of the specific historical failure. This fix is required alongside the document-queue changes.
+
 Updated 11 November 2026. Work is on `mark/production`. Backend imported at
 `ccc44d07c8b199edbfe4d0f6906db4e887dabf9d`; subsequent integration changes are committed
 separately. The local preview connects real HTTP handlers and persistent PostgreSQL
