@@ -1,0 +1,3 @@
+import {it,expect} from 'vitest';
+import {containsPoint,type Geometry} from './geometry';
+it('respects longitude/latitude, polygon holes and multipart parcels',()=>{const geometry:Geometry={type:'MultiPolygon',coordinates:[[[[7,5],[8,5],[8,6],[7,6],[7,5]],[[7.2,5.2],[7.4,5.2],[7.4,5.4],[7.2,5.4],[7.2,5.2]]],[[[9,5],[10,5],[10,6],[9,6],[9,5]]]]};expect(containsPoint([7.5,5.5],geometry)).toBe(true);expect(containsPoint([7.3,5.3],geometry)).toBe(false);expect(containsPoint([9.5,5.5],geometry)).toBe(true);expect(containsPoint([5.5,7.5],geometry)).toBe(false);expect(containsPoint([7,5.5],geometry)).toBe(false);});

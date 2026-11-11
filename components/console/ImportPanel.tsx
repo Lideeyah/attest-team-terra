@@ -7,6 +7,7 @@ import { Notice } from "@/components/Notice";
 import { api, newIdempotencyKey } from "@/lib/api/client";
 import { COLUMN_NOTE, IMPORT_COLUMNS, IMPORT_COPY, headerLine } from "@/lib/copy/import";
 import { formatCount } from "@/lib/record";
+import { LiveRosterImport } from "./LiveRosterImport";
 
 type Outcome =
   | { kind: "idle" }
@@ -17,6 +18,9 @@ type Outcome =
 /** The roster uploader. The format is the one module both lanes read, so the
     column list here is not a second opinion about what a row is. */
 export function ImportPanel({ projectId }: { projectId: string }) {
+  return process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<LiveRosterImport projectId={projectId}/>:<MockImportPanel projectId={projectId}/>;
+}
+function MockImportPanel({ projectId }: { projectId: string }) {
   const [outcome, setOutcome] = useState<Outcome>({ kind: "idle" });
   const file = useRef<HTMLInputElement>(null);
 

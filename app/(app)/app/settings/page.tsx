@@ -26,6 +26,7 @@ export default async function SettingsPage() {
     );
   }
   const projectId = session.data.projectId;
+  if(process.env.ATTEST_API_MODE==='live')return <div className="console-page stack-lg"><h1 className="h2-display">Account settings</h1><p>{session.data.email} · {session.data.organisation}</p><Notice title="Administration capabilities"><p>User management, API-key issuance, outbound webhook configuration and notification preferences are not supplied by the current backend. Agent invitations are available under Agents. No settings changes are simulated.</p></Notice><a href="/app/agents">Manage field agents</a></div>;
 
   const [users, keys, endpoints, preferences] = await Promise.all([
     api.consoleUsers(projectId),

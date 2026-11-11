@@ -117,7 +117,7 @@ export function ParticipantActions({
             onChange={(event) => setNextStatus(event.target.value as ParticipantStatus)}
             data-status-value="true"
           >
-            {STATUS_OPTIONS.map((option) => (
+            {(process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?[{value:'active',label:'Active'},{value:'suspended',label:'Suspended'},{value:'removed',label:'Removed from the roster'}]:STATUS_OPTIONS).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

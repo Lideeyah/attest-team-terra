@@ -91,6 +91,8 @@ export type Envelope<T> = SuccessEnvelope<T> | ErrorEnvelope;
 export type Amount = string;
 
 export type Commitment = {
+  sourceAlignment?:string;
+  specifiedSourceLocator?:string;
   percentage: number;
   basis: "net" | "gross";
   /** "staged" is a Plan Vivo pattern: performance-based tranches released
@@ -155,6 +157,10 @@ export type BenefitSharingReport = {
 export type ProjectStatus = "onboarding" | "active" | "suspended" | "withdrawn";
 
 export type Project = {
+  referenceStatistics?: {participants?:number;certificatesIssued?:number;projectStartYear?:number;sourceUrl?:string;sourcePage?:number;asOf?:string;retrievedAt?:string;notice?:string};
+  isDemonstration?: boolean;
+  demonstrationNotice?: string | null;
+  paymentData?: "synthetic" | "unverified";
   id: string;
   developerId: string;
   developerName: string;
@@ -206,6 +212,7 @@ export type PeriodSummary = {
 
 export type ParticipantStatus =
   | "active"
+  | "suspended"
   | "flagged"
   | "excluded"
   | "disputed"
@@ -301,6 +308,7 @@ export type Arithmetic = {
 export type TransferState =
   | "queued"
   | "in_flight"
+  | "settling"
   | "settled"
   | "failed"
   | "reversed"
@@ -327,6 +335,8 @@ export type Transfer = {
 };
 
 export type Attestation = {
+  isDemonstration?: boolean;
+  demonstrationNotice?: string | null;
   id: string;
   projectId: string;
   projectName: string;
@@ -369,7 +379,7 @@ export type Dispute = {
   participantId: string | null;
   participantName: string | null;
   period: string;
-  category: "not-received" | "wrong-amount" | "not-enrolled";
+  category: "not-received" | "wrong-amount" | "not-enrolled" | "someone-else-collected";
   body: string;
   state:
     | "open"
@@ -477,6 +487,8 @@ export type Receipt = {
 };
 
 export type RegisterRow = {
+  isDemonstration?: boolean;
+  demonstrationNotice?: string | null;
   id: string;
   name: string;
   developerName: string;

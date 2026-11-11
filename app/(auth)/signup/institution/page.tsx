@@ -39,6 +39,7 @@ export default async function InstitutionSignUpPage({
   searchParams: Promise<Search>;
 }) {
   const search = await searchParams;
+  if(process.env.ATTEST_API_MODE==='live')return <section className="auth-frame"><div className="auth-column stack"><h1 className="h2-display">Institution access</h1><p>Verifier accounts must be provisioned by the platform. Public signup creates developer accounts only.</p><Link className="btn" href="/signin">Sign in with an existing institution account</Link></div></section>;
 
   if (search.state === "sent") {
     return (

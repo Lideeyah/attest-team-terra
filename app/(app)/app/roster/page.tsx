@@ -187,7 +187,7 @@ export default async function RosterPage({
             name="status"
             defaultValue={search.status ?? ""}
           >
-            {STATUS_FILTERS.map((option) => (
+            {(process.env.ATTEST_API_MODE==='live'?STATUS_FILTERS.filter(o=>['','active','flagged','removed'].includes(o.value)):STATUS_FILTERS).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -217,6 +217,7 @@ export default async function RosterPage({
           </label>
           <select
             id="roster-wallet"
+            disabled={process.env.ATTEST_API_MODE==='live'}
             className="select"
             name="wallet"
             defaultValue={search.wallet ?? ""}
@@ -234,6 +235,7 @@ export default async function RosterPage({
           </label>
           <input
             id="roster-enrolled"
+            disabled={process.env.ATTEST_API_MODE==='live'}
             className="input"
             type="date"
             name="enrolled_from"

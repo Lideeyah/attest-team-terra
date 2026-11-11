@@ -53,6 +53,7 @@ export const WALLET_STATE_LABEL: Record<string, string> = {
 };
 
 export const PARTICIPANT_STATE_LABEL: Record<string, string> = {
+  suspended: "Suspended",
   active: "Active",
   flagged: "Flagged",
   excluded: "Excluded from the current run",

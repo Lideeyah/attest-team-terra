@@ -25,6 +25,7 @@ const STATE_LABEL: Record<Dispute["state"], string> = {
 };
 
 const CATEGORY_LABEL: Record<Dispute["category"], string> = {
+  "someone-else-collected": "Someone else collected the payment",
   "not-received": "Payment not received",
   "wrong-amount": "Amount was wrong",
   "not-enrolled": "Not on the register",

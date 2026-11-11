@@ -1,0 +1,19 @@
+"use client";
+import {useRef,useState,type FormEvent} from 'react';
+import type {EnrolmentInput} from '@attest/contracts';
+import {backendRequest} from '@/lib/api/backend';
+import {parseCsv} from '@/lib/csv';
+export function LiveRosterImport({projectId}:{projectId:string}){
+  const [message,setMessage]=useState(''),[pending,setPending]=useState(false),[failures,setFailures]=useState<{row:number;code:string}[]>([]);
+  const prepared=useRef<{file:File;items:EnrolmentInput[];key:string}|null>(null);
+  async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();const file=new FormData(event.currentTarget).get('file');if(!(file instanceof File)||!file.size)return;setPending(true);setMessage('');try{
+    if(prepared.current?.file.name!==file.name||prepared.current.file.lastModified!==file.lastModified||prepared.current.file.size!==file.size){if(file.size>1500000)throw Error('Use a CSV under 1.5 MiB.');const rows=parseCsv(await file.text());if(!rows.length||rows.length>500)throw Error('Import between 1 and 500 households per file.');
+      const required=['first_name','last_name','date_of_birth','phone','identity_type','identity_number','consent','captured_at'];for(const column of required)if(!(column in rows[0]))throw Error(`Missing column: ${column}`);
+      if(rows.some(r=>!['bvn','nin'].includes(r.identity_type.toLowerCase())))throw Error('identity_type must be BVN or NIN on every row.');
+      prepared.current={file,key:crypto.randomUUID(),items:rows.map(r=>({clientId:r.client_id||crypto.randomUUID(),projectId,name:`${r.first_name} ${r.last_name}`,firstName:r.first_name,lastName:r.last_name,dateOfBirth:r.date_of_birth,phone:r.phone,identityType:r.identity_type.toLowerCase()==='nin'?'nin':'bvn',identity:r.identity_number,consent:r.consent.toLowerCase()==='true',capturedAt:r.captured_at,...(r.longitude&&r.latitude?{point:[Number(r.longitude),Number(r.latitude)] as [number,number]}:{}),accountNumber:r.account_number||undefined,bankCode:r.bank_code||'000014',boundaryReason:r.boundary_reason||undefined,language:'en'}))};
+    }
+    const batch=prepared.current;if(!batch)throw Error('The file could not be prepared.');const result=await backendRequest<{clientId:string;status:string;code?:string}[]>(`/api/projects/${projectId}/participants`,{method:'POST',body:{items:batch.items},key:batch.key});
+    const failed=result.data.filter(r=>r.status!=='success');setFailures(failed.map(r=>({row:batch.items.findIndex(i=>i.clientId===r.clientId)+2,code:r.code??'No acknowledgement'})));setMessage(`${result.data.length-failed.length} of ${batch.items.length} households accepted. ${failed.length} need correction. Accepted households must not be re-imported with new IDs.`);
+  }catch(error){setMessage(error instanceof Error?error.message:'The outcome is unknown. Keep this file selected and reconcile before retrying.');}finally{setPending(false);}}
+  return <section className="panel stack"><h2 className="h3-display">Import household captures</h2><p className="note">UTF-8 CSV, up to 500 rows. Required columns: first_name, last_name, date_of_birth, phone (international format), identity_type, identity_number, consent (true/false), captured_at (ISO timestamp). Optional: client_id, account_number, bank_code, longitude, latitude, boundary_reason. NIN requires a payout account. No consent or GPS is invented.</p><form onSubmit={submit} className="stack"><input type="file" name="file" accept=".csv,text/csv" aria-label="Household capture CSV" required/><button className="btn" disabled={pending}>{pending?'Importing':'Validate and import captures'}</button></form>{message?<p role="status">{message}</p>:null}<ul>{failures.map(f=><li key={f.row}>Row {f.row}: {f.code.replaceAll('_',' ').toLowerCase()}</li>)}</ul><p className="note">Identity values stay in memory only while submitting. The server discards raw identity numbers after verification. Close this page when review is complete.</p></section>;
+}

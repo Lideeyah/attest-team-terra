@@ -30,7 +30,7 @@ async function signUp(formData: FormData) {
       `/signup/developer?state=error&code=${result.code}&email=${encodeURIComponent(email)}`,
     );
   }
-  redirect(`/signup/developer?state=sent&email=${encodeURIComponent(result.data.email)}`);
+  redirect(`/signup/developer?state=sent&email=${encodeURIComponent(email)}`);
 }
 
 export default async function DeveloperSignUpPage({

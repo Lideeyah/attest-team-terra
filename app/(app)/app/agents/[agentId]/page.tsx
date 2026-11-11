@@ -4,6 +4,7 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { AgentStatus } from "@/components/console/AgentStatus";
+import { AgentIdentityForm } from "@/components/console/AgentIdentityForm";
 import { api } from "@/lib/api/client";
 import { AGENT_COPY } from "@/lib/copy/console";
 import { headingFor } from "@/lib/copy/codes";
@@ -115,6 +116,7 @@ export default async function AgentPage({
       </section>
 
       <AgentStatus agentId={agent.id} status={agent.status} />
+      {process.env.ATTEST_API_MODE==='live'&&agent.status==='invited'?<AgentIdentityForm id={agent.id}/>:null}
     </div>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
+import {useRouter} from 'next/navigation';
 import {useRef,useState,type FormEvent} from 'react';
 import type {Run,RunArithmetic} from '@attest/contracts';
 import {backendRequest} from '@/lib/api/backend';
 import {formatNaira} from '@/lib/record';
 type Preflight={passed:boolean;exclusions:{participantId:string;reasons:string[]}[];arithmetic:RunArithmetic};
 export function LiveRunBuilder({projectId,basis,initialPeriod}:{projectId:string;basis:string;initialPeriod:string}){
+  const router=useRouter();
   const [run,setRun]=useState<Run|null>(null),[arithmetic,setArithmetic]=useState<RunArithmetic|null>(null),[preflight,setPreflight]=useState<Preflight|null>(null),[reasons,setReasons]=useState<Record<string,string>>({}),[message,setMessage]=useState(''),[pending,setPending]=useState(false);
   const action=useRef({fingerprint:'',key:crypto.randomUUID()});
   function key(path:string,body:unknown){const fingerprint=JSON.stringify({path,body});if(action.current.fingerprint!==fingerprint)action.current={fingerprint,key:crypto.randomUUID()};return action.current.key;}
@@ -16,7 +18,7 @@ export function LiveRunBuilder({projectId,basis,initialPeriod}:{projectId:string
   {arithmetic?<dl className="arithmetic">{(['required','estimatedCharges','totalNeeded','funded','shortfall','perHousehold'] as const).map(name=><div className="arithmetic-row" key={name}><dt>{{required:'Required benefit share',estimatedCharges:'Estimated charges',totalNeeded:'Total funding needed',funded:'Allocated funding',shortfall:'Shortfall',perHousehold:'Planned amount per household'}[name]}</dt><dd>{formatNaira(arithmetic[name])}</dd></div>)}</dl>:null}
   <button className="btn-outline" disabled={pending} onClick={()=>void check()}>Run preflight checks</button>
   {preflight&&!preflight.passed?<section className="stack"><h2 className="h3-display">Review exclusions</h2><p>Recording a reason excludes the household from this payment. It stays in the coverage denominator.</p>{preflight.exclusions.map(e=><label className="field" key={e.participantId}><span className="label">{e.reasons.map(r=>r.replaceAll('_',' ').toLowerCase()).join(', ')}</span><input className="input" value={reasons[e.participantId]??''} onChange={event=>setReasons({...reasons,[e.participantId]:event.target.value})} placeholder="Document the reason for exclusion" required/></label>)}</section>:null}
-  {preflight?.passed?<form className="stack" onSubmit={event=>{event.preventDefault();void task(async()=>{const path=`/api/runs/${run.id}/execute`,body={};const result=await backendRequest<{jobId:string}>(path,{method:'POST',body,key:key(path,body)});setMessage(`Execution queued. Job ${result.data.jobId}. This is not settlement.`);location.assign(`/app/runs/${run.id}`);});}}><label className="punch-label"><input type="checkbox" required/>I reviewed the amounts and exclusions and authorise this run.</label><button className="btn" disabled={pending}>Execute this run once</button></form>:null}
+  {preflight?.passed?<form className="stack" onSubmit={event=>{event.preventDefault();void task(async()=>{const path=`/api/runs/${run.id}/execute`,body={};const result=await backendRequest<{jobId:string}>(path,{method:'POST',body,key:key(path,body)});setMessage(`Execution queued. Job ${result.data.jobId}. This is not settlement.`);router.push(`/app/runs/${run.id}`);});}}><label className="punch-label"><input type="checkbox" required/>I reviewed the amounts and exclusions and authorise this run.</label><button className="btn" disabled={pending}>Execute this run once</button></form>:null}
   <a href={`/app/runs/${run.id}`}>Open run progress</a></>}
   </div>;
 }
