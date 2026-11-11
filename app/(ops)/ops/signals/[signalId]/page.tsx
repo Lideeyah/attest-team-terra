@@ -18,6 +18,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ signalId: string }>;
 }): Promise<Metadata> {
+  if(process.env.ATTEST_API_MODE==='live')return {title:'Operations record'};
   await connection();
   const { signalId } = await params;
   const result = await api.signal(signalId);
@@ -35,6 +36,7 @@ export default async function SignalPage({
   params: Promise<{ signalId: string }>;
   searchParams: Promise<Search>;
 }) {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const { signalId } = await params;
   const search = await searchParams;

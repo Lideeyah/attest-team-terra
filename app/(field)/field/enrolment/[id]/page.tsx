@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from 'next/link';
 import { connection } from "next/server";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
@@ -6,6 +7,7 @@ import { Stamp } from "@/components/Stamp";
 import { field } from "@/lib/field/api";
 import { headingFor } from "@/lib/copy/codes";
 import { formatDateTime, formatTimeOfDay, maskPhone } from "@/lib/record";
+import {backendRequest,BackendError} from '@/lib/api/backend';
 
 export const metadata: Metadata = {
   title: "An enrolment",
@@ -23,6 +25,15 @@ export default async function EnrolmentPage({
 }) {
   await connection();
   const { id } = await params;
+  if(process.env.ATTEST_API_MODE==='live'){
+    type SubmittedFieldRecord={id:string;name:string;phone:string;status:string;capturedAt:string;flags:string[];accountNumber?:string;bankCode?:string};
+    let data:SubmittedFieldRecord|null=null;
+    try{
+      data=(await backendRequest<SubmittedFieldRecord>(`/api/field/enrolments/${encodeURIComponent(id)}`)).data;
+    }catch(error){if(!(error instanceof BackendError)||![403,404].includes(error.status))throw error;}
+    if(!data)return <div className="field-screen stack"><h1 className="h3-display">Enrolment unavailable</h1><p>This record is not available to your field account. Only your own captures can be opened.</p><Link href="/field">Back to your workspace</Link></div>;
+    return <article className="field-screen stack"><h1 className="h3-display">{data.name}</h1><p className="field-readable">Submitted enrolment. Corrections require an authorised developer and a recorded reason.</p><dl className="record-grid"><div><dt>Captured</dt><dd>{formatDateTime(data.capturedAt)}</dd></div><div><dt>Phone</dt><dd>{maskPhone(data.phone)}</dd></div><div><dt>Status</dt><dd>{data.status}</dd></div><div><dt>Payout account</dt><dd>{data.accountNumber?'••••••'+data.accountNumber.slice(-4):'Not supplied'}</dd></div><div><dt>Review flags</dt><dd>{data.flags.length?data.flags.map(flag=>flag.replaceAll('_',' ')).join(', '):'None recorded'}</dd></div></dl><Link href="/field">Back to your workspace</Link></article>;
+  }
   const result = await field.enrolment(id);
 
   if (!result.ok) {

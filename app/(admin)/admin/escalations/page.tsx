@@ -13,6 +13,7 @@ import { formatCount, formatDate, formatPeriod, orUnknown } from "@/lib/record";
 export const metadata: Metadata = { title: "Escalations" };
 
 export default async function EscalationsPage() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const result = await api.escalations();
 

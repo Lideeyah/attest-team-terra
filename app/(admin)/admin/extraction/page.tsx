@@ -15,6 +15,7 @@ export const metadata: Metadata = { title: "Extraction review" };
    needs to stand on its own. The quoted sentence is the point of this screen:
    a reviewer reads the document's own words beside what was read from them. */
 export default async function ExtractionReviewPage() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const result = await api.extractionReviews();
 

@@ -68,3 +68,7 @@ Current branch: mark/production. Frontend and isolated backend are integrated; s
 Frontend: https://attest-mc-johnsons-projects.vercel.app
 API: https://attest-api-mc-johnsons-projects.vercel.app
 Both deployed and verified with ten hosted checks. Three populated synthetic projects persist in Neon/PostGIS. Runtime and limitations: docs/vercel-deployment.md. Private hosted settings stay in ignored backend/.local-state and encrypted Vercel environment settings.
+
+## Responsive/access checkpoint — 2026-11-11
+
+63 product page templates reviewed across six widths. Workspace authentication and role/field ownership checks pass. Public records remain open. Responsive menus, forms and records are ready for the hosted rollout. Details: docs/responsive-access-review.md.

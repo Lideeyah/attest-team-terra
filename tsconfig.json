@@ -34,17 +34,14 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts",
-    ".next-integrated/types/**/*.ts",
-    ".next-integrated/dev/types/**/*.ts",
-    ".next-production-integration/types/**/*.ts",
-    ".next-production-integration/dev/types/**/*.ts"
+    "**/*.mts"
   ],
   "exclude": [
     "node_modules",
     ".next-tooling",
     ".next-live",
     ".next-verify",
-    "backend"
+    "backend",
+    ".next-*"
   ]
 }

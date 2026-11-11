@@ -4,7 +4,8 @@ Updated 11 November 2026. Work is on `mark/production`. Backend imported at
 `ccc44d07c8b199edbfe4d0f6906db4e887dabf9d`; subsequent integration changes are committed
 separately. The local preview connects real HTTP handlers and persistent PostgreSQL
 with PostGIS. Its bank, registry, extraction, messaging and anchor providers are mocked.
-This is not a deployed or verified-live banking service.
+The Vercel demonstration is deployed and verified as described in
+`vercel-deployment.md`; it is not a verified-live banking service.
 
 ## Connected workflows
 
@@ -26,7 +27,7 @@ This is not a deployed or verified-live banking service.
 
 ## Validation evidence
 
-The full backend suite passed 72 tests, including scope, signatures, PDF integrity,
+The full backend suite passed 73 tests, including scope, signatures, PDF integrity,
 idempotency, charge arithmetic and provider-error handling. Frontend tests cover the
 mock client plus live DTO conversion, historical denominators, geometry holes/multiple
 parcels and CSV parsing. Type checks, changed-code lint and a production frontend build
@@ -96,6 +97,7 @@ this integration does not add a complete carbon marketplace or invent checkout p
 - The field and administration forms are functional integrations; a full device/browser
   matrix, real-provider run, production load test and complete visual regression pass
   have not been established by local mock-provider acceptance.
-- Deployment, container execution and ingress health have not been verified. Build for
-  linux/amd64, configure the single externally published Service `app` on port 80,
-  migrate the external PostGIS database and validate HTTPS cookies/streaming before release.
+- The Vercel demonstration, HTTPS cookies and proxied streaming were verified.
+  Container/Kubernetes execution remains unverified and requires its own rollout
+  checks. Responsive layouts and workspace guards are detailed in
+  `responsive-access-review.md`.

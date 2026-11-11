@@ -13,7 +13,7 @@
    offline is the state this app is for, so a partial cache is a product that
    will fail in the field and say nothing. */
 
-const CACHE = "attest-field-v3";
+const CACHE = "attest-field-v4";
 
 /* The screens an agent opens. Everything else the app needs — the framework,
    the chunks, the fonts — is cached as it is fetched, which is how the
@@ -121,6 +121,10 @@ self.addEventListener("fetch", (event) => {
 
       const network = await fetch(request)
         .then(async (response) => {
+          if(url.pathname.startsWith('/field')&&(response.status===401||response.status===403||(response.redirected&&new URL(response.url).pathname==='/signin'))){
+            await Promise.all((await caches.keys()).filter(name=>name.startsWith('attest-field-')).map(name=>caches.delete(name)));
+            return response;
+          }
           const cache = await caches.open(CACHE);
           await cache.put(key, response.clone()).catch(() => undefined);
           return response;

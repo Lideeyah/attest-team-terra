@@ -12,6 +12,7 @@ import { formatCount, formatDateTime } from "@/lib/record";
 export const metadata: Metadata = { title: "Registry sync" };
 
 export default async function RegistrySyncPage() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const result = await api.registrySync();
 

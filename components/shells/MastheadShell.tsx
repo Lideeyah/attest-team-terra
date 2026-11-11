@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lockup } from "@/components/Mark";
 import { SessionAccount } from "./SessionAccount";
+import {WorkspaceMenu} from './WorkspaceMenu';
+import {SignOut} from '@/components/auth/SignOut';
 
 export type MastheadSection = { href: string; label: string };
 
@@ -44,17 +46,14 @@ export function MastheadShell({
             <span className="masthead-account">
               {context ? <span className="record-cell">{context}</span> : null}
               {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<SessionAccount/>:<><span className="eyebrow">{account.organisation}</span><span className="record-cell console-account">{account.email}</span></>}
-              <form action="/signout" method="post">
-                <button type="submit" className="btn-quiet btn-sm">
-                  Sign out
-                </button>
-              </form>
+              <SignOut/>
             </span>
           </div>
         </div>
       </header>
       <div className="measure">
         <nav className="tab-rail" aria-label={surface}>
+          <WorkspaceMenu current={sections.find(section=>pathname===section.href||(section.href!==sections[0]?.href&&pathname.startsWith(section.href+'/')))?.label??surface}>
           {sections.map((section) => {
             const active =
               pathname === section.href ||
@@ -71,6 +70,7 @@ export function MastheadShell({
               </Link>
             );
           })}
+          </WorkspaceMenu>
         </nav>
       </div>
       <div className="measure section-tight masthead-content">{children}</div>

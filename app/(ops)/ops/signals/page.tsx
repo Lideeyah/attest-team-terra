@@ -30,6 +30,7 @@ export default async function SignalsPage({
 }: {
   searchParams: Promise<Search>;
 }) {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const search = await searchParams;
   const result = await api.signals({

@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReconciliationPage() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const result = await api.opsReconciliation();
 

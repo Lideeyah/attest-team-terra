@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lockup } from "@/components/Mark";
 import { UNKNOWN, formatPeriod } from "@/lib/record";
+import {WorkspaceMenu} from './WorkspaceMenu';
+import {SignOut} from '@/components/auth/SignOut';
 
 type Section = {
   href: string;
@@ -65,6 +67,7 @@ export function DeveloperShell({
         <div className="console-rail-head">
           <Lockup size={17} />
         </div>
+        <WorkspaceMenu current={SECTIONS.find(section=>section.href==='/app'?pathname==='/app':pathname.startsWith(section.href))?.label??'Workspace'}>
         <div
           className="period-indicator"
           data-period-indicator={period ? period.label : "none"}
@@ -132,12 +135,9 @@ export function DeveloperShell({
         <div className="console-rail-foot">
           <p className="eyebrow">{account.organisation}</p>
           <p className="record-cell console-account">{account.email}</p>
-          <form action="/signout" method="post">
-            <button type="submit" className="btn-quiet btn-sm">
-              Sign out
-            </button>
-          </form>
+          <SignOut/>
         </div>
+        </WorkspaceMenu>
       </nav>
       <div className="console-main">{children}</div>
     </div>

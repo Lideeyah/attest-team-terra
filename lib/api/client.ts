@@ -1,4 +1,5 @@
 import { requestContext } from "#api-context";
+import {redirectExpiredSession} from './expired-session';
 import { cache } from "react";
 import { adaptResponse, adaptRequest } from "@/lib/api/wire";
 import type {
@@ -160,6 +161,7 @@ async function requestUncached<T>(path: string, options: RequestOptions = {}): P
       continue;
     }
 
+    if(live&&response.status===401)redirectExpiredSession();
     const envelope = (await response.json().catch(() => null)) as Envelope<T> | null;
     if (!envelope) {
       return transportFailure();

@@ -6,9 +6,11 @@ import { DeveloperShell } from "@/components/shells/DeveloperShell";
 import { consoleContext } from "@/lib/console";
 import { api } from "@/lib/api/client";
 import { ProjectPicker } from "@/components/console/ProjectPicker";
+import {requireRole} from '@/lib/api/access';
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   await connection();
+  await requireRole(['developer_admin','developer_operator']);
   const context = await consoleContext();
   const session = await api.session();
   if (process.env.ATTEST_API_MODE === "live" && session.ok && session.data.role !== "developer") {

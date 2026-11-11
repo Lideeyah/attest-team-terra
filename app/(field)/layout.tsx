@@ -4,6 +4,7 @@ import { token } from "@/lib/tokens";
 import { FieldShell } from "@/components/shells/FieldShell";
 import { ServiceWorker } from "@/components/field/ServiceWorker";
 import { LiveField } from "@/components/field/LiveField";
+import {requireRole} from '@/lib/api/access';
 
 export const metadata: Metadata = {
   manifest: "/field/manifest.webmanifest",
@@ -22,10 +23,11 @@ export const viewport = {
 /* No route transition on this surface. The foundation scopes transitions per
    surface, and the field app is held to 150KB of JavaScript on a phone on 3G:
    a shared-axis transition is not what that budget is for. */
-export default function FieldLayout({ children }: LayoutProps<"/">) {
+export default async function FieldLayout({ children }: LayoutProps<"/">) {
+  await requireRole(['agent']);
   return (
     <PlainSurface>
-      <FieldShell>{process.env.ATTEST_API_MODE === "live" ? <LiveField/> : children}</FieldShell>
+      <FieldShell>{process.env.ATTEST_API_MODE === "live" ? <LiveField>{children}</LiveField> : children}</FieldShell>
       <ServiceWorker />
     </PlainSurface>
   );

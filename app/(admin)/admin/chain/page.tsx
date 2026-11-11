@@ -16,6 +16,7 @@ export const metadata: Metadata = { title: "Chain integrity" };
    rather than repairing it: repairing a chain is indistinguishable from
    rewriting one, which is the thing this product exists not to do. */
 export default async function ChainPage() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const result = await api.chainChecks();
 

@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function OpsHome() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const [signals, cases, exceptions, reconciliation] = await Promise.all([
     api.signals({}),

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { FIELD_COPY } from "@/lib/copy/field";
 import { useOnline, useQueue } from "@/lib/field/useQueue";
+import {SignOut} from '@/components/auth/SignOut';
 
 const TABS = [
   { href: "/field", label: "Today" },
@@ -38,6 +39,7 @@ export function FieldShell({ children }: FieldShellProps) {
           <span className="field-status-label" data-pending={pendingSync}>
             {FIELD_COPY.pending(pendingSync)}
           </span>
+          <SignOut/>
         </header>
         <main className="field-main">{children}</main>
         <nav className="field-tabs" aria-label="Field app">

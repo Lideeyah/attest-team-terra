@@ -184,9 +184,9 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
                       {project.registry} {project.registryId} · {project.state}
                     </span>
                   </span>
-                  <Coverage paid={latest.paid} enrolled={latest.enrolled} />
+                  {latest?<Coverage paid={latest.paid} enrolled={latest.enrolled} />:<span className="note">No payment period published</span>}
                   <span className="record-cell numeric">
-                    {formatNaira(latest.amountToHouseholds)}
+                    {latest?formatNaira(latest.amountToHouseholds):'—'}
                   </span>
                   <Stamp
                     state={
@@ -194,7 +194,7 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
                         ? "blocked"
                         : project.status === "suspended"
                           ? "flagged"
-                          : latest.state === "open"
+                          : !latest||latest.state === "open"
                             ? "review"
                             : "sealed"
                     }
@@ -203,6 +203,8 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
                         ? "Withdrawn"
                         : project.status === "suspended"
                           ? "Suspended"
+                          : !latest
+                            ? 'No published period'
                           : latest.state === "open"
                             ? `${formatPeriod(latest.period)} open`
                             : `${formatPeriod(latest.period)} sealed`

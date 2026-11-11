@@ -1,5 +1,5 @@
 "use client";
-import { useEffect,useState,type FormEvent } from "react";
+import { useEffect,useState,type FormEvent,type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type { EnrolmentInput } from "@attest/contracts";
 import { backendRequest, BackendError } from "@/lib/api/backend";
@@ -7,7 +7,7 @@ import { acknowledgeCapture,decodeFile,encodeFile,publicDeviceKey,readCaptures,s
 
 import {containsPoint,type Geometry} from "@/lib/field/geometry";
 type Profile={boundary?:Geometry;id:string;name:string;email:string;projectId:string;status:string;enrolments:{id:string;flags:string[];syncDelayMs:number}[]};
-export function LiveField(){
+export function LiveField({children}:{children?:ReactNode}){
   const path=usePathname(),[profile,setProfile]=useState<Profile|null>(null),[pending,setPending]=useState(false),[message,setMessage]=useState('Opening your field workspace'),[queue,setQueue]=useState<SecureCapture[]>([]);
   useEffect(()=>{
     let current=true;
@@ -39,10 +39,11 @@ export function LiveField(){
     await saveCapture(item);setQueue(await readCaptures(profile?.id));form.reset();setMessage('Capture saved in encrypted storage. Open Queue to sync. Original capture time and location are retained.');
   }catch(error){setMessage(error instanceof Error?error.message:'Capture could not be saved. Keep this form open.');}finally{setPending(false);}}
   async function correct(event:FormEvent<HTMLFormElement>,item:SecureCapture){event.preventDefault();const fields=new FormData(event.currentTarget);setPending(true);try{const input={...item.input};for(const field of ['firstName','lastName','dateOfBirth','phone','identity','accountNumber','bankCode','boundaryReason'] as const){const value=String(fields.get(field)??'');if(value)input[field]=value;}input.name=`${input.firstName} ${input.lastName}`;await saveCapture({...item,input,key:crypto.randomUUID(),failure:undefined});setQueue(await readCaptures(profile?.id));setMessage('Rejected capture corrected. Original ID, capture time, point and signature remain unchanged; retry uses a new request key.');}catch(error){setMessage(error instanceof Error?error.message:'Correction could not be stored.');}finally{setPending(false);}}
+  if(path.startsWith('/field/enrolment/'))return children;
   if(!profile)return <div className="field-screen stack"><h1 className="h3-display">Field workspace</h1><p role="status">{message}</p><a href="/signin?next=/field">Sign in as an activated agent</a><p className="note">New invitations require administrator identity verification before login.</p></div>;
   const form=path==='/field/enrol',isQueue=path==='/field/queue';
   return <div className="field-screen stack"><p className="eyebrow">{profile.email}</p><h1 className="h3-display">{form?'Enrol a household':isQueue?'Encrypted sync queue':profile.name}</h1>{message?<p role="status" className="field-note">{message}</p>:null}
-  {form?<form onSubmit={capture} className="stack">
+  {form?<form onSubmit={capture} className="stack field-capture-form">
     <label className="punch-label"><input type="checkbox" name="consent" required/>The household consents to enrolment and identity verification.</label>
     {(['firstName','lastName','dateOfBirth','phone','identity','accountNumber','bankCode','boundaryReason'] as const).map(name=><label className="field" key={name}><span className="label">{{firstName:'First name',lastName:'Last name',dateOfBirth:'Date of birth',phone:'Phone in international format',identity:'BVN or NIN (11 digits)',accountNumber:'Existing payout account (required for NIN)',bankCode:'NIP bank code (default 000014)',boundaryReason:'Reason if outside the project boundary'}[name]}</span><input className="input" name={name} type={name==='dateOfBirth'?'date':name==='phone'?'tel':'text'} required={['firstName','lastName','dateOfBirth','phone','identity'].includes(name)} pattern={name==='identity'?'[0-9]{11}':name==='accountNumber'?'[0-9]{10}':undefined} autoComplete="off"/></label>)}
     <label className="field"><span className="label">Identity type</span><select name="identityType" className="select"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label>

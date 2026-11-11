@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminHome() {
+  if(process.env.ATTEST_API_MODE==='live')return null;
   await connection();
   const [onboarding, registry, extraction, chain, escalations] = await Promise.all([
     api.onboardingReviews(),

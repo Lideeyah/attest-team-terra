@@ -9,6 +9,7 @@
 @import "./styles/console.css";
 @import "./styles/field.css";
 
+
 /* Tailwind's own palette, type scale, radii and shadows are removed so they
    cannot be used by accident. Nothing in Attest may reach for a value the
    token stylesheet did not define. */
@@ -54,4 +55,82 @@
   --spacing-stack-lg: var(--stack-lg);
   --spacing-gutter: var(--gutter);
   --spacing-section: var(--section);
+}
+
+/* Shared responsive primitives; screen-specific fixes are kept below. */
+.workspace-menu-toggle { display: none; }
+.workspace-menu, .workspace-menu-content, .figure, .field, .panel,
+.console-page, .masthead-content, .record-grid > *, .split > *, .split-wide > * { min-width: 0; }
+.console-rail > .workspace-menu { display: flex; flex: 1; flex-direction: column; }
+.console-rail .workspace-menu-content { display: flex; flex: 1; flex-direction: column; gap: var(--stack); }
+.tab-rail > .workspace-menu { width: 100%; }
+.tab-rail .workspace-menu-content { display: flex; flex-wrap: wrap; }
+.console-account, .eyebrow, .record-cell, .figure-denominator { overflow-wrap: anywhere; }
+.input, .select, .textarea, input[type="file"] { max-width: 100%; min-width: 0; }
+input[type="file"] { width: 100%; }
+.figure-value { overflow-wrap: anywhere; }
+.row, .row-between { min-width: 0; flex-wrap: wrap; }
+.stamp { flex-shrink: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.project-picker { display: flex; flex-wrap: wrap; align-items: center; gap: var(--stack); }
+.project-picker .select { flex: 1 1 18rem; width: 100%; }
+.table-scroll { max-width: 100%; }
+.hash { max-width: 100%; min-width: 0; flex-wrap: wrap; }
+.hash > span { min-width: 0; overflow-wrap: anywhere; }
+.hash-copy { flex-shrink: 0; min-height: 44px; padding-inline: calc(var(--stack) / 2); }
+.modal { display: flex; flex-direction: column; max-height: calc(100dvh - var(--gutter-tight) * 2); }
+.modal-body { min-height: 0; flex: 1; }
+.modal-head, .modal-foot, .sheet-head { flex-wrap: wrap; }
+pre { max-width: 100%; overflow-x: auto; }
+
+@media (min-width: 768px) {
+  .field-shell { max-width: 52rem; }
+  .field-capture-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .field-capture-form > .punch-label, .field-capture-form > .note, .field-capture-form > .btn { grid-column: 1 / -1; }
+}
+
+@media (max-width: 900px) {
+  .strip { flex-wrap: wrap; }
+  .console-rail { padding: var(--gutter-tight); }
+  .console-rail-head { padding-bottom: var(--stack); }
+  .workspace-menu-toggle { display: flex; width: 100%; justify-content: space-between; align-items: center; min-height: var(--tap-target); }
+  .workspace-menu-content[data-open="false"], .console-rail .workspace-menu-content[data-open="false"] { display: none; }
+  .workspace-menu-content[data-open="true"] { padding-block: var(--stack); }
+  .console-nav { grid-auto-flow: row; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; gap: calc(var(--stack) / 2); }
+  .console-nav-link { height: 100%; align-items: center; flex-wrap: wrap; border-bottom: var(--hairline) solid var(--rule-hairline); }
+  .console-rail-foot { margin-top: var(--stack); }
+  .tab-rail { display: block; border: 0; padding-block: var(--stack); }
+  .tab-rail .workspace-menu-content[data-open="true"] { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .tab-rail .tab { min-width: 0; min-height: var(--tap-target); white-space: normal; }
+  .masthead-account { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--stack); }
+  .masthead-row { align-items: flex-start; }
+}
+
+@media (max-width: 600px) {
+  .public-masthead { height: auto; min-height: var(--masthead-height); }
+  .measure, .console-page { width: 100%; }
+  .console-page { padding: var(--stack-lg) var(--gutter-tight); }
+  .console-page + .console-page { padding-top: 0; }
+  .row-between { flex-wrap: wrap; gap: var(--stack); }
+  .row { flex-wrap: wrap; }
+  .project-picker { gap: calc(var(--stack) / 2); }
+  .project-picker .select { flex-basis: 100%; }
+  .project-picker > button, .project-picker > a { flex: 1; min-height: var(--tap-target); display: flex; align-items: center; justify-content: center; }
+  .btn, .btn-outline, .btn-quiet { max-width: 100%; white-space: normal; }
+  input, select, textarea { font-size: max(16px, 1rem); }
+  .record-grid { grid-template-columns: minmax(0,1fr); }
+  .console-page .figure-row { grid-template-columns: minmax(0,1fr); gap: var(--stack-lg); }
+  .figure-value { font-size: clamp(1.5rem,7vw,var(--fs-figure)); }
+  .public-masthead-row { flex-wrap: wrap; gap: calc(var(--stack) / 2); padding-block: calc(var(--stack) / 2); }
+  .public-masthead-nav { flex: 1; justify-content: flex-end; flex-wrap: wrap; }
+  .public-masthead-nav a { min-height: 44px; }
+  .field-shell { border-inline: 0; min-height: 100dvh; }
+  .field-tabs { padding-bottom: env(safe-area-inset-bottom); }
+  .field-status { flex-wrap: wrap; }
+  .field-main { padding-inline: var(--gutter-tight); }
+  .definition-row, .audit-row, .settings-row { grid-template-columns: minmax(0,1fr); }
+}
+
+@media (max-width: 420px) {
+  .public-masthead-row { display: grid; grid-template-columns: minmax(0,1fr); }
+  .public-masthead-nav { width: 100%; margin-inline-start: 0; justify-content: space-between; flex-wrap: nowrap; gap: 0; }
 }
