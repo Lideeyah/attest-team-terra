@@ -62,3 +62,9 @@ starts at the next phase.
 ## Production integration checkpoint — 2026-11-11
 
 Current branch: mark/production. Frontend and isolated backend are integrated; see docs/integration-status.md and docs/run-integrated.md. This checkpoint supersedes the demo-only resume guidance above for integration work. Local preview uses port 3001; backend uses 8080. External providers remain mocked. Missing backend APIs, production configuration and source-document alignment remain explicit follow-up items. No deployment has been made.
+
+## Hosted checkpoint — 2026-11-11
+
+Frontend: https://attest-mc-johnsons-projects.vercel.app
+API: https://attest-api-mc-johnsons-projects.vercel.app
+Both deployed and verified with ten hosted checks. Three populated synthetic projects persist in Neon/PostGIS. Runtime and limitations: docs/vercel-deployment.md. Private hosted settings stay in ignored backend/.local-state and encrypted Vercel environment settings.

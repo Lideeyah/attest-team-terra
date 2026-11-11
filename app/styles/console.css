@@ -25,9 +25,9 @@
 
 /* ---- Figures across the top of the home screen -------------------------- */
 
-.figure-row {
+.console-page .figure-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--stack-lg);
   border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
   border-bottom: var(--hairline) solid var(--rule-hairline);

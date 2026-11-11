@@ -50,3 +50,17 @@ to `Lideeyah/attest-team-terra` before that connection can be enabled.
 Do not upload `.local-state`, `.env` files, generated keys, or local database files.
 Both deployment ignore files exclude these. Keep the provisioned Neon database when
 redeploying; function memory is disposable.
+
+## Verified on 2026-11-11
+
+Both production deployments are ready and public health/login checks succeed.
+`node scripts/check-hosted.mjs` passed 10 hosted checks: anonymous denial, two role
+logins, scoped project collection, synthetic publication, PostGIS/private-map access,
+public H3 suppression, authenticated dashboard/map/roster rendering, signed PDF
+verification, the untouched clean draft, and SSE through the frontend proxy. The
+runner does not execute payments. The backend suite passed 73 tests, including
+persistence/idempotency across separate simulated-bank instances. Backend and frontend
+type checks passed. Cloud builds caught and resolved missing native PDF parser files.
+
+The Git identity is configured with the user's confirmed address,
+`mcjohnson144@outlook.com`, for new commits. Earlier shared commits were not rewritten.
