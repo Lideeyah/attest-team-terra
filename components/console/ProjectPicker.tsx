@@ -1,4 +1,9 @@
 "use client";
+import Link from 'next/link';
 import {useEffect,useState} from 'react';
 import {backendRequest} from '@/lib/api/backend';
-export function ProjectPicker(){const [projects,setProjects]=useState<{id:string;name:string}[]>([]);useEffect(()=>{void backendRequest<{id:string;name:string}[]>('/api/projects?per_page=100').then(r=>setProjects(r.data)).catch(()=>{});},[]);return <form action="/project" method="post" className="project-picker"><select className="select" name="projectId" aria-label="Project" required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><button className="btn-outline btn-sm">Open project</button><a href="/onboarding/developer/project">Add project</a></form>;}
+export function ProjectPicker(){
+ const [projects,setProjects]=useState<{id:string;name:string}[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[opening,setOpening]=useState(false);
+ useEffect(()=>{let active=true;void backendRequest<{id:string;name:string}[]>('/api/projects?per_page=100').then(r=>{if(active)setProjects(r.data);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[]);
+ return <div className="stack"><form action="/project" method="post" className="project-picker" onSubmit={()=>setOpening(true)}><select className="select" name="projectId" aria-label="Project" required disabled={loading||opening||!projects.length}>{!projects.length?<option value="">{loading?'Loading projects...':'No projects available'}</option>:projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><button className="btn-outline btn-sm" disabled={loading||opening||!projects.length} aria-busy={opening||undefined}>{opening?'Opening...':'Open project'}</button><Link href="/onboarding/developer/project">Add project</Link></form>{error?<p role="status">{error}</p>:null}</div>;
+}

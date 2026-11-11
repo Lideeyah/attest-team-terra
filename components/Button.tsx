@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, AnchorHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
+import {LinkFeedback} from "@/components/LinkFeedback";
 
 type Variant = "solid" | "outline" | "quiet";
 
@@ -19,6 +20,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   small?: boolean;
   children: ReactNode;
+  pending?: boolean;
 };
 
 export function Button({
@@ -27,6 +29,8 @@ export function Button({
   className,
   children,
   type = "button",
+  pending = false,
+  disabled,
   ...rest
 }: ButtonProps) {
   return (
@@ -34,7 +38,10 @@ export function Button({
       type={type}
       className={classesFor(variant, small, className)}
       {...rest}
+      disabled={disabled || pending}
+      aria-busy={pending || rest["aria-busy"] || undefined}
     >
+      {pending ? <span className="busy-spinner" aria-hidden="true"/> : null}
       {children}
     </button>
   );
@@ -66,7 +73,7 @@ export function ButtonLink({
       className={classesFor(variant, small, className)}
       {...rest}
     >
-      {children}
+      {children}<LinkFeedback/>
     </Link>
   );
 }

@@ -23,7 +23,7 @@ export function Submit({
     <Button
       type="submit"
       variant={variant}
-      disabled={status.pending}
+      pending={status.pending}
       aria-busy={status.pending ? "true" : undefined}
       data-submit-state={status.pending ? "validating" : "idle"}
       {...(marker ? { [marker]: "" } : {})}

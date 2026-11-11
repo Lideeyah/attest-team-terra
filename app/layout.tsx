@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import {RequestFeedback} from "@/components/RequestFeedback";
 
 /* The document carries nothing but the page. The faces, the motion provider,
    the toast stack and the route transition are all applied per surface in
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><RequestFeedback/>{children}</body>
     </html>
   );
 }
