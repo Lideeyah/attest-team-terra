@@ -21,6 +21,7 @@
     "demo:assets": "npm run build && node dist/scripts/demo-assets.js"
   },
   "dependencies": {
+    "@napi-rs/canvas": "0.1.80",
     "@attest/contracts": "file:packages/contracts",
     "@auth/core": "^0.41.3",
     "@fastify/multipart": "^9.3.0",
