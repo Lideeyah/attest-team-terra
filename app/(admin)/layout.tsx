@@ -2,6 +2,7 @@ import { RouteTransition } from "@/components/RouteTransition";
 import { Surface } from "@/components/Surface";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 import { requireRole } from "@/lib/api/access";
+import { LiveOperations } from "@/components/ops/LiveOperations";
 
 const SECTIONS = [
   { href: "/admin", label: "Home" },
@@ -19,7 +20,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
     <MastheadShell
       account={{ organisation: "Attest, platform", email: "platform@attest.ng" }}
       surface="Platform admin" sections={SECTIONS}>
-      <RouteTransition>{children}</RouteTransition>
+      <RouteTransition>{process.env.ATTEST_API_MODE==='live'?<LiveOperations admin/>:children}</RouteTransition>
     </MastheadShell>
     </Surface>
   );

@@ -2,6 +2,7 @@ import { RouteTransition } from "@/components/RouteTransition";
 import { Surface } from "@/components/Surface";
 import { MastheadShell } from "@/components/shells/MastheadShell";
 import { requireRole } from "@/lib/api/access";
+import { LiveOperations } from "@/components/ops/LiveOperations";
 
 const SECTIONS = [
   { href: "/ops", label: "Home" },
@@ -18,7 +19,7 @@ export default async function OpsLayout({ children }: LayoutProps<"/">) {
     <MastheadShell
       account={{ organisation: "Access Bank, operations", email: "ops.desk@accessbank.ng" }}
       surface="Bank operations" sections={SECTIONS}>
-      <RouteTransition>{children}</RouteTransition>
+      <RouteTransition>{process.env.ATTEST_API_MODE==='live'?<LiveOperations/>:children}</RouteTransition>
     </MastheadShell>
     </Surface>
   );
