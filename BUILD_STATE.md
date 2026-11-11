@@ -72,3 +72,5 @@ Both deployed and verified with ten hosted checks. Three populated synthetic pro
 ## Responsive/access checkpoint — 2026-11-11
 
 63 product page templates reviewed across six widths. Workspace authentication and role/field ownership checks pass. Public records remain open. Responsive menus, forms and records are ready for the hosted rollout. Details: docs/responsive-access-review.md.
+
+Hosted rollout verified: responsive frontend 216b8f4 is live at https://attest-mc-johnsons-projects.vercel.app. Public access and private login/role guards pass on the live deployment.

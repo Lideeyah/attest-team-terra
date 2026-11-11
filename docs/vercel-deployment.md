@@ -64,3 +64,7 @@ type checks passed. Cloud builds caught and resolved missing native PDF parser f
 
 The Git identity is configured with the user's confirmed address,
 `mcjohnson144@outlook.com`, for new commits. Earlier shared commits were not rewritten.
+
+Responsive layouts and workspace login guards were subsequently published and
+verified on the same frontend URL. See `responsive-access-review.md` for the page
+inventory, viewport results and access checks.

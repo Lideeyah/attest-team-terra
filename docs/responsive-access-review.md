@@ -55,3 +55,11 @@ These are viewport/browser checks, not a claim that every physical device or eve
 future data state has been tested. Local test records are synthetic and separate
 from hosted records. Provider and deployment limitations remain in
 `integration-status.md` and `vercel-deployment.md`.
+
+## Hosted verification
+
+Published frontend commit `216b8f4` to the existing Vercel project. Live checks passed
+for all 13 signed-out workspace destinations, invalid cookies, public-page access,
+wrong-role redirects, phone menu/focus behaviour, desktop navigation, landscape and
+the 320-pixel public register. The hosted browser checks use isolated test contexts;
+they do not sign the user's browser in or out. The backend deployment is unchanged.

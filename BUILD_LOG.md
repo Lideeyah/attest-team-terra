@@ -1868,3 +1868,5 @@ Deployed separate frontend and API projects under mc-johnsons-projects with a fr
 ## 2026-11-11 — responsive layouts and workspace access
 
 Reviewed 63 page templates at 320/390/768/1024/1440/1920 pixels, with 378 passing combined viewport checks and no document overflow. Added expandable mobile workspace menus, keyboard/focus behaviour, wrapped project controls, responsive field forms and viewport-bounded dialogs. Preserved brand colours and public records. Added optimistic route guards plus server role checks, preserved return destinations, expired-session handling and offline-shell clearing on sign-out. Fixed empty-period operator rendering, reconciliation mismatch mapping and scoped read-only field records. Frontend tests: 22 passed; type checks, changed-code lint and production build passed. See docs/responsive-access-review.md for scope and repeatable checks.
+
+Hosted follow-up: frontend commit 216b8f4 is published. Live workspace/public-access checks and responsive menu/landscape/phone-register checks passed. Backend deployment and external-provider configuration are unchanged.
