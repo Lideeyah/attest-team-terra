@@ -62,6 +62,7 @@ kubeconfig.*
 
 # local tooling
 .release/
+__pycache__/
 .claude/
 
 # developer tooling, copied in by scripts/sync-dev-tools.mjs

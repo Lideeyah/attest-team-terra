@@ -22,4 +22,4 @@ The actual compiled backend adapter submitted one new synthetic SHA-256 digest t
 
 The live run did not need a mirror retry; deterministic regression checks exercise the delayed-indexing case. Local evidence under the workspace's ignored `tmp/live-hedera-check/` includes `trace-result.json` (diagnosis), `fixed-trace-result.json` (passing live run), and `backend-test.log`.
 
-These changes are local and have not been pushed or deployed. The existing local demo process still selects mock anchoring; this verification directly exercised the live provider using the backend environment file. Credentials remain excluded from Git and from this report.
+These changes were subsequently pushed to main in `638a05b`; see `team05-deployment.md` for rollout status. The existing local demo process still selects mock anchoring; this verification directly exercised the live provider using the backend environment file. Credentials remain excluded from Git and from this report.

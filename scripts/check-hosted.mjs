@@ -1,8 +1,8 @@
 // Read-only hosted walkthrough checks, except verification/export POSTs.
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const base='https://attest-mc-johnsons-projects.vercel.app';
-const {password}=JSON.parse(await readFile('backend/.local-state/hosted-settings.json','utf8'));
+const base=process.env.ATTEST_CHECK_ORIGIN??'https://attest-mc-johnsons-projects.vercel.app';
+const password=process.env.ATTEST_CHECK_PASSWORD??JSON.parse(await readFile('backend/.local-state/hosted-settings.json','utf8')).password;
 let checks=0;const pass=label=>{checks++;console.log('PASS '+label);};
 async function login(email){
  const csrf=await fetch(base+'/auth/csrf',{signal:AbortSignal.timeout(60000)});assert.equal(csrf.status,200);
@@ -28,6 +28,6 @@ for(const path of ['/app','/app/map','/app/roster']){const response=await fetch(
 const attestation=historical.attestations[0],pdf=await fetch(`${base}/api/public/attestations/${attestation.id}/pdf`,{signal:AbortSignal.timeout(60000)});assert.equal(pdf.status,200);assert(pdf.headers.get('content-type')?.includes('application/pdf'));
 const form=new FormData();form.append('file',new Blob([await pdf.arrayBuffer()],{type:'application/pdf'}),'signed-attestation.pdf');
 const verified=await fetch(base+'/api/verify/attestation',{method:'POST',body:form,signal:AbortSignal.timeout(60000)});assert.equal(verified.status,200);assert.equal((await verified.json()).data.hash,attestation.hash);pass('signed PDF download and multipart verification');
-const clean=projects.find(p=>p.name==='Synthetic clean project - Ikom');assert(clean);const runs=(await api(`/api/projects/${clean.id}/runs`,developer)).data;assert(runs.some(r=>r.state==='draft'));pass('clean draft ready for the user to execute');
+const clean=projects.find(p=>p.name==='Synthetic clean project - Ikom');assert(clean);const runs=(await api(`/api/projects/${clean.id}/runs`,developer)).data;assert(runs.some(r=>r.state==='draft'));pass('clean draft retained; live execution requires a linked source account');
 const stream=await fetch(`${base}/api/runs/${runs[0].id}/stream`,{headers:{cookie:developer},signal:AbortSignal.timeout(30000)});assert.equal(stream.status,200);assert(stream.headers.get('content-type')?.includes('text/event-stream'));const reader=stream.body.getReader();assert(new TextDecoder().decode((await reader.read()).value).includes('connected'));await reader.cancel();pass('streaming connection through the hosted proxy');
 console.log(`${checks} hosted checks passed. No payment execution submitted.`);

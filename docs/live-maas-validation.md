@@ -26,7 +26,7 @@ Final request IDs: `d892294457b9307c1227b7f8926f1912`, `a18fa729ff6172b9be804ecb
 
 ## Scope and deployment
 
-This verifies the live MaaS adapter and real queue handlers, including the legacy job/project fix. It does not establish that a persistent deployed application has switched to live providers. The existing local app still uses mocks. This parser change was tested in the temporary pod and has not been pushed or deployed by this validation task.
+This verifies the live MaaS adapter and real queue handlers, including the legacy job/project fix. It does not establish that a persistent deployed application has switched to live providers. The existing local app still uses mocks. This parser change was tested in the temporary pod and subsequently pushed to main in `638a05b`; see `team05-deployment.md` for rollout status.
 
 The gateway credential remained in the cluster secret. Kubernetes transport verified the configured cluster CA. The temporary pod `attest-maas-1468ff78` was deleted and its absence verified after testing.
 
