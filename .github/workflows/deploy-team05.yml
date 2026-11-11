@@ -9,6 +9,24 @@ concurrency:
   group: team05-build
   cancel-in-progress: false
 jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.35.0
+      - name: Read-only namespace diagnosis
+        env:
+          TEAM05_KUBECONFIG: ${{ secrets.TEAM05_KUBECONFIG }}
+          GODEBUG: tlsmlkem=0,http2client=0
+        run: |
+          mkdir -p "$RUNNER_TEMP/attest"
+          printf '%s' "$TEAM05_KUBECONFIG" > "$RUNNER_TEMP/attest/config"
+          chmod 600 "$RUNNER_TEMP/attest/config"
+          export KUBECONFIG="$RUNNER_TEMP/attest/config"
+          python deploy/team05/diagnose.py
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 25

@@ -5,7 +5,11 @@ repo=pathlib.Path(__file__).resolve().parents[2]
 namespace='team05'
 def kubectl(*args,body=None):
     timeout='0' if args[0] in ['rollout','wait','delete'] else '30s'
-    result=subprocess.run(['kubectl','--namespace',namespace,'--request-timeout='+timeout,*args],input=None if body is None else json.dumps(body),text=True,capture_output=True)
+    for attempt in range(3):
+        result=subprocess.run(['kubectl','--namespace',namespace,'--request-timeout='+timeout,*args],input=None if body is None else json.dumps(body),text=True,capture_output=True)
+        transient=any(message in result.stderr for message in ['TLS handshake timeout','i/o timeout','connection reset','ServiceUnavailable'])
+        if not result.returncode or not transient or attempt==2:break
+        print('Retrying temporary Kubernetes connection failure',flush=True);time.sleep(2)
     if result.returncode:raise RuntimeError(result.stderr.strip()[:1800])
     return result.stdout
 def current(kind,name):
@@ -36,7 +40,10 @@ target=repo/'.release/team05.json';target.parent.mkdir(exist_ok=True);target.wri
 items=json.loads(subprocess.check_output(['node','deploy/team05/render.mjs',str(target)],cwd=repo,text=True))['items']
 for item in items:
     if item['kind']=='ConfigMap' or item['metadata']['name'] in ['postgres-data','postgres']:apply(item)
-print(kubectl('rollout','status','deployment/postgres','--timeout=300s'),flush=True)
+try:print(kubectl('rollout','status','deployment/postgres','--timeout=300s'),flush=True)
+except RuntimeError:
+    subprocess.run([sys.executable,'deploy/team05/diagnose.py'],cwd=repo)
+    raise
 job=next(item for item in items if item['kind']=='Job');name=job['metadata']['name']
 if current('job',name) is None:apply(job)
 try:print(kubectl('wait','--for=condition=complete','job/'+name,'--timeout=600s'),flush=True)
