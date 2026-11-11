@@ -1,6 +1,7 @@
 import { RouteTransition } from "@/components/RouteTransition";
 import { Surface } from "@/components/Surface";
 import { MastheadShell } from "@/components/shells/MastheadShell";
+import { requireRole } from "@/lib/api/access";
 
 const SECTIONS = [
   { href: "/admin", label: "Home" },
@@ -11,7 +12,8 @@ const SECTIONS = [
   { href: "/admin/chain", label: "Chain integrity" },
 ];
 
-export default function AdminLayout({ children }: LayoutProps<"/">) {
+export default async function AdminLayout({ children }: LayoutProps<"/">) {
+  await requireRole(['platform_admin']);
   return (
     <Surface>
     <MastheadShell

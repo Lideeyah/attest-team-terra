@@ -41,7 +41,7 @@ export function daysBetween(fromIso: string, toIso: string): number {
 
 /** The fixture's clock. Every figure in the product is read against the same
     moment, so a screenshot taken twice says the same thing. */
-export const NOW = "2026-11-10T09:00:00Z";
+export const NOW = process.env.ATTEST_API_MODE === "live" ? new Date().toISOString() : "2026-11-10T09:00:00Z";
 
 export type ConsoleRefusal = { error: string; code: string; sessionEnded?: boolean };
 

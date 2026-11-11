@@ -5,6 +5,7 @@ import { AuthForm, Field } from "@/components/auth/AuthForm";
 import { Submit } from "@/components/auth/Submit";
 import { Notice } from "@/components/Notice";
 import { api } from "@/lib/api/client";
+import { BackendSignIn } from "@/components/auth/BackendSignIn";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -41,6 +42,7 @@ export default async function SignInPage({
   searchParams: Promise<Search>;
 }) {
   const search = await searchParams;
+  if (process.env.ATTEST_API_MODE === "live") return <BackendSignIn next={search.next} />;
 
   const problem =
     search.state === "error" && search.code === "FORBIDDEN"

@@ -33,6 +33,7 @@ next-env.d.ts
 
 # debug
 npm-debug.log*
+*.log
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*

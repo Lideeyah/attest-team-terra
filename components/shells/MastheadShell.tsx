@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lockup } from "@/components/Mark";
+import { SessionAccount } from "./SessionAccount";
 
 export type MastheadSection = { href: string; label: string };
 
@@ -42,8 +43,7 @@ export function MastheadShell({
             </div>
             <span className="masthead-account">
               {context ? <span className="record-cell">{context}</span> : null}
-              <span className="eyebrow">{account.organisation}</span>
-              <span className="record-cell console-account">{account.email}</span>
+              {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<SessionAccount/>:<><span className="eyebrow">{account.organisation}</span><span className="record-cell console-account">{account.email}</span></>}
               <form action="/signout" method="post">
                 <button type="submit" className="btn-quiet btn-sm">
                   Sign out

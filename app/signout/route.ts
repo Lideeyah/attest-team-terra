@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
    form post rather than a link, because signing somebody out is not something
    a prefetch should be able to do. */
 export async function POST() {
+  if (process.env.ATTEST_API_MODE === "live") redirect("/auth/signout");
   const store = await cookies();
   for (const cookie of store.getAll()) {
     if (cookie.name.startsWith("attest_")) {

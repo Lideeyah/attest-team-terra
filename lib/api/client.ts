@@ -1,3 +1,5 @@
+import { requestContext } from "#api-context";
+import { adaptResponse, adaptRequest } from "@/lib/api/wire";
 import type {
   AccountGraph,
   ApiKey,
@@ -126,18 +128,21 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<R
   const attempts = method === "GET" ? READ_RETRIES + 1 : 1;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const headers: Record<string, string> = {};
-    if (options.body !== undefined) {
+    const headers: Record<string, string> = { Accept: "application/json", ...await requestContext() };
+    if (method !== "GET") {
       headers["content-type"] = "application/json";
     }
     if (method !== "GET") {
       headers["Idempotency-Key"] = options.idempotencyKey ?? newIdempotencyKey();
     }
 
-    const response = await fetch(`${BASE_URL}${withQuery(path, options.query)}`, {
+    const live = process.env.NEXT_PUBLIC_ATTEST_API_MODE === "live";
+    const wire = live ? adaptRequest(path, method, options.body, options.query) : { path, body: options.body, query: options.query };
+    const response = await fetch(`${BASE_URL}${withQuery(wire.path, wire.query)}`, {
       method,
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: method === "GET" ? undefined : JSON.stringify(wire.body ?? {}),
+      credentials: "include",
       signal: options.signal,
       cache: "no-store",
     }).catch(() => null);
@@ -154,14 +159,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<R
       return transportFailure();
     }
     if (envelope.status === "success") {
-      return { ok: true, data: envelope.data, meta: envelope.meta };
+      return { ok: true, data: (live ? adaptResponse(path, envelope.data) : envelope.data) as T, meta: envelope.meta };
     }
     return {
       ok: false,
       code: envelope.error.code,
-      message: envelope.error.message,
+      message: envelope.error.message === envelope.error.code ? "The service could not complete this request." : envelope.error.message,
       field: envelope.error.field,
-      remediation: envelope.error.remediation,
+      remediation: envelope.error.remediation ?? "Review the request and try again when the service is available.",
       transport: false,
     };
   }

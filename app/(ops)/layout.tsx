@@ -1,6 +1,7 @@
 import { RouteTransition } from "@/components/RouteTransition";
 import { Surface } from "@/components/Surface";
 import { MastheadShell } from "@/components/shells/MastheadShell";
+import { requireRole } from "@/lib/api/access";
 
 const SECTIONS = [
   { href: "/ops", label: "Home" },
@@ -10,7 +11,8 @@ const SECTIONS = [
   { href: "/ops/reconciliation", label: "Reconciliation" },
 ];
 
-export default function OpsLayout({ children }: LayoutProps<"/">) {
+export default async function OpsLayout({ children }: LayoutProps<"/">) {
+  await requireRole(['bank_ops','platform_admin']);
   return (
     <Surface>
     <MastheadShell
