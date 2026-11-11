@@ -1,0 +1,16 @@
+.git
+**/node_modules
+.next*
+**/.local-state
+**/dist
+**/uploads
+**/*.log
+.env*
+**/.env*
+!**/.env.example
+**/*.pem
+**/*.key
+verification
+review
+test-results
+playwright-report

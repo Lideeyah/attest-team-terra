@@ -18,7 +18,10 @@
     "backend:local": "npm run local --prefix backend",
     "backend:check": "npm run check --prefix backend",
     "backend:test": "npm test --prefix backend",
-    "dev:integrated": "node scripts/integrated-dev.mjs"
+    "dev:integrated": "node scripts/integrated-dev.mjs",
+    "build:integrated": "npm run backend:build && node scripts/build-integrated.mjs",
+    "start:integrated": "node scripts/start-integrated.mjs",
+    "check:integration": "node scripts/check-integration.mjs"
   },
   "dependencies": {
     "@attest/contracts": "file:backend/packages/contracts",

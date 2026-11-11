@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_ATTEST_API_MODE: process.env.ATTEST_API_MODE || "mock" },
   async rewrites() {
     if (process.env.ATTEST_API_MODE !== "live") return [];
-    const upstream = process.env.ATTEST_API_ORIGIN || "http://localhost:8080";
+    const upstream = process.env.ATTEST_API_ORIGIN || "http://127.0.0.1:8080";
     return { beforeFiles: [
       { source: "/api/:path*", destination: `${upstream}/api/:path*` },
       { source: "/auth/:path*", destination: `${upstream}/auth/:path*` },

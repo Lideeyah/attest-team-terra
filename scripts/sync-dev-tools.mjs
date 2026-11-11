@@ -53,7 +53,7 @@ for (const stale of [join(root, ".next", "types"), join(root, ".next", "dev", "t
 
 /* The route types are generated from the route tree this script just changed,
    so they are rebuilt here rather than left stale for the next typecheck. */
-spawnSync("npx", ["next", "typegen"], { cwd: root, stdio: "ignore" });
+spawnSync(process.execPath, [join(root, "node_modules", "next", "dist", "bin", "next"), "typegen"], { cwd: root, stdio: "ignore" });
 
 process.stdout.write(
   `developer tooling ${devTools ? "included" : "excluded"}, mock server ${

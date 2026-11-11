@@ -58,3 +58,8 @@ development server does not hydrate under the headless browser it drives.
 Resume by pasting the orchestration prompt from
 `2026-11-09-attest-autobuild.md` into a fresh session. It reads this file and
 starts at the next phase.
+
+## Production integration checkpoint — 2026-11-11
+
+Current branch: mark/production. Frontend and isolated backend are integrated; see docs/integration-status.md and docs/run-integrated.md. This checkpoint supersedes the demo-only resume guidance above for integration work. Local preview uses port 3001; backend uses 8080. External providers remain mocked. Missing backend APIs, production configuration and source-document alignment remain explicit follow-up items. No deployment has been made.
+

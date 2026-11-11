@@ -7,5 +7,5 @@ if(process.env.NODE_ENV==='production'&&!process.env.SIGNING_KEY_BASE64)throw Er
 if(process.env.NODE_ENV==='production'&&(!process.env.AUTH_SECRET||process.env.AUTH_SECRET.length<32))throw Error('AUTH_SECRET must contain at least 32 random characters');
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,max:5});
 const app=await createApp(new PgStore(pool));
-await app.listen({host:'0.0.0.0',port:Number(process.env.PORT??8080)});
+await app.listen({host:process.env.HOST??'0.0.0.0',port:Number(process.env.PORT??8080)});
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{await app.close();await pool.end();process.exit(0);});
