@@ -30,6 +30,8 @@
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   color: var(--ink-muted);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Anything the agent reads aloud to a household: full size, full contrast,

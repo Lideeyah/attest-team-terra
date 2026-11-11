@@ -57,7 +57,8 @@ export function MastheadShell({
         <nav className="tab-rail" aria-label={surface}>
           {sections.map((section) => {
             const active =
-              pathname === section.href || pathname.startsWith(`${section.href}/`);
+              pathname === section.href ||
+              (section.href !== sections[0]?.href && pathname.startsWith(`${section.href}/`));
             return (
               <Link
                 key={section.href}
@@ -72,7 +73,7 @@ export function MastheadShell({
           })}
         </nav>
       </div>
-      <div className="measure section-tight">{children}</div>
+      <div className="measure section-tight masthead-content">{children}</div>
     </div>
   );
 }

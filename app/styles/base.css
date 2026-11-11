@@ -72,8 +72,8 @@ a:hover {
 }
 
 :focus-visible {
-  outline: var(--hairline) solid var(--bottle-muted);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--bottle-deep);
+  outline-offset: var(--focus-offset);
 }
 
 ::selection {
@@ -205,6 +205,21 @@ a:hover {
 .stack-tight {
   display: grid;
   gap: calc(var(--stack) / 2);
+}
+
+/* Grid children must shrink around scrollable records and long project names. */
+.stack > *,
+.stack-lg > *,
+.stack-tight > *,
+.row > *,
+.row-between > * {
+  min-width: 0;
+}
+
+.h1-display,
+.h2-display,
+.h3-display {
+  overflow-wrap: anywhere;
 }
 
 /* The secondary line under a record: the constraint, the reason, the

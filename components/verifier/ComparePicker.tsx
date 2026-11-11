@@ -33,7 +33,7 @@ export function ComparePicker({
       <ul className="compare-options">
         {options.map((option) => (
           <li key={option.id}>
-            <label className="punch-label">
+            <label className="punch-label" data-selected={chosen.includes(option.id)}>
               <input
                 className="punch"
                 type="checkbox"
@@ -51,9 +51,13 @@ export function ComparePicker({
         disabled={chosen.length < 2}
         onClick={() => router.push(`/verifier/compare?ids=${chosen.join(",")}`)}
         data-compare-go
+        aria-describedby="compare-help"
       >
         Compare {chosen.length > 0 ? `${chosen.length} projects` : ""}
       </Button>
+      <p id="compare-help" className="note" aria-live="polite">
+        {chosen.length < 2 ? "Select at least two projects to compare." : `${chosen.length} of 3 projects selected.`}
+      </p>
     </section>
   );
 }

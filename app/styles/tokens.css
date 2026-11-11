@@ -16,10 +16,8 @@
   /* ---- Ink -------------------------------------------------------------- */
   --ink-primary: #181816;
   --ink-muted: #5C5A55;
-  /* Dim ink that still reads: 4.62:1 on the sunken fill, 6.24:1 on paper.
-     The previous #8C887E sat at 2.38:1 on the sunken fill, which failed WCAG
-     on every eyebrow and every figure's denominator in the product. */
-  --ink-dim: #5E5A52;
+  /* Dim ink meets the 4.5:1 text contrast minimum on all four surfaces. */
+  --ink-dim: #68655D;
   --ink-paper: #F7F4EB; /* ink reversed out on bottle */
 
   /* ---- Bottle green, the anchor tone ------------------------------------ */
@@ -72,14 +70,14 @@
   --fs-h3: 1.22rem;
   --fs-lede: 1.125rem;
   --fs-body: 16px;
-  --fs-eyebrow: 10.5px;
+  --fs-eyebrow: 12px;
   --fs-stamp: 10.5px;
   --fs-btn: 13px;
   --fs-console: 11px;
   --fs-figure: clamp(1.6rem, 3vw, 2.4rem);
   --fs-record-cell: 12px;
   --fs-input: 14px;
-  --fs-label: 10.5px;
+  --fs-label: 12px;
   --fs-toast: 14px;
 
   --fw-display: 800;
@@ -88,9 +86,9 @@
 
   --tr-display-lg: -0.03em;
   --tr-display-sm: -0.02em;
-  --tr-eyebrow: 0.16em;
+  --tr-eyebrow: 0.09em;
   --tr-stamp: 0.13em;
-  --tr-label: 0.13em;
+  --tr-label: 0.07em;
   --tr-btn: 0.01em;
   --tr-wordmark: 0.02em;
 
@@ -113,7 +111,7 @@
   --gutter-tight: 20px;
   --section: 76px;
   --section-sm: 48px;
-  --section-tight: 46px;
+  --section-tight: 36px;
   --movement: 152px;
   --stack: 14px;
   --stack-lg: 28px;
@@ -128,6 +126,11 @@
   --pad-cell-y: 11px;
   --pad-cell-x: 14px;
   --pad-panel: 22px;
+  --pad-panel-mobile: 16px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+  --nav-row-height: 48px;
+  --roster-table-width: 1080px;
 
   --masthead-height: 64px;
   --rail-width: 240px;

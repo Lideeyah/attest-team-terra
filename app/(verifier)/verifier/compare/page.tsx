@@ -69,11 +69,8 @@ export default async function ComparePage({
     <div className="measure section-tight stack-lg">
       <header className="stack">
         <p className="eyebrow">{COMPARE_COPY.heading}</p>
-        <h1 className="h2-display">
-          {projects.length === 0
-            ? "Compare projects"
-            : projects.map((project) => project.name).join(" · ")}
-        </h1>
+        <h1 className="h2-display">Compare projects</h1>
+        {projects.length > 0 ? <p className="note">{projects.map((project) => project.name).join(" · ")}</p> : null}
         <p className="lede">{COMPARE_COPY.note}</p>
         <Rule weight="heavy" />
       </header>
@@ -109,7 +106,8 @@ export default async function ComparePage({
             {shared.map((period) => formatPeriod(period)).join(", ")}.
           </p>
           <Rule />
-          <table className="table">
+          <div className="table-scroll" role="region" aria-label="Project comparison results" tabIndex={0}>
+          <table className="table compare-table">
             <caption className="eyebrow">
               Every figure below is each project&rsquo;s own, on the periods
               they share
@@ -159,6 +157,7 @@ export default async function ComparePage({
               ))}
             </tbody>
           </table>
+          </div>
           <p className="note">
             {COMPARE_COPY.columns.coverage}; {COMPARE_COPY.columns.confirmation};{" "}
             {COMPARE_COPY.columns.disputes}; {COMPARE_COPY.columns.shortfall}.

@@ -31,7 +31,7 @@
   gap: var(--stack-lg);
   border-top: var(--rule-weight-heavy) solid var(--rule-heavy);
   border-bottom: var(--hairline) solid var(--rule-hairline);
-  padding-block: var(--stack-lg);
+  padding: var(--pad-panel);
 }
 
 .figure-inline {
@@ -389,7 +389,8 @@
 }
 
 .filter-rail .field {
-  min-width: 170px;
+  min-width: 0;
+  flex: 1 1 170px;
 }
 
 .payment-list {
@@ -513,11 +514,44 @@
 
 .compare-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 0;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.compare-options .punch-label {
+  height: 100%;
+  padding: var(--pad-cell-y) var(--pad-cell-x);
+  cursor: pointer;
+}
+
+.compare-options .punch-label:hover,
+.compare-options .punch-label[data-selected="true"] {
+  background: var(--bottle-wash);
+}
+
+.compare-table thead th,
+.compare-table tbody td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.compare-table {
+  min-width: var(--roster-viewport);
+}
+
+.roster-table-grid {
+  min-width: var(--roster-table-width);
+}
+
+.roster-table-grid .roster-head,
+.roster-table-grid .roster-row {
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: minmax(170px, 1.4fr) 110px 90px 70px 120px minmax(140px, 1fr) minmax(120px, 1fr);
+  gap: var(--stack);
 }
 
 @media (max-width: 1080px) {

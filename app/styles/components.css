@@ -327,6 +327,13 @@
   border: var(--hairline) solid var(--rule-hairline);
 }
 
+.panel.stack,
+.panel.stack-lg,
+.panel-elevated.stack,
+.panel-sunken.stack {
+  padding: var(--pad-panel);
+}
+
 .panel-head {
   display: flex;
   align-items: baseline;
@@ -556,10 +563,15 @@ th[aria-sort] .sort-caret {
   display: flex;
   align-items: flex-end;
   gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-bottom: var(--rule-weight-heavy) solid var(--rule-heavy);
 }
 
 .tab {
+  flex: none;
+  text-decoration: none;
+  white-space: nowrap;
   position: relative;
   bottom: calc(var(--rule-weight-heavy) * -1);
   font-family: var(--font-record);
@@ -567,8 +579,8 @@ th[aria-sort] .sort-caret {
   letter-spacing: var(--tr-label);
   text-transform: uppercase;
   color: var(--ink-muted);
-  background: var(--surface-sunken);
-  border: var(--hairline) solid var(--rule-hairline);
+  background: transparent;
+  border: var(--hairline) solid transparent;
   border-bottom: var(--rule-weight-heavy) solid var(--rule-heavy);
   padding: var(--pad-btn-sm-y) var(--pad-btn-sm-x);
   cursor: pointer;
@@ -579,6 +591,7 @@ th[aria-sort] .sort-caret {
 
 .tab:hover {
   color: var(--ink-primary);
+  background: var(--bottle-wash);
 }
 
 /* The active tab joins the panel below it by breaking the rule line. */
@@ -746,11 +759,12 @@ th[aria-sort] .sort-caret {
 
 .console-shell {
   display: grid;
-  grid-template-columns: var(--rail-width) 1fr;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .console-rail {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--stack-lg);
@@ -775,7 +789,7 @@ th[aria-sort] .sort-caret {
 .console-nav {
   display: grid;
   gap: 0;
-  flex: 1;
+  align-content: start;
 }
 
 .console-nav-link {
@@ -786,22 +800,27 @@ th[aria-sort] .sort-caret {
   text-transform: uppercase;
   text-decoration: none;
   color: var(--ink-muted);
-  padding: var(--pad-btn-sm-y) 0;
+  min-height: var(--nav-row-height);
+  padding: var(--pad-cell-y) var(--pad-btn-sm-x);
   border-bottom: var(--hairline) solid var(--rule-hairline);
   transition: color var(--t-press) var(--ease-mechanical);
 }
 
 .console-nav-link:hover {
   color: var(--ink-primary);
+  background: var(--bottle-wash);
 }
 
 .console-nav-link[aria-current="page"] {
   color: var(--bottle-deep);
   box-shadow: inset var(--edge-active) 0 0 0 var(--bottle-deep);
   padding-inline-start: var(--pad-btn-sm-x);
+  background: var(--bottle-wash);
+  font-weight: var(--fw-stamp);
 }
 
 .console-rail-foot {
+  margin-top: auto;
   display: grid;
   gap: calc(var(--stack) / 2);
   justify-items: start;
@@ -810,13 +829,13 @@ th[aria-sort] .sort-caret {
 }
 
 .console-main {
-  padding: var(--pad-panel) var(--gutter);
+  padding: 0;
   min-width: 0;
 }
 
 @media (max-width: 900px) {
   .console-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .console-rail {
@@ -908,6 +927,12 @@ th[aria-sort] .sort-caret {
 
 .masthead-row {
   padding-block: var(--stack);
+  flex-wrap: wrap;
+}
+
+.masthead-content > .measure,
+.masthead-content > main > .measure {
+  padding: 0;
 }
 
 /* ---- Loading and error conventions -------------------------------------- */
@@ -954,6 +979,7 @@ th[aria-sort] .sort-caret {
    table instead, so a session ID stays readable as one string. */
 .table-scroll {
   width: 100%;
+  min-width: 0;
   overflow-x: auto;
 }
 
@@ -1265,6 +1291,44 @@ th[aria-sort] .sort-caret {
   display: flex;
   align-items: baseline;
   gap: var(--stack);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.masthead-account form {
+  flex: none;
+}
+
+.masthead-account button {
+  white-space: nowrap;
+}
+
+.masthead-account .console-account {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 28ch;
+}
+
+@media (max-width: 900px) {
+  .masthead-account {
+    width: 100%;
+  }
+
+  .console-rail-foot {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --gutter: var(--gutter-tight);
+    --pad-panel: var(--pad-panel-mobile);
+  }
+
+  .panel > .row-between {
+    flex-wrap: wrap;
+  }
 }
 
 /* The back control every detail route carries, top-left of the content

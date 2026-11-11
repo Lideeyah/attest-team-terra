@@ -13,7 +13,7 @@
    offline is the state this app is for, so a partial cache is a product that
    will fail in the field and say nothing. */
 
-const CACHE = "attest-field-v2";
+const CACHE = "attest-field-v3";
 
 /* The screens an agent opens. Everything else the app needs — the framework,
    the chunks, the fonts — is cached as it is fetched, which is how the
@@ -105,7 +105,10 @@ self.addEventListener("fetch", (event) => {
   /* A hashed build asset never changes under its own name, so the cache is
      the answer and the network is the fallback. Everything else is the other
      way round: the network first, so a figure is current when it can be. */
-  const immutable = url.pathname.startsWith("/_next/static/");
+  // Development chunks keep their URL when edited; only content-hashed
+  // production assets are safe to serve without checking the network.
+  const immutable = url.pathname.startsWith("/_next/static/") &&
+    /[.-][a-f0-9]{8,}(?:\.[a-z0-9]+)+$/i.test(url.pathname);
 
   event.respondWith(
     (async () => {

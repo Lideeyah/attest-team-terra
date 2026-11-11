@@ -88,7 +88,7 @@ export const ME_COPY = {
   aboveThreshold:
     "Your flag rate is above the project's threshold. A flag is a fact about an enrolment — a location outside the boundary, a name that did not match — and it is shown to you here before anybody else raises it.",
   arithmetic: (flagged: number, enrolments: number, allowed: number, percent: number) =>
-    `${flagged} of your ${enrolments} enrolments carry a flag. The project's threshold is ${percent}%, which on ${enrolments} enrolments is ${allowed}. A flag is a fact about an enrolment — a location outside the boundary, a name that did not match — and several of yours are the same kind, which is usually one thing to fix rather than many.`,
+    `${flagged} of your ${enrolments} enrolments carry a flag. The project's threshold is ${percent}%, or ${allowed} enrolments. Review repeated flags with your project administrator to identify what needs attention.`,
   syncNote:
     "Sync delay is the time between capturing an enrolment and this phone sending it. A long delay is usually a long day out of signal.",
 } as const;

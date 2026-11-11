@@ -127,6 +127,8 @@ export function RosterTable({ projectId, total, first, query }: RosterTableProps
       <p className="record-cell" data-row-count={total}>
         {ROSTER_COPY.denominator(Math.min(total, end), total)}
       </p>
+      <div className="table-scroll" role="region" aria-label="Household roster columns" tabIndex={0}>
+      <div className="roster-table-grid">
       <div className="roster-head" aria-hidden="true">
         <span>Household</span>
         <span>Phone</span>
@@ -200,6 +202,8 @@ export function RosterTable({ projectId, total, first, query }: RosterTableProps
             ))}
           </div>
         </div>
+      </div>
+      </div>
       </div>
       <p className="note">{ROSTER_COPY.noDeletion}</p>
     </div>
