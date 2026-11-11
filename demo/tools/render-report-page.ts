@@ -18,7 +18,15 @@ async function main(): Promise<void> {
     url: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
   });
   const dataUrl = (await page.evaluate(async (b64) => {
-    const lib = (window as unknown as { pdfjsLib: any }).pdfjsLib;
+    type Viewport = { width: number; height: number };
+    type PdfPage = {
+      getViewport(options: { scale: number }): Viewport;
+      render(options: { canvasContext: CanvasRenderingContext2D; viewport: Viewport }): { promise: Promise<unknown> };
+    };
+    const lib = (window as unknown as { pdfjsLib: {
+      GlobalWorkerOptions: { workerSrc: string };
+      getDocument(options: { data: Uint8Array }): { promise: Promise<{ getPage(number: number): Promise<PdfPage> }> };
+    } }).pdfjsLib;
     lib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     const raw = atob(b64);
@@ -32,7 +40,9 @@ async function main(): Promise<void> {
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-    await pageObj.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D is unavailable");
+    await pageObj.render({ canvasContext: context, viewport }).promise;
     return canvas.toDataURL("image/png");
   }, bytes)) as string;
   await browser.close();

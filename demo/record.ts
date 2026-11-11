@@ -13,7 +13,7 @@ import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { CURSOR_INIT, Human, ROUTE_MS, STAMP_MS, seedRandom, rand } from "./lib/human";
+import { CURSOR_INIT, Human, seedRandom } from "./lib/human";
 
 const ROOT = process.cwd();
 const PORT = 3197;
