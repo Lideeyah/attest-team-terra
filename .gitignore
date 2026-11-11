@@ -68,3 +68,4 @@ kubeconfig.*
 /app/api/\[\[...path\]\]
 /app/hooks
 .next-demo/
+demo/deck-visual.png
