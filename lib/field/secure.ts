@@ -1,0 +1,20 @@
+import type { EnrolmentInput } from "@attest/contracts";
+const DATABASE='attest-secure-field-v1';
+async function database():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const request=indexedDB.open(DATABASE,1);request.onupgradeneeded=()=>{request.result.createObjectStore('keys');request.result.createObjectStore('captures');};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+async function store<T>(name:string,mode:IDBTransactionMode,operation:(store:IDBObjectStore)=>IDBRequest<T>):Promise<T>{const db=await database();return new Promise((resolve,reject)=>{const transaction=db.transaction(name,mode),request=operation(transaction.objectStore(name));let result:T;request.onsuccess=()=>{result=request.result;};transaction.oncomplete=()=>{db.close();resolve(result);};transaction.onerror=()=>{db.close();reject(transaction.error);};transaction.onabort=()=>{db.close();reject(transaction.error);};});}
+async function encryptionKey(){let key=await store<CryptoKey|undefined>('keys','readonly',s=>s.get('encryption'));if(!key){key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);await store('keys','readwrite',s=>s.put(key,'encryption'));}return key;}
+async function device(){let keys=await store<CryptoKeyPair|undefined>('keys','readonly',s=>s.get('device'));if(!keys){keys=await crypto.subtle.generateKey('Ed25519',false,['sign','verify']) as CryptoKeyPair;await store('keys','readwrite',s=>s.put(keys,'device'));}return keys;}
+const base64=(bytes:ArrayBuffer)=>btoa(String.fromCharCode(...new Uint8Array(bytes)));
+export async function publicDeviceKey(){const key=await crypto.subtle.exportKey('spki',(await device()).publicKey);return `-----BEGIN PUBLIC KEY-----\n${base64(key).match(/.{1,64}/g)?.join('\n')}\n-----END PUBLIC KEY-----`;}
+export async function signEnrolment(capture:EnrolmentInput){
+  // These four fields, in canonical alphabetical order, are the bank-facing contract.
+  const point=capture.point??null;
+  const canonical=JSON.stringify({capturedAt:capture.capturedAt,clientId:capture.clientId,point,projectId:capture.projectId});
+  return base64(await crypto.subtle.sign('Ed25519',(await device()).privateKey,new TextEncoder().encode(canonical)));
+}
+export type SecureCapture={input:EnrolmentInput;photograph?:{data:string;type:string};consent?:{data:string;type:string};key:string;failure?:string;};
+export async function saveCapture(capture:SecureCapture){const iv=crypto.getRandomValues(new Uint8Array(12)),cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},await encryptionKey(),new TextEncoder().encode(JSON.stringify(capture)));await store('captures','readwrite',s=>s.put({iv,cipher},capture.input.clientId));}
+export async function readCaptures():Promise<SecureCapture[]>{const values=await store<{iv:Uint8Array;cipher:ArrayBuffer}[]>('captures','readonly',s=>s.getAll());const key=await encryptionKey();return Promise.all(values.map(async value=>JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(value.iv)},key,value.cipher))) as SecureCapture));}
+export async function acknowledgeCapture(id:string){await store('captures','readwrite',s=>s.delete(id));}
+export async function encodeFile(file:File):Promise<{data:string;type:string}>{const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let start=0;start<bytes.length;start+=8192)binary+=String.fromCharCode(...bytes.subarray(start,start+8192));return {data:btoa(binary),type:file.type};}
+export function decodeFile(file:{data:string;type:string}){return new Blob([Uint8Array.from(atob(file.data),c=>c.charCodeAt(0))],{type:file.type});}

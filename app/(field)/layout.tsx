@@ -3,6 +3,7 @@ import { PlainSurface } from "@/components/Surface";
 import { token } from "@/lib/tokens";
 import { FieldShell } from "@/components/shells/FieldShell";
 import { ServiceWorker } from "@/components/field/ServiceWorker";
+import { LiveField } from "@/components/field/LiveField";
 
 export const metadata: Metadata = {
   manifest: "/field/manifest.webmanifest",
@@ -24,7 +25,7 @@ export const viewport = {
 export default function FieldLayout({ children }: LayoutProps<"/">) {
   return (
     <PlainSurface>
-      <FieldShell>{children}</FieldShell>
+      <FieldShell>{process.env.ATTEST_API_MODE === "live" ? <LiveField/> : children}</FieldShell>
       <ServiceWorker />
     </PlainSurface>
   );

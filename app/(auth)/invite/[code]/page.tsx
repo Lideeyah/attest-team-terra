@@ -7,6 +7,7 @@ import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
 import { api } from "@/lib/api/client";
+import { LiveInvite } from "@/components/auth/LiveInvite";
 import { headingFor } from "@/lib/copy/codes";
 import type { ErrorCode } from "@/lib/api/contract";
 import { formatDateTime } from "@/lib/record";
@@ -62,6 +63,7 @@ export default async function InvitePage({
 }) {
   await connection();
   const { code } = await params;
+  if(process.env.ATTEST_API_MODE==='live')return <LiveInvite code={code}/>;
   const search = await searchParams;
   const result = await api.invite(code);
 
