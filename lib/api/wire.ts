@@ -39,7 +39,7 @@ export function adaptResponse(path:string,value:unknown):unknown {
   if(path==='/api/auth/session'){const roles:Record<string,string>={developer_admin:'developer',developer_operator:'developer',verifier:'institution',bank_ops:'ops',platform_admin:'admin',agent:'agent'};return {...v,userId:v.id,email:text(v.email),organisation:text(v.organisation??v.organisationId),backendRole:v.role,role:roles[text(v.role)],emailVerified:true};}
   if(path==='/api/public/register')return rows(value).map(register);
   if(path==='/api/verifier/watchlist')return rows(value).map(register);
-  if(path==='/api/verifier/alerts')return rows(value).map(a=>({...a,condition:state(a.condition),threshold:count(a.threshold)/100,firedAt:a.kind==='event'?a.createdAt:null,record:row(a.evidence).attestationHash??null}));
+  if(path==='/api/verifier/alerts')return rows(value).map(a=>({...a,condition:state(a.condition),threshold:count(a.threshold)/100,firedAt:a.kind==='event'?a.createdAt:null,record:a.recordId??row(a.evidence).attestationHash??null}));
   if(path.endsWith('/geography'))return {resolution:4,buckets:rows(value).filter(b=>isValidCell(text(b.cell))).map(b=>{const [lat,lng]=cellToLatLng(text(b.cell));return {h3:b.cell,centroid:[lng,lat],households:count(b.count)};})};
   if(/^\/api\/public\/projects\/[^/]+$/.test(path)){const p=project(v);return {project:p,attestations:rows(v.attestations).map(attestation),disputes:{open:p.openDisputes,substantiated:p.substantiatedDisputes},signals:p.signalCount};}
   if(/^\/api\/public\/developers\//.test(path)){const projects=rows(v.projects).map(project);return {developerId:path.split('/').at(-1),developerName:'Project operator',projects,aggregate:{enrolled:projects.reduce((n,p)=>n+p.enrolled,0),paid:projects.reduce((n,p)=>n+p.paid,0)}};}

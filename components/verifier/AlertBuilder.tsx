@@ -1,5 +1,6 @@
 "use client";
 
+import {useRouter} from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
@@ -22,26 +23,31 @@ export function AlertBuilder({ projects }: { projects: { id: string; name: strin
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [condition, setCondition] = useState<VerifierAlert["condition"]>("coverage-below");
   const [threshold, setThreshold] = useState(50);
+  const router=useRouter();
+  const [pending,setPending]=useState(false);
   const [saved, setSaved] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
 
   async function create(): Promise<void> {
+    if(pending)return;
+    setPending(true);
     setRefused(null);
     const result = await api.createAlert(
       { projectId, condition, threshold: threshold / 100 },
       `alert:${projectId}:${condition}:${threshold}`,
     );
+    setPending(false);
     if (!result.ok) {
       setRefused(result.message);
       return;
     }
-    setSaved(true);
+    setSaved(true);router.refresh();
   }
 
   return (
     <section className="panel stack" aria-label="Add an alert">
       <h2 className="h3-display">Add an alert</h2>
-      {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<p className="note">The coverage threshold measures money received against the commitment, not the fraction of households paid. Rule removal is not currently supported.</p>:null}
+      {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<p className="note">The coverage threshold measures money received against the commitment, not the fraction of households paid.</p>:null}
       <Rule />
       <div className="field">
         <label className="label" htmlFor="alert-project">
@@ -80,7 +86,7 @@ export function AlertBuilder({ projects }: { projects: { id: string; name: strin
       {condition === "coverage-below" ? (
         <div className="field">
           <label className="label" htmlFor="alert-threshold">
-            Below this share of households paid
+            {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?'Below this percentage of committed money paid':'Below this share of households paid'}
           </label>
           <input
             id="alert-threshold"
@@ -97,7 +103,7 @@ export function AlertBuilder({ projects }: { projects: { id: string; name: strin
           </p>
         </div>
       ) : null}
-      <Button type="button" onClick={() => void create()} data-alert-create>
+      <Button type="button" pending={pending} disabled={!projectId} onClick={() => void create()} data-alert-create>
         Add the alert
       </Button>
       {saved ? (

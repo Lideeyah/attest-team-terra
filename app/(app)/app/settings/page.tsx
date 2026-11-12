@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {OrganisationVerification} from "@/components/console/OrganisationVerification";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Notice } from "@/components/Notice";
@@ -27,7 +28,7 @@ export default async function SettingsPage() {
     );
   }
   const projectId = session.data.projectId;
-  if(process.env.ATTEST_API_MODE==='live')return <div className="console-page stack-lg"><h1 className="h2-display">Account settings</h1><p>{session.data.email} · {session.data.organisation}</p><Notice title="Administration capabilities"><p>Team access, connected services and notification preferences cannot be changed here yet. You can invite and manage field agents from the Agents page.</p></Notice><Link href="/app/agents">Manage field agents</Link></div>;
+  if(process.env.ATTEST_API_MODE==='live')return <div className="console-page stack-lg"><h1 className="h2-display">Account settings</h1><p>{session.data.email} · {session.data.organisation}</p><OrganisationVerification/><Notice title="Administration capabilities"><p>Team access, connected services and notification preferences cannot be changed here yet. You can invite and manage field agents from the Agents page.</p></Notice><Link href="/app/agents">Manage field agents</Link></div>;
 
   const [users, keys, endpoints, preferences] = await Promise.all([
     api.consoleUsers(projectId),

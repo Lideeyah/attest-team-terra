@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Strip } from "@/components/Strip";
+import {AlertControls} from "@/components/verifier/AlertControls";
 import { AlertBuilder } from "@/components/verifier/AlertBuilder";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
@@ -98,6 +99,7 @@ export default async function AlertsPage({
                   </span>
                 </div>
               </Strip>
+              {process.env.ATTEST_API_MODE==='live'&&!alert.firedAt?<AlertControls id={alert.id}/>:null}
               {highlighted === alert.id && alert.firedAt ? (
                 <Notice tone="review" title="This alert fired">
                   <p data-alert-fired={alert.id}>
