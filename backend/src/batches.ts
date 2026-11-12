@@ -9,8 +9,8 @@ export async function prepareBatches(db:Store,run:Run,transfers:Transfer[],prefi
  for(let offset=0;offset<transfers.length;offset+=MAX_BULK_ITEMS){
   const group=transfers.slice(offset,offset+MAX_BULK_ITEMS),reference=prefix+'-B'+(Math.floor(offset/MAX_BULK_ITEMS)+1);
   const items=[];
-  for(const t of group){const p=await db.get('participants',t.participantId);ensure(p,'NOT_FOUND',404);items.push({destination_bank_code:t.bankCode,destination_account:t.accountNumber,amount:t.amount,narration:'Community benefit share',reference:t.reference,expected_name:p.resolvedAccountName??p.name});}
-  const request:BulkRequest={source_account:run.sourceAccount!,batch_reference:reference,auto_name_enquiry:true,expected_names_check:'loose',items};
+  for(const t of group){const p=await db.get('participants',t.participantId);ensure(p||t.recipientKind==='fund','NOT_FOUND',404);items.push({destination_bank_code:t.bankCode,destination_account:t.accountNumber,amount:t.amount,narration:'Community benefit share',reference:t.reference,expected_name:typeof t.expectedName==='string'?t.expectedName:p?.resolvedAccountName??p?.name});}
+  const request:BulkRequest={source_account:run.sourceAccount!,batch_reference:reference,auto_name_enquiry:true,expected_names_check:run.allocationId?'strict':'loose',items};
   await db.put('transfer_batches',row({id:hash(reference),projectId:run.projectId,runId:run.id,reference,key:hash(reference),request,transferIds:group.map(t=>t.id),state:'pending'}));
   references.push(reference);
  }
@@ -32,6 +32,7 @@ export async function submitPendingBatches(s:Service,runId:string){
   const batch=await s.db.lock('batch:'+pending.id,async tx=>{
    const current=await tx.get('transfer_batches',pending.id);if(!current||current.state!=='pending'||Date.parse(current.nextAt??'1970-01-01')>Date.now())return;
    const run=await tx.get('runs',runId);ensure(run,'NOT_FOUND',404);
+   if(run.allocationId){const {Finance}=await import('./finance.js');if((await new Finance(s,tx).policy(run.projectId))?.state!=='active')return;}
    if(Date.parse(run.closesAt)<=Date.now()){
     for(const transferId of current.transferIds){const t=await tx.get('transfers',transferId);if(t?.state==='queued')await tx.put('transfers',{...t,state:'failed',failureClass:'PERIOD_CLOSED',submissionRejected:true});}
     await tx.put('transfer_batches',{...current,state:'rejected',lastError:'PERIOD_CLOSED'});return;

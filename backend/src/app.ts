@@ -1,3 +1,5 @@
+import {sealPayload} from './private-payload.js';
+import {registerProductRoutes} from './product-routes.js';
 import Fastify, { type FastifyRequest, type FastifyReply, type HTTPMethods } from 'fastify';
 import multipart from '@fastify/multipart';
 import { PDFParse } from 'pdf-parse';
@@ -85,6 +87,8 @@ export async function createApp(db: Store, suppliedService?: Service) {
     const response=await authHandler(db,new Request(new URL(req.url,origin),{method:req.method,headers,body}));
     reply.code(response.status);for(const[k,v]of response.headers)if(k!=='set-cookie')reply.header(k,v);const cookies=response.headers.getSetCookie();if(cookies.length)reply.header('set-cookie',cookies);return reply.send(await response.text());
   }});
+  await registerProductRoutes(app,root);
+  const emailDelivery=()=>process.env.MAIL_PROVIDER==='smtp'&&process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASSWORD&&process.env.MAIL_FROM?'queued':'unavailable';
   const dev=['developer_admin','developer_operator'];const ops=['bank_ops','platform_admin'];
   app.get('/ops',async(req,reply)=>{
     let p:Principal;try{p=await session(db,req.headers.authorization,req.headers.cookie);}catch{return reply.redirect('/auth/signin?callbackUrl=%2Fops');}
@@ -98,7 +102,12 @@ export async function createApp(db: Store, suppliedService?: Service) {
     const email=c.b.email.toLowerCase();const uid=hash(email);ensure(!await c.s.db.get('users',uid),'DUPLICATE_REQUEST',409);
     const u=await c.s.db.put('users',row({id:uid,email,passwordHash:passwordHash(c.b.password),organisationId:id(),organisation:c.b.organisation,role:'developer_admin',verified:false}));
     // Provision verification via the operator command until an email provider is configured.
-    await c.s.authEmail(u,'verify');await c.s.audit(u.id,'auth.verification_required');return {id:u.id,verificationRequired:true};
+    await c.s.authEmail(u,'verify');await c.s.audit(u.id,'auth.verification_required');return {id:u.id,verificationRequired:true,verificationDelivery:emailDelivery()};
+  },undefined,true);
+  route('POST','/api/auth/resend-verification',async c=>{
+    const user=await c.s.db.get('users',hash(c.b.email.toLowerCase()));
+    if(user&&!user.verified){for(const token of await c.s.db.list('tokens',{userId:user.id,type:'verify'}))if(!token.used)await c.s.db.put('tokens',{...token,used:true});await c.s.authEmail(user,'verify');}
+    return {accepted:true,delivery:emailDelivery()};
   },undefined,true);
   route('POST','/api/auth/signin',async c=>{
     const user=await c.s.db.get('users',hash(String(c.b.email).toLowerCase()));ensure(user&&passwordValid(c.b.password,user.passwordHash)&&user.verified&&!user.suspended,'UNAUTHORIZED',401);
@@ -112,7 +121,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
     return {...c.p,email:user.email,organisation:c.p.organisationId,projectId:c.p.projectId??projects.find(p=>p.id===selected)?.id??projects[0]?.id??null};
   });
   route('POST','/api/auth/verify-email',async c=>{const t=await c.s.required('tokens',hash(c.b.token??''));ensure(t.type==='verify'&&t.userId&&t.expiresAt&&!t.used&&Date.parse(t.expiresAt)>Date.now(),'TOKEN_EXPIRED',410);const u=await c.s.required('users',t.userId);await c.s.db.put('users',{...u,verified:true});await c.s.db.put('tokens',{...t,used:true});return {verified:true};},undefined,true);
-  route('POST','/api/auth/reset/request',async c=>{const emailHash=hash(String(c.b.email).toLowerCase());const u=await c.s.db.get('users',emailHash);if(u)await c.s.authEmail(u,'reset');await c.s.audit('anonymous','auth.reset_requested',undefined,{emailHash});return {accepted:true};},undefined,true);
+  route('POST','/api/auth/reset/request',async c=>{const emailHash=hash(String(c.b.email).toLowerCase());const u=await c.s.db.get('users',emailHash);if(u)await c.s.authEmail(u,'reset');await c.s.audit('anonymous','auth.reset_requested',undefined,{emailHash});return {accepted:true,delivery:emailDelivery()};},undefined,true);
   route('POST','/api/auth/reset/confirm',async c=>{const t=await c.s.required('tokens',hash(c.b.token??''));ensure(t.type==='reset'&&t.userId&&t.expiresAt&&!t.used&&Date.parse(t.expiresAt)>Date.now(),'TOKEN_EXPIRED',410);const u=await c.s.required('users',t.userId);await c.s.db.put('users',{...u,passwordHash:passwordHash(c.b.password),authVersion:(u.authVersion??0)+1});await c.s.db.put('tokens',{...t,used:true});for(const s of await c.s.db.list('sessions',{userId:u.id}))await c.s.db.put('sessions',{...s,revoked:true});return {reset:true};},undefined,true);
   route('POST','/api/projects/lookup',async c=>c.s.providers.registry(c.b.registryId),dev);
   route('POST','/api/projects/:id/evidence',async c=>{await c.s.project(c.p,c.params.id);ensure([...dev,'agent'].includes(c.p.role),'FORBIDDEN',403);const file=await c.req.file();ensure(file,'INVALID_REQUEST');const kind=String(c.q.kind) as EvidenceKind;return storeEvidence(c.s.db,c.p,c.params.id,kind,file.mimetype,await file.toBuffer());},[...dev,'agent']);
@@ -155,12 +164,13 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('POST','/api/projects/:id/pdd',async c=>{
     await c.s.project(c.p,c.params.id,true);const file=await c.req.file();ensure(file?.mimetype==='application/pdf','PDD_UNREADABLE',422);
     const buffer=await file.toBuffer();ensure(buffer.subarray(0,5).toString()==='%PDF-','PDD_UNREADABLE',422);
+    if(process.env.EVIDENCE_KEY_BASE64){const documentId=hash('document:'+c.params.id+':'+hash(buffer));await c.s.db.put('tokens',row({id:documentId,type:'pdd-document',projectId:c.params.id,name:file.filename,sha256:hash(buffer),uploadedBy:c.p.id,payload:sealPayload(buffer.toString('base64'),c.params.id)}));}
     const parser=new PDFParse({data:buffer});try{const text=await parser.getText();ensure(text.pages.length>0&&text.pages.length<=300,'PDD_UNREADABLE',422);return {jobId:(await c.s.enqueue('extraction',{projectId:c.params.id,pages:text.pages.map(p=>p.text)})).id};}finally{await parser.destroy();}
   },dev);
   route('GET','/api/projects/:id/extraction',async c=>{await c.s.project(c.p,c.params.id);return (await c.s.db.list('commitments',{projectId:c.params.id})).at(-1)??null;},dev);
   route('GET','/api/projects/:id/extraction/status',async c=>{
     await c.s.project(c.p,c.params.id);const job=(await c.s.db.list('jobs',{type:'extraction'})).filter(job=>job.data.projectId===c.params.id).at(-1);
-    return {id:job?.id??null,state:job?.state??'not_uploaded',error:job?.lastError??null,proposal:(await c.s.db.list('commitments',{projectId:c.params.id})).at(-1)??null};
+    return {id:job?.id??null,state:job?.state??'not_uploaded',error:job?.lastError??null,proposal:await (async()=>{const proposal=(await c.s.db.list('commitments',{projectId:c.params.id})).at(-1);return proposal?{...proposal,reviewWarnings:await c.s.commitmentWarnings(proposal)}:null;})()};
   },dev);
   route('GET','/api/projects/:id/extraction/jobs/:jobId',async c=>{
     await c.s.project(c.p,c.params.id);const job=await c.s.required('jobs',c.params.jobId);ensure(job.type==='extraction'&&job.data.projectId===c.params.id,'NOT_FOUND',404);
@@ -172,11 +182,12 @@ export async function createApp(db: Store, suppliedService?: Service) {
     const job=await c.s.required('jobs',original.id.replace(/^extraction:/,''));const proposal=c.b.commitment;
     ensure(proposal&&Number.isFinite(proposal.percentage)&&proposal.percentage>=0&&proposal.percentage<=100&&['gross','net'].includes(proposal.basis)&&['monthly','quarterly','annual','staged'].includes(proposal.cadence)&&Number.isInteger(proposal.page)&&typeof proposal.source_quote==='string'&&job.data.pages?.[proposal.page-1]?.includes(proposal.source_quote),'EXTRACTION_LOW_CONFIDENCE',422);
     validateCommitmentSchedule(proposal);
-    const record=await c.s.db.put('commitments',row({projectId:original.projectId,percentage:proposal.percentage,basis:proposal.basis,cadence:proposal.cadence,reportingCadence:proposal.reportingCadence,paymentSchedule:proposal.paymentSchedule,sourceLocator:proposal.sourceLocator,source_quote:proposal.source_quote,page:proposal.page,beneficiary_definition:proposal.beneficiary_definition,confidence:original.confidence,reviewStatus:'developer_review',original:false,supersedes:original.id,reviewedBy:c.p.id,reason:c.b.reason,accepted:false}));await c.s.audit(c.p.id,'extraction.reviewed',original.projectId,{originalId:original.id,reviewId:record.id,reason:c.b.reason});return record;
+    const record=await c.s.db.put('commitments',row({projectId:original.projectId,percentage:proposal.percentage,basis:proposal.basis,cadence:proposal.cadence,reportingCadence:proposal.reportingCadence,paymentSchedule:proposal.paymentSchedule,sourceLocator:proposal.sourceLocator,source_quote:proposal.source_quote,page:proposal.page,beneficiary_definition:proposal.beneficiary_definition,confidence:original.confidence,reviewStatus:'developer_review',original:false,supersedes:original.id,reviewedBy:c.p.id,reviewWarnings:await c.s.commitmentWarnings(original),reason:c.b.reason,accepted:false}));await c.s.audit(c.p.id,'extraction.reviewed',original.projectId,{originalId:original.id,reviewId:record.id,reason:c.b.reason});return record;
   },['platform_admin']);
   route('PATCH','/api/projects/:id/commitment',async c=>{
     await c.s.project(c.p,c.params.id,true);const original=(await c.s.db.list('commitments',{projectId:c.params.id})).at(-1);ensure(original,'PDD_NO_COMMITMENT',422);
     ensure(['percentage','basis','cadence','reportingCadence','paymentSchedule','sourceLocator','beneficiary_definition','accepted'].includes(c.b.field)&&typeof c.b.reason==='string'&&c.b.reason.trim(),'INVALID_REQUEST');
+    if(c.b.field==='accepted'&&c.b.value===true)ensure(!(await c.s.commitmentWarnings(original)).length,'COMMITMENT_TERMS_UNSUPPORTED',422);
     const next={...original,[c.b.field]:c.b.value,id:id(),createdAt:now(),original:false,supersedes:original.id,reason:c.b.reason};
     ensure(typeof next.percentage==='number'&&Number.isFinite(next.percentage)&&next.percentage>=0&&next.percentage<=100&&['gross','net'].includes(next.basis)&&['monthly','quarterly','annual','staged'].includes(next.cadence)&&typeof next.accepted==='boolean','INVALID_REQUEST');
     validateCommitmentSchedule(next);
@@ -271,8 +282,8 @@ export async function createApp(db: Store, suppliedService?: Service) {
   },dev);
   route('POST','/api/disputes',async c=>{const d=await c.s.dispute(c.b);return {id:d.id,status:d.status};},undefined,true);
   route('GET','/api/projects/:id/disputes',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'disputes',{projectId:c.params.id});},dev);
-  route('GET','/api/disputes/:id',async c=>c.s.scoped(c.p,'disputes',c.params.id),dev);
-  route('POST','/api/disputes/:id/respond',async c=>{const d=await c.s.scoped(c.p,'disputes',c.params.id,true);ensure(!c.b.status&&!c.b.resolutionBasis,'DISPUTE_RESOLUTION_BASIS_REQUIRED',403);ensure(typeof c.b.body==='string'&&c.b.body.length<=4000,'INVALID_REQUEST');await c.s.audit(c.p.id,'dispute.response',d.projectId,{disputeId:d.id,body:c.b.body});return c.s.db.put('disputes',{...d,status:'developer_responded'});},dev);
+  route('GET','/api/disputes/:id',async c=>{const dispute=await c.s.scoped(c.p,'disputes',c.params.id);const responses=(await c.s.db.list('audit',{projectId:dispute.projectId,action:'dispute.response'})).filter(entry=>record(entry.detail??{}).disputeId===dispute.id).map(entry=>({at:entry.createdAt,author:'Project team',body:record(entry.detail??{}).body}));return {...dispute,responses};},dev);
+  route('POST','/api/disputes/:id/respond',async c=>{const d=await c.s.scoped(c.p,'disputes',c.params.id,true);ensure(!c.b.status&&!c.b.resolutionBasis,'DISPUTE_RESOLUTION_BASIS_REQUIRED',403);ensure(typeof c.b.body==='string'&&c.b.body.length<=4000,'INVALID_REQUEST');await c.s.audit(c.p.id,'dispute.response',d.projectId,{disputeId:d.id,body:c.b.body});return c.s.db.put('disputes',{...d,status:d.resolvedAt?d.status:'developer_responded'});},dev);
   route('GET','/api/projects/:id/attestations',async c=>{await c.s.project(c.p,c.params.id);return paged(c,'attestations',{projectId:c.params.id},a=>c.s.attestationView(a));},dev);
   route('GET','/api/attestations/:id',async c=>c.s.attestationView(await c.s.scoped(c.p,'attestations',c.params.id)),dev);
   app.get('/api/attestations/:id/report',async(req,reply)=>{
@@ -306,7 +317,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
   route('GET','/api/public/projects/:id/geography',async c=>c.s.geography(c.params.id),undefined,true);
   route('GET','/api/verifier/projects/:id',async c=>c.s.publicProject(c.params.id),['verifier']);
   route('GET','/api/verifier/compare',async c=>{const ids=String(c.q.ids??'').split(',');ensure(ids.length<=10,'INVALID_REQUEST');return Promise.all(ids.map(id=>c.s.publicProject(id)));},['verifier']);
-  for(const table of ['watchlist','alerts'] as const){route('GET',`/api/verifier/${table}`,async c=>{const values=await c.s.db.list(table,{userId:c.p.id});return list(c,table==='watchlist'?await Promise.all(values.map(v=>c.s.publicProject(v.projectId!))):values);},['verifier']);route('POST',`/api/verifier/${table}`,async c=>{await c.s.required('projects',c.b.projectId);if(table==='alerts'){ensure(['coverage_below','dispute_raised','period_closed_late','correction_issued'].includes(c.b.condition??''),'INVALID_REQUEST');if(c.b.condition==='coverage_below')ensure(typeof c.b.threshold==='number'&&Number.isFinite(c.b.threshold)&&c.b.threshold>=0&&c.b.threshold<=100,'INVALID_REQUEST');}return c.s.db.put(table,row({...table==='watchlist'?{id:hash(c.p.id+':watch:'+c.b.projectId)}:{},kind:'rule',userId:c.p.id,projectId:c.b.projectId,condition:c.b.condition,threshold:c.b.threshold}));},['verifier']);}
+  for(const table of ['watchlist','alerts'] as const){route('GET',`/api/verifier/${table}`,async c=>{const values=(await c.s.db.list(table,{userId:c.p.id})).filter(v=>!v.removed);return list(c,table==='watchlist'?await Promise.all(values.map(v=>c.s.publicProject(v.projectId!))):values);},['verifier']);route('POST',`/api/verifier/${table}`,async c=>{await c.s.required('projects',c.b.projectId);if(table==='alerts'){ensure(['coverage_below','dispute_raised','period_closed_late','correction_issued'].includes(c.b.condition??''),'INVALID_REQUEST');if(c.b.condition==='coverage_below')ensure(typeof c.b.threshold==='number'&&Number.isFinite(c.b.threshold)&&c.b.threshold>=0&&c.b.threshold<=100,'INVALID_REQUEST');}return c.s.db.put(table,row({...table==='watchlist'?{id:hash(c.p.id+':watch:'+c.b.projectId)}:{},kind:'rule',userId:c.p.id,projectId:c.b.projectId,condition:c.b.condition,threshold:c.b.threshold}));},['verifier']);}
   route('POST','/api/participants/:id/receipts/revoke',async c=>{const p=await c.s.scoped(c.p,'participants',c.params.id,true);ensure(c.b.reason,'INVALID_REQUEST');const receipts=await c.s.db.list('receipts',{participantId:p.id});for(const receipt of receipts)await c.s.db.put('receipts',{...receipt,revoked:true});await c.s.audit(c.p.id,'receipt.revoked',p.projectId,{participantId:p.id,reason:c.b.reason});return {revoked:receipts.length};},dev);
   route('POST','/api/verifier/export',async c=>{
     ensure(typeof c.b.projectId==='string'&&typeof c.b.period==='string','INVALID_REQUEST');await c.s.required('projects',c.b.projectId);

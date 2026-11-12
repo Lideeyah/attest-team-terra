@@ -1,3 +1,4 @@
+import {unsupportedCommitmentTerms} from './commitment-review.js';
 import {Fault,ensure,cents,money,hash,canonical,id,now,row,bankMoney} from './core.js';
 import type {Store} from './store.js';
 import {normalizeTariff} from './tariff.js';
@@ -7,7 +8,7 @@ import {LiveBank,MockBank,gatewaySlot,type Bank} from './bank.js';
 import demoReference from '../data/plan-vivo-tgb.json' with {type:'json'};
 export {LiveBank,MockBank,gatewaySlot} from './bank.js';
 export type {Bank,BankOptions} from './bank.js';
-export interface ExtractionResult {found:boolean;percentage:number;basis:'gross'|'net';cadence:'monthly'|'quarterly'|'annual'|'staged';reportingCadence?:'monthly'|'quarterly'|'annual';paymentSchedule?:import('./contracts.js').PaymentSchedule;sourceLocator?:string;beneficiary_definition:string;source_quote:string;page:number;confidence:number;model:string;requiresReview:boolean;}
+export interface ExtractionResult {reviewWarnings?:string[];found:boolean;percentage:number;basis:'gross'|'net';cadence:'monthly'|'quarterly'|'annual'|'staged';reportingCadence?:'monthly'|'quarterly'|'annual';paymentSchedule?:import('./contracts.js').PaymentSchedule;sourceLocator?:string;beneficiary_definition:string;source_quote:string;page:number;confidence:number;model:string;requiresReview:boolean;}
 export interface NameDecision {decision:'match'|'mismatch'|'uncertain';reason:string;model:string;}
 export interface DisputeSuggestion {category:'not_received'|'someone_else_collected'|'wrong_amount';reason:string;model:string;}
 export interface AnchorResult {status:'mock'|'anchored';reference:string;timestamp:string;provider?:string;topicId?:string;sequence?:string;}
@@ -128,7 +129,7 @@ export class Providers {
     throw new Fault('ANCHOR_UNREACHABLE',503);
   }
   async extract(pages: string[]):Promise<ExtractionResult> {
-    const cacheId='extract:v2:'+hash(canonical(pages)); const cached=await this.store.get('tokens',cacheId); if(cached) return cached.result as ExtractionResult;
+    const cacheId='extract:v2:'+hash(canonical(pages)); const cached=await this.store.get('tokens',cacheId); if(cached)return {...cached.result as ExtractionResult,reviewWarnings:unsupportedCommitmentTerms(pages)};
     const candidates=extractionCandidates(pages);
     let result:ExtractionResult;
     if(process.env.EXTRACTION_PROVIDER !== 'live') {
@@ -142,7 +143,7 @@ export class Providers {
     ensure(result.found,'PDD_NO_COMMITMENT',422);
     ensure(Number.isFinite(result.percentage)&&result.percentage>=0&&result.percentage<=100&&['gross','net'].includes(result.basis)&&['monthly','quarterly','annual','staged'].includes(result.cadence)&&typeof result.source_quote==='string'&&result.source_quote.length>0&&Number.isInteger(result.page)&&pages[result.page-1]?.includes(result.source_quote)&&Number.isFinite(result.confidence)&&result.confidence>=0&&result.confidence<=1,'EXTRACTION_LOW_CONFIDENCE',422);
     if(result.sourceLocator)ensure(pages[result.page-1].includes(result.sourceLocator),'EXTRACTION_LOW_CONFIDENCE',422);
-    result.requiresReview=true;
+    result.requiresReview=true;result.reviewWarnings=unsupportedCommitmentTerms(pages);
     await this.store.put('tokens',{id:cacheId,createdAt:now(),result}); return result;
   }
 }

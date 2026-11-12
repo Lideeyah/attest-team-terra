@@ -46,7 +46,7 @@ export function parseBoundary(kml:string):Boundary {
   }
  };
  ensure(parsed&&typeof parsed==='object'&&'kml'in parsed,'INVALID_BOUNDARY');visit(parsed);
- ensure(polygons.length>0,'INVALID_BOUNDARY');return validateBoundary(polygons.length===1?{type:'Polygon',coordinates:polygons[0]}:{type:'MultiPolygon',coordinates:polygons});
+ ensure(polygons.length>0,'BOUNDARY_POLYGON_REQUIRED');return validateBoundary(polygons.length===1?{type:'Polygon',coordinates:polygons[0]}:{type:'MultiPolygon',coordinates:polygons});
 }
 export function registryBoundary(record:RegistryRecord):Boundary {if(!record.boundary)throw new Fault('BOUNDARY_NOT_AVAILABLE',409);return record.boundary;}
 export function registryDigest(record:RegistryRecord){return hash(canonical(record));}

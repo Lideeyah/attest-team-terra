@@ -9,7 +9,7 @@ export async function registerCarbon(s:Service,p:Principal,projectId:string,valu
  for(const key of ['state','lga'])text(location[key]);ensure(typeof location.lat==='number'&&Math.abs(location.lat)<=90&&typeof location.lng==='number'&&Math.abs(location.lng)<=180,'INVALID_REQUEST');
  const request={name:project.name,type:text(input.type),location,owner,methodology:project.methodology};
  const result=record(await s.providers.bank.call('POST','/carbon/projects',request,hash(project.id+':register')));
- const carbonId=text(result.project_id);await s.db.put('projects',{...project,carbonId});return result;
+ const carbonId=text(result.project_id);await s.db.put('projects',{...project,carbonId,carbonPayoutAccount:owner.payout_account,carbonPayoutBankCode:owner.bank_code});return result;
 }
 export async function submitMrv(s:Service,p:Principal,projectId:string,value:unknown,key:string){
  const project=await s.project(p,projectId,true);ensure(project.carbonId,'REGISTRY_NOT_FOUND',404);const input=record(value),period=record(input.period);
@@ -32,7 +32,7 @@ export async function retireCredits(s:Service,p:Principal,projectId:string,value
  for(const mrv of owned){const status=record(await s.providers.bank.call('GET','/carbon/mrv/'+encodeURIComponent(String(mrv.submissionId))));if(status.credit_batch_id===input.credit_batch_id&&status.status==='verified')verified=true;}
  ensure(verified,'FORBIDDEN',403);
  const result=record(await s.providers.bank.call('POST','/carbon/credits/retire',input,key));const retirementId=text(result.retirement_id);
- await s.db.put('tokens',row({id:'retirement:'+retirementId,type:'carbon-retirement',projectId,retirementId}));
+ const payout=record(result.payout??{});await s.db.put('tokens',row({id:'retirement:'+retirementId,type:'carbon-retirement',projectId,retirementId,payoutReference:payout.reference,payoutAccount:payout.destination_account,grossAmount:result.total_amount,registryFee:result.registry_fee,payoutAmount:payout.amount,payoutState:payout.status}));
  await s.processJob(row({type:'forge-event',data:{event_id:'verified-before-retirement:'+retirementId,type:'carbon.mrv.verified',data:{project_id:project.carbonId}}}));
   await s.processJob(row({type:'forge-event',data:{event_id:'retirement:'+retirementId,type:'carbon.credits.retired',data:{...result,project_id:project.carbonId}}}));return result;
 }

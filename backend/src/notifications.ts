@@ -1,0 +1,17 @@
+import {createHmac,timingSafeEqual} from 'node:crypto';
+import type {Service} from './service.js';
+import type {Participant} from './models.js';
+import {ensure,row,id,now,hash} from './core.js';
+import {record,text} from './validation.js';
+
+export function verifyWhatsApp(raw:string,signature:string,secret:string){if(!secret)return false;const expected=createHmac('sha256',secret).update(raw).digest(),actual=Buffer.from(signature.replace(/^sha256=/,''),'hex');return actual.length===expected.length&&timingSafeEqual(actual,expected);}
+export async function sendParticipantNotice(s:Service,p:Participant,message:string,eventId:string,kind:string){
+ const attemptId=hash('message:'+eventId);const existing=await s.db.get('message_attempts',attemptId);if(existing&&['sending','unknown'].includes(String(existing.state)))ensure(false,'MESSAGE_OUTCOME_UNKNOWN',503);if(existing&&['sent','delivered','read'].includes(String(existing.state)))return {id:String(existing.providerMessageId??attemptId),status:String(existing.state),provider:String(existing.provider)};
+ const useWhatsApp=p.whatsappConsent===true&&!!process.env.WHATSAPP_TOKEN&&!!process.env.WHATSAPP_PHONE_NUMBER_ID;
+ if(!useWhatsApp){const sent=await s.providers.sms(p.phone,message,eventId);await s.db.put('message_attempts',row({id:attemptId,projectId:p.projectId,participantId:p.id,channel:'sms',state:sent.status,provider:sent.provider,providerMessageId:sent.id,eventId,kind,simulated:sent.provider==='mock'}));return sent;}
+ const template=kind==='payment-notice'?process.env.WHATSAPP_PAYMENT_TEMPLATE:process.env.WHATSAPP_ENROLMENT_TEMPLATE;ensure(template,'MESSAGING_TEMPLATE_REQUIRED',503);
+ // Persist intent before sending. A timeout is an unknown delivery, not permission to resend.
+ await s.db.put('message_attempts',row({id:attemptId,projectId:p.projectId,participantId:p.id,channel:'whatsapp',state:'sending',provider:'meta',eventId,kind}));
+ try{const response=await fetch(`https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION??'v23.0'}/${encodeURIComponent(process.env.WHATSAPP_PHONE_NUMBER_ID!)}/messages`,{method:'POST',signal:AbortSignal.timeout(20000),headers:{Authorization:'Bearer '+process.env.WHATSAPP_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:p.phone.replace(/^\+/,''),type:'template',template:{name:template,language:{code:process.env.WHATSAPP_TEMPLATE_LANGUAGE??'en'},components:[{type:'body',parameters:[{type:'text',text:message}]}]}})});const body=record(await response.json());if(!response.ok){await s.db.put('message_attempts',row({id:attemptId,projectId:p.projectId,participantId:p.id,channel:'whatsapp',state:'failed',provider:'meta',eventId,kind}));ensure(false,'MESSAGING_UNAVAILABLE',503);}ensure(Array.isArray(body.messages)&&body.messages.length,'MESSAGING_UNAVAILABLE',503);const providerMessageId=text(record(body.messages[0]).id);await s.db.put('message_attempts',row({id:attemptId,projectId:p.projectId,participantId:p.id,channel:'whatsapp',state:'sent',provider:'meta',providerMessageId,eventId,kind,sentAt:now()}));return {id:providerMessageId,status:'sent',provider:'meta'};
+ }catch(error){const attempt=await s.db.get('message_attempts',attemptId);if(attempt?.state==='sending')await s.db.put('message_attempts',{...attempt,state:'unknown',message:'Delivery outcome is unknown. Check provider delivery before resending.'});throw error;}
+}

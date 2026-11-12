@@ -8,6 +8,7 @@ export interface RequestBodies{
  '/api/auth/signup':{email:string;password:string;organisation:string;role?:string};
  '/api/auth/signin':{email:string;password:string};
  '/api/auth/verify-email':{token:string};
+ '/api/auth/resend-verification':{email:string};
  '/api/auth/reset/request':{email:string};
  '/api/auth/reset/confirm':{token:string;password:string};
  '/api/projects/lookup':{registryId:string};

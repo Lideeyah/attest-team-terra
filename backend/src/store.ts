@@ -4,7 +4,7 @@ import type {Boundary} from './registry.js';
 import {boundaryAreaHectares} from './registry.js';
 import { Fault, row, type Row, type Principal } from './core.js';
 
-export const tables = ['users','sessions','tokens','invites','projects','commitments','participants','agents','rosters','runs','transfers','transfer_batches','confirmations','attestations','anchors','disputes','signals','cases','audit','jobs','receipts','events','idempotency','watchlist','alerts','notifications','evidence','registry_history'] as const;
+export const tables = ['users','sessions','tokens','invites','projects','commitments','participants','agents','rosters','runs','transfers','transfer_batches','confirmations','attestations','anchors','disputes','signals','cases','audit','jobs','receipts','events','idempotency','watchlist','alerts','notifications','evidence','registry_history','incoming_receipts','automation_policies','allocations','funds_events','review_drafts','location_datasets','import_jobs','message_attempts'] as const;
 export type Table = typeof tables[number];
 export interface PageOptions{page:number;perPage:number;where?:Record<string,unknown>;search?:{field:string;value:string};flagged?:boolean;sort?:string;descending?:boolean;}
 export interface SqlResult{rows:Record<string,unknown>[];rowCount:number|null;}
@@ -48,7 +48,7 @@ export class PgStore implements Store {
   async put<T extends Table>(table: T, value: Row):Promise<EntityMap[T]> {
     if(!this.client)return this.lock('write:'+table+':'+value.id,tx=>tx.put(table,value));
     if(table==='projects'&&value.boundary){const result=await this.query('SELECT ST_IsValid(g) AND NOT ST_IsEmpty(g) AND ST_Area(g)>0 AS valid FROM (SELECT ST_SetSRID(ST_GeomFromGeoJSON($1),4326) g) b',[JSON.stringify(value.boundary)]);if(result.rows[0]?.valid!==true)throw new Fault('INVALID_BOUNDARY');}
-    const append = ['attestations','audit','confirmations','events','evidence','registry_history','commitments'].includes(table);
+    const append = ['attestations','audit','confirmations','events','evidence','registry_history','commitments','funds_events','automation_policies'].includes(table);
     try {
       await this.query(`INSERT INTO "${table}" (id,data) VALUES ($1,$2::jsonb) ${append ? '' : 'ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data'}`, [value.id, JSON.stringify(value)]);
       if (table === 'projects' && value.boundary) await this.query('UPDATE projects SET boundary=ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($2),4326)) WHERE id=$1', [value.id,JSON.stringify(value.boundary)]);
@@ -85,7 +85,7 @@ export class MemoryStore implements Store {
   async page<T extends Table>(t:T,o:PageOptions){let values=await this.list(t,o.where);if(o.search)values=values.filter(r=>String(r[o.search!.field]??'').toLowerCase().includes(o.search!.value.toLowerCase()));if(o.flagged)values=values.filter(r=>Array.isArray(r.flags)&&r.flags.length>0);const key=o.sort??'createdAt';values.sort((a,b)=>{const result=String(a[key]??'').localeCompare(String(b[key]??''))||a.id.localeCompare(b.id);return o.descending?-result:result;});return {rows:values.slice((o.page-1)*o.perPage,o.page*o.perPage),total:values.length};}
   async get<T extends Table>(t: T, id: string) { return structuredClone(this.data.get(t+':'+id)) as EntityMap[T]|undefined; }
   async put<T extends Table>(t: T, r: Row):Promise<EntityMap[T]> {
-    if (['attestations','audit','confirmations','events','evidence','registry_history','commitments'].includes(t) && this.data.has(t+':'+r.id)) throw new Fault('IMMUTABLE_RECORD',403);
+    if (['attestations','audit','confirmations','events','evidence','registry_history','commitments','funds_events','automation_policies'].includes(t) && this.data.has(t+':'+r.id)) throw new Fault('IMMUTABLE_RECORD',403);
     if (t === 'participants' && (await this.list(t)).some(p=>p.id !== r.id && p.identityHash === r.identityHash)) throw new Fault('IDENTITY_DUPLICATE',409);
     if (t === 'transfers' && (await this.list(t)).some(p=>p.id !== r.id && p.runId === r.runId && p.participantId === r.participantId)) throw new Fault('DUPLICATE_REQUEST',409);
     const before=this.data.get(t+':'+r.id);this.data.set(t+':'+r.id,structuredClone(r));
