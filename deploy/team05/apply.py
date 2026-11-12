@@ -15,6 +15,9 @@ def kubectl(*args,body=None):
 def current(kind,name):
     value=kubectl('get',kind,name,'--ignore-not-found','-o','json')
     return json.loads(value) if value.strip() else None
+def bootstrap_pod_completed(job,pods):
+    if job['spec'].get('completions',1)!=1:return False
+    return any(pod.get('status',{}).get('phase')=='Succeeded' and any(owner.get('uid')==job['metadata']['uid'] and owner.get('controller') for owner in pod['metadata'].get('ownerReferences',[])) for pod in pods)
 def apply(item):
     existing=current(item['kind'],item['metadata']['name'])
     if existing and existing['metadata'].get('labels',{}).get('app.kubernetes.io/managed-by')!='attest-team05':raise RuntimeError('Unmanaged resource: '+item['metadata']['name'])
@@ -53,9 +56,11 @@ if current('job',name) is None:apply(job)
 try:
     deadline=time.monotonic()+600
     while time.monotonic()<deadline:
-        status=current('job',name).get('status',{})
+        observed=current('job',name);status=observed.get('status',{})
         if status.get('succeeded')==1:print('Bootstrap completed',flush=True);break
         if status.get('failed') or any(c.get('type')=='Failed' and c.get('status')=='True' for c in status.get('conditions',[])):raise RuntimeError('Bootstrap job failed')
+        pods=json.loads(kubectl('get','pods','-l','job-name='+name,'-o','json')).get('items',[])
+        if bootstrap_pod_completed(observed,pods):print('Bootstrap pod succeeded; Job controller status is delayed',flush=True);break
         time.sleep(5)
     else:raise RuntimeError('Bootstrap readiness timed out')
 except RuntimeError:
@@ -63,7 +68,8 @@ except RuntimeError:
         try:print(kubectl('logs','job/'+name,'-c',container,'--tail=40'),flush=True)
         except RuntimeError:print('Logs unavailable for '+container,flush=True)
     raise
-print(kubectl('delete','job',name,'--wait=true','--timeout=90s'),flush=True)
+if current('job',name).get('status',{}).get('succeeded')==1:print(kubectl('delete','job',name,'--wait=true','--timeout=90s'),flush=True)
+else:print('Preserved completed bootstrap Job for controller tracking',flush=True)
 for item in items:
     if item['metadata']['name'] in ['api','worker','frontend','app']:apply(item)
 for name in ['api','worker','frontend']:
