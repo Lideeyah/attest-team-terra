@@ -5,7 +5,7 @@ if(!['localhost','127.0.0.1'].includes(new URL(origin).hostname))throw Error('Us
 const {password}=JSON.parse(readFileSync('backend/.local-state/local-settings.json','utf8'));
 const browser=await chromium.launch({headless:true,channel:process.platform==='win32'?'msedge':undefined});
 const widths=[320,390,768,1024,1440,1920],results=[];
-const roles={developer:'local@example.test',verifier:'verifier@example.test',ops:'bank_ops@example.test',admin:'platform_admin@example.test',field:'responsive-agent@example.test'};
+const roles={developer:'local@example.test',verifier:'verifier@example.test',ops:'bank_ops@example.test',admin:'platform_admin@example.test',field:process.env.ATTEST_AUDIT_FIELD_EMAIL??'responsive-agent@example.test'};
 const contexts={public:await browser.newContext()};
 async function login(email){const context=await browser.newContext();const csrf=await context.request.get(origin+'/auth/csrf');const {csrfToken}=await csrf.json();await context.request.post(origin+'/auth/callback/credentials',{form:{email,password,csrfToken,callbackUrl:origin+'/app'},headers:{'X-Auth-Return-Redirect':'1'}});return context;}
 try{
@@ -15,7 +15,7 @@ try{
  const participants=(await(await contexts.developer.request.get(origin+'/api/projects/'+project.id+'/participants?per_page=1')).json()).data;
  const agents=(await(await contexts.developer.request.get(origin+'/api/projects/'+project.id+'/agents?per_page=1')).json()).data;
  const signals=(await(await contexts.ops.request.get(origin+'/api/ops/signals?per_page=1')).json()).data;
- let examples={};try{examples=JSON.parse(readFileSync('backend/.local-state/responsive-records.json','utf8'));}catch{/* Optional examples must be prepared through the supported API. */}
+ let examples={};try{examples=JSON.parse(readFileSync(process.env.ATTEST_AUDIT_RECORDS??'backend/.local-state/responsive-records.json','utf8'));}catch{/* Optional examples must be prepared through the supported API. */}
  const ids={projectId:project.id,attestationId:detail.attestations[0].id,runId:detail.runs[0].id,participantId:participants[0].id,id:participants[0].id,agentId:agents[0].id,developerId:project.organisationId,signalId:signals?.[0]?.id,...examples};
  let pages=globSync('app/**/page.tsx').map(file=>'/'+file.replaceAll('\\','/').replace(/^app\//,'').replace(/\([^/]+\)\//g,'').replace(/\/?page\.tsx$/,'')).filter(path=>path!=='/dev'&&!path.startsWith('/dev/'));
  if(process.env.ATTEST_AUDIT_FILTER)pages=pages.filter(path=>new RegExp(process.env.ATTEST_AUDIT_FILTER).test(path));
