@@ -26,7 +26,7 @@ async function resend(formData: FormData) {
   if (!result.ok) {
     redirect(`/verify-email?state=error&email=${encodeURIComponent(email)}`);
   }
-  redirect(`/verify-email?state=sent&email=${encodeURIComponent(email)}`);
+  redirect(`/verify-email?state=${result.data.delivery==='unavailable'?'unavailable':'sent'}&email=${encodeURIComponent(email)}`);
 }
 
 export default async function VerifyEmailPage({
@@ -38,14 +38,15 @@ export default async function VerifyEmailPage({
   const search = await searchParams;
   const email = search.email ?? "";
 
+  if(search.state==="unavailable")return <section className="stack-lg"><h1 className="h2-display">Email delivery is not available yet</h1><p>Contact your administrator for a verification link. Your account still needs email verification before you can sign in.</p><Link href="/signin" className="btn-outline">Back to sign in</Link></section>;
   if (search.state === "sent") {
     return (
       <div className="stack-lg">
         <p className="eyebrow">Verify your email</p>
-        <h1 className="h2-display">A new link is on its way</h1>
+        <h1 className="h2-display">A new link has been requested</h1>
         <Rule weight="heavy" />
         <p className="prose-muted" data-verification="sent">
-          It went to {email} and lasts twenty-four hours. The one before it
+          It went to {email} and lasts one hour. The one before it
           stopped working the moment this was sent.
         </p>
         <Link href="/signin" className="btn-outline btn-sm">
@@ -95,7 +96,7 @@ export default async function VerifyEmailPage({
         >
           <p data-verification={expired ? "expired" : "invalid"}>
             {expired
-              ? "A verification link lasts twenty-four hours. Ask for another below and the one in the old email stops working."
+              ? "A verification link lasts one hour. Ask for another below and the one in the old email stops working."
               : "The link does not match any address waiting to be verified. Ask for another below."}
           </p>
         </Notice>

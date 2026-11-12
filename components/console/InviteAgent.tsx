@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
@@ -9,6 +10,8 @@ import { api } from "@/lib/api/client";
 /** An agent is invited by name and email and redeems the invite on their own
     device, which is where the binding happens. Nothing here enrols anybody. */
 export function InviteAgent({ projectId }: { projectId: string }) {
+  const busy=useRef(false);
+  const [pending,setPending]=useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [outcome, setOutcome] = useState<
@@ -16,12 +19,17 @@ export function InviteAgent({ projectId }: { projectId: string }) {
   >({ kind: "idle" });
 
   async function send(): Promise<void> {
+    if(busy.current)return;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())){setOutcome({kind:'refused',line:'Enter a valid email address.',note:'The agent will use this address to activate their account.'});return;}
+    busy.current=true;setPending(true);
+    try{
     const result = await api.inviteAgent(projectId, { name, email });
     if (!result.ok) {
       setOutcome({ kind: "refused", line: result.message, note: result.remediation });
       return;
     }
     setOutcome({ kind: "sent", code: result.data.code });
+    }finally{busy.current=false;setPending(false);}
   }
 
   return (
@@ -55,18 +63,19 @@ export function InviteAgent({ projectId }: { projectId: string }) {
       </div>
       <Button
         type="button"
-        disabled={name.trim().length === 0 || email.trim().length === 0}
+        disabled={pending||name.trim().length === 0 || email.trim().length === 0}
+        pending={pending}
         onClick={() => void send()}
         data-agent-invite="true"
       >
-        Send the invite
+        {pending?"Creating invitation...":"Create invitation"}
       </Button>
       {outcome.kind === "sent" ? (
-        <Notice title="The invite is sent">
+        <Notice title="Your invitation is ready">
           <p>
-            The code is <span className="record-cell">{outcome.code}</span>. It is
+            Share this invitation with the agent. The code is <span className="record-cell">{outcome.code}</span>. It is
             redeemed once, on the agent&rsquo;s own device, and binds to that
-            device.
+            device. <Link href={`/invite/${outcome.code}`}>Open invitation link</Link>
           </p>
         </Notice>
       ) : null}

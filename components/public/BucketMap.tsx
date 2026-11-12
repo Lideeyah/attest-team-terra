@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { cellArea, cellToBoundary, isValidCell } from "h3-js";
 import type { GeographyBucket } from "@/lib/api/contract";
 import type { GeoJsonObject } from "geojson";
-import type { Map as LeafletMap } from "leaflet";
+import type { Map as LeafletMap, LatLngBounds } from "leaflet";
 type CapturePoint={point:[number,number];flags:string[];capturedAt:string};
 const EMPTY_POINTS:CapturePoint[]=[];
 
 export function BucketMap({buckets,resolution,boundary,demonstration=false,capturePoints=EMPTY_POINTS}:{buckets:GeographyBucket[];resolution:number;boundary?:GeoJsonObject;demonstration?:boolean;capturePoints?:CapturePoint[]}) {
+  const bounds=useRef<LatLngBounds|null>(null);
   const host=useRef<HTMLDivElement>(null),map=useRef<LeafletMap|null>(null);
   const [message,setMessage]=useState('Loading map'),[position,setPosition]=useState('WGS 84 · longitude, latitude');
   const valid=buckets.filter(b=>isValidCell(b.h3)&&b.households>=5);
@@ -32,10 +33,10 @@ export function BucketMap({buckets,resolution,boundary,demonstration=false,captu
       if(boundary){const layer=L.geoJSON(boundary,{style:{color:ink,weight:2,fillColor:paper,fillOpacity:0.08,dashArray:'6 4'}}).addTo(instance);overlays['Project boundary']=layer;}
       L.control.layers({'OpenStreetMap':tiles},overlays,{collapsed:false}).addTo(instance);
       L.control.scale({imperial:false}).addTo(instance);
-      const extent=L.featureGroup(Object.values(overlays));if(extent.getBounds().isValid())instance.fitBounds(extent.getBounds(),{padding:[24,24],maxZoom:11});
+      const extent=L.featureGroup(Object.values(overlays));bounds.current=extent.getBounds();if(bounds.current.isValid())instance.fitBounds(bounds.current,{padding:[24,24],maxZoom:11});
       instance.on('mousemove',event=>setPosition(`${event.latlng.lng.toFixed(5)}, ${event.latlng.lat.toFixed(5)} · WGS 84`));
       const observer=new ResizeObserver(()=>instance.invalidateSize());observer.observe(host.current);
-      cleanup=()=>{observer.disconnect();instance.remove();map.current=null;};
+      cleanup=()=>{observer.disconnect();instance.remove();map.current=null;bounds.current=null;};
       setMessage(cells.getLayers().length?'Select an area to inspect its household count.':'No publishable cells. Areas with fewer than five households are suppressed.');
     }).catch(()=>setMessage('Map could not load. The aggregate table below remains available.'));
     return ()=>{disposed=true;cleanup?.();};
@@ -43,7 +44,7 @@ export function BucketMap({buckets,resolution,boundary,demonstration=false,captu
   const total=valid.reduce((n,b)=>n+b.households,0);
   return <figure className="stack">
     {demonstration?<p className="notice">Synthetic enrolment demonstration. These are not verified household locations or an authentic registry boundary.</p>:null}
-    <div className="row-between"><p className="record-cell">{total.toLocaleString()} households in {valid.length} published areas</p><button className="btn-outline btn-sm" type="button" onClick={()=>{if(!map.current||!valid.length)return;map.current.fitBounds(valid.flatMap(b=>cellToBoundary(b.h3)),{padding:[24,24],maxZoom:11});}}>Fit distribution</button></div>
+    <div className="row-between"><p className="record-cell">{total.toLocaleString()} households in {valid.length} published areas</p><button className="btn-outline btn-sm" type="button" onClick={()=>{if(!map.current||!bounds.current?.isValid())return;map.current.fitBounds(bounds.current,{padding:[24,24],maxZoom:11});}}>Fit map to data</button></div>
     <div ref={host} className="gis-map" role="region" aria-label="Interactive enrolment distribution map" />
     <p className="record-cell" aria-live="polite">{message}</p><p className="record-cell">{position}</p>
     <figcaption className="note">H3 resolution {resolution} · darker areas contain more enrolled households: 5–24, 25–99, 100+. {capturePoints.length?'Private capture locations are available only in this authorised workspace.':'No household point is published at any zoom.'} Boundary outlines, when present, are distinct from aggregate cells.</figcaption>

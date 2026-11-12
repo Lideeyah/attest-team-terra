@@ -2,6 +2,17 @@ import type { Envelope } from "@attest/contracts";
 import { requestContext } from "#api-context";
 import {redirectExpiredSession} from './expired-session';
 export function messageForError(code:string,status:number):string {
+  if(code==='REVISION_CONFLICT')return 'Another reviewer changed this record. Keep your entered details, then refresh to review the latest version.';
+  if(code==='COMMITMENT_RULE_MISMATCH')return 'The payment shares or allocation method do not match the approved agreement. Check the source terms.';
+  if(code==='ROSTER_EMPTY')return 'Add community members before activating payments.';
+  if(code==='PREFLIGHT_EXCLUSIONS_REQUIRED')return 'Required member or account checks still need attention. Resolve them before continuing.';
+  if(code==='FUNDING_NOT_RECEIVED')return 'A supported payout account must be linked before automatic payments can be activated.';
+  if(code==='ALLOCATION_INPUT_REQUIRED')return 'Verified allocation inputs or deadline details are missing. Review the agreement and member data.';
+  if(code==='EVIDENCE_STORAGE_UNAVAILABLE')return 'Secure file storage is unavailable. Please ask your administrator to restore it before retrying.';
+  if(code==='CONSENT_MISSING')return 'Record the person’s consent before submitting this information.';
+  if(code==='BOUNDARY_POLYGON_REQUIRED')return 'This file contains map pins rather than a project boundary. Draw and export a closed area as a KML polygon, then upload it here.';
+  if(code==='INVALID_BOUNDARY')return 'We could not read a valid project boundary. Choose a KML file containing closed, non-overlapping project areas.';
+  if(code==='COMMITMENT_TERMS_UNSUPPORTED')return 'This agreement needs payment rules that are not supported yet. Contact your administrator before accepting it or creating payments.';
   if(status===401)return 'Your session has ended. Please sign in again.';
   if(status===403)return 'You do not have access to this action. Ask your administrator for help.';
   if(status===404)return 'This record is no longer available. Refresh the page to see the latest records.';

@@ -14,28 +14,30 @@ export function WatchToggle({
   projectId: string;
   watching: boolean;
 }) {
+  const [error,setError]=useState("");
   const [on, setOn] = useState(watching);
   const [working, setWorking] = useState(false);
 
   async function toggle(): Promise<void> {
-    setWorking(true);
+    setWorking(true);setError("");
     const result = await api.watch({ projectId });
     setWorking(false);
     if (result.ok) {
       setOn((current) => !current);
-    }
+    }else setError(result.message);
   }
 
   return (
-    <Button
+    <span className="stack-tight"><Button
       type="button"
       variant={on ? "quiet" : "outline"}
       small
+      pending={working}
       disabled={working || (process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'&&on)}
       onClick={() => void toggle()}
       data-watch={projectId}
     >
       {on ? PROJECTS_COPY.watching : PROJECTS_COPY.watch}
-    </Button>
+    </Button>{error?<span role="alert">{error}</span>:null}</span>
   );
 }

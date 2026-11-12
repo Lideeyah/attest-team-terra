@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import {useRouter} from "next/navigation";
+import { useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
@@ -11,18 +12,23 @@ import { DISPUTE_COPY } from "@/lib/copy/console";
     control that closes one: a report closes on a participant confirmation or
     on a reversal, and neither is this account's to assert. */
 export function DisputeResponse({ disputeId }: { disputeId: string }) {
+  const router=useRouter(),busy=useRef(false);
+  const [pending,setPending]=useState(false);
   const [body, setBody] = useState("");
   const [outcome, setOutcome] = useState<
     { kind: "idle" } | { kind: "sent" } | { kind: "refused"; line: string; note: string }
   >({ kind: "idle" });
 
   async function send(): Promise<void> {
+    if(busy.current)return;busy.current=true;setPending(true);
+    try{
     const result = await api.respondToDispute(disputeId, { body });
     if (!result.ok) {
       setOutcome({ kind: "refused", line: result.message, note: result.remediation });
       return;
     }
-    setOutcome({ kind: "sent" });
+    setOutcome({ kind: "sent" });router.refresh();
+    }finally{busy.current=false;setPending(false);}
   }
 
   return (
@@ -45,7 +51,8 @@ export function DisputeResponse({ disputeId }: { disputeId: string }) {
       </div>
       <Button
         type="button"
-        disabled={body.trim().length === 0}
+        disabled={pending||body.trim().length === 0}
+        pending={pending}
         onClick={() => void send()}
         data-dispute-submit="true"
       >

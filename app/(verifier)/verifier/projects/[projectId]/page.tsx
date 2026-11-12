@@ -117,7 +117,7 @@ export default async function VerifierProject({
         <p className="eyebrow">
           {VERIFIER_COPY.surface} · {project.registry} {project.registryId}
         </p>
-        <h1 className="h2-display">{project.name}</h1>
+        <h1 className="h2-display">{project.name}</h1><Link className="btn-outline" href={`/verifier/projects/${projectId}/map`}>View payment map and outcomes</Link>
         <p className="lede">
           {project.developerName} · {project.localGovernment}, {project.state},{" "}
           {project.country}

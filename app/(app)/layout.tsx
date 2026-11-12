@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <Surface>
       <DeveloperShell {...shell}>
-        {process.env.ATTEST_API_MODE==='live'?<div className="console-page"><ProjectPicker/></div>:null}
+        {process.env.ATTEST_API_MODE==='live'?<div className="console-page"><ProjectPicker projectId={session.ok?session.data.projectId??undefined:undefined}/></div>:null}
         <RouteTransition>{children}</RouteTransition>
       </DeveloperShell>
     </Surface>

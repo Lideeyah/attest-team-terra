@@ -1,3 +1,4 @@
+import {FinanceWorkspace} from '@/components/console/FinanceWorkspace';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -41,6 +42,7 @@ export default async function ConsoleHome() {
     );
   }
 
+  if(process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live')return <div className="console-page stack-lg"><FinanceWorkspace projectId={context.project.id} compact/><section className="panel stack"><h2 className="h3-display">Continue your project</h2><p>Review your agreement, community members and payout readiness before activating automatic distributions.</p><div className="finance-tabs"><Link href="/app/documents">Review document</Link><Link href="/app/roster">Community members</Link><Link href="/app/map">Project map</Link><Link href="/app/automation">Automatic payment rules</Link></div></section></div>;
   const {
     project,
     openPeriod,

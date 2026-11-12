@@ -1,3 +1,4 @@
+import {DeviceRecoveryApprovals} from '@/components/console/DeviceRecovery';
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Notice } from "@/components/Notice";
@@ -115,7 +116,7 @@ export default async function AgentPage({
         </dl>
       </section>
 
-      <AgentStatus agentId={agent.id} status={agent.status} />
+      <AgentStatus agentId={agent.id} status={agent.status} /><DeviceRecoveryApprovals agentId={agent.id}/>
       {process.env.ATTEST_API_MODE==='live'&&agent.status==='invited'?<AgentIdentityForm id={agent.id}/>:null}
     </div>
   );

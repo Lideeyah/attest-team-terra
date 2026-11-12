@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       { source: "/auth/:path*", destination: `${upstream}/auth/:path*` },
       { source: "/receipt/:path*", destination: `${upstream}/receipt/:path*` },
       { source: "/hooks/forge", destination: `${upstream}/hooks/forge` },
+      { source: "/hooks/whatsapp", destination: `${upstream}/hooks/whatsapp` },
     ] };
   },
   /* The gate builds two configurations — one carrying the developer tooling

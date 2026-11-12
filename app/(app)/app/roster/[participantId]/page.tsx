@@ -5,6 +5,7 @@ import { Disclose } from "@/components/Disclose";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { Stamp } from "@/components/Stamp";
+import { MemberVerification } from "@/components/console/MemberVerification";
 import { ParticipantActions } from "@/components/console/ParticipantActions";
 import { api } from "@/lib/api/client";
 import { headingFor } from "@/lib/copy/codes";
@@ -178,7 +179,7 @@ export default async function ParticipantPage({
           <div>
             <dt className="eyebrow">Capture location</dt>
             <dd className="record-cell">
-              {participant.community}, inside the project boundary
+              {participant.community}, recorded project location
               {participant.boundary === "outside" ? " — flagged outside" : ""}
             </dd>
           </div>
@@ -242,6 +243,7 @@ export default async function ParticipantPage({
         <p className="note">{PARTICIPANT_COPY.identityNote}</p>
       </Disclose>
 
+      <MemberVerification participantId={participantId}/>
       <section className="stack" aria-label="Payment history">
         <h2 className="h3-display">Payments</h2>
         <Rule />

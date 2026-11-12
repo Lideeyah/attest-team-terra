@@ -110,7 +110,7 @@ export function ExportPanel({
               id="export-project"
               className="select"
               value={projectId}
-              onChange={(event) => setProjectId(event.target.value)}
+              onChange={(event) => {setProjectId(event.target.value);setPeriod(projects.find(project=>project.id===event.target.value)?.periods[0]??"");setState({kind:"nothing"});}}
               data-export-project
             >
               {projects.map((candidate) => (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PublicMasthead } from "@/components/public/PublicMasthead";
 import { PublicFooter } from "@/components/public/PublicFooter";
-import { Button } from "@/components/Button";
+import {Submit} from "@/components/auth/Submit";
 import { Notice } from "@/components/Notice";
 import { Rule } from "@/components/Rule";
 import { api } from "@/lib/api/client";
@@ -89,8 +89,7 @@ export default async function ReportPage({
           <Notice title="What happens now">
             The claim is checked against the transfers recorded for that period:
             whether one was sent, whether it settled, and what the bank&rsquo;s
-            own reference says. A reply goes to the number this was raised from
-            within five working days. The developer sees the claim and can
+            own reference says. Keep this report reference when contacting your project administrator. The developer sees the claim and can
             respond, and their response is logged; a dispute closes on a
             participant confirmation or a reversal, never on the
             developer&rsquo;s word.
@@ -214,7 +213,7 @@ export default async function ReportPage({
           </div>
 
           <div className="row">
-            <Button type="submit">File the report</Button>
+            <Submit label="File the report" pending="Submitting report..."/>
           </div>
         </form>
       </div>

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Ask for a reset link, or set a new password with one.",
 };
 
-type Search = { state?: string; code?: string; token?: string; email?: string };
+type Search = { delivery?:string;state?: string; code?: string; token?: string; email?: string };
 
 async function requestReset(formData: FormData) {
   "use server";
@@ -17,7 +17,7 @@ async function requestReset(formData: FormData) {
   const result = await api.requestReset({ email });
   redirect(
     result.ok
-      ? `/signin/reset?state=requested&email=${encodeURIComponent(email)}`
+      ? `/signin/reset?state=requested&email=${encodeURIComponent(email)}&delivery=${result.data.delivery??"queued"}`
       : `/signin/reset?state=error&code=${result.code}`,
   );
 }
@@ -50,8 +50,7 @@ export default async function ResetPage({
         <p className="eyebrow">Reset requested</p>
         <h1 className="h2-display">Check {search.email}</h1>
         <p className="prose-muted">
-          If that address has an account, a reset link is on its way and expires
-          in one hour. Whether it has one is not stated here.
+          {search.delivery==='unavailable'?'Email delivery is not available yet. Contact your administrator for help resetting your password. For privacy, we do not confirm whether this address has an account.':'If that address has an account, a password-reset email has been requested. Its link expires in one hour. If no email arrives, contact your administrator.'}
         </p>
         <Link href="/signin" className="btn-outline btn-sm">
           Back to sign in

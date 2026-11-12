@@ -192,18 +192,18 @@ export const api = {
     password: string;
     organisation: string;
     role: "developer" | "institution";
-  }) => request<Session>("/api/auth/signup", { method: "POST", body }),
+  }) => request<Session & {verificationDelivery?:"queued"|"unavailable"}>("/api/auth/signup", { method: "POST", body }),
   verifyEmail: (body: { token: string }) =>
     request<{ verified: boolean }>("/api/auth/verify-email", { method: "POST", body }),
   /** Not in backend 4.3; see BUILD_LOG.md. A verification link expires and the
       reader has no account to sign in to in order to ask for another. */
   resendVerification: (body: { email: string }) =>
-    request<{ sent: boolean; email: string }>("/api/auth/resend-verification", {
+    request<{ sent: boolean; email: string;delivery?:"queued"|"unavailable" }>("/api/auth/resend-verification", {
       method: "POST",
       body,
     }),
   requestReset: (body: { email: string }) =>
-    request<{ sent: boolean }>("/api/auth/reset/request", { method: "POST", body }),
+    request<{ sent: boolean;delivery?:"queued"|"unavailable" }>("/api/auth/reset/request", { method: "POST", body }),
   confirmReset: (body: { token: string; password: string }) =>
     request<{ reset: boolean }>("/api/auth/reset/confirm", { method: "POST", body }),
   invite: (code: string) => request<Invite>(`/api/invites/${code}`),

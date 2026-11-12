@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Email, password, organisation. Nothing else.",
 };
 
-type Search = { state?: string; code?: string; field?: string; email?: string };
+type Search = { delivery?:string;state?: string; code?: string; field?: string; email?: string };
 
 async function signUp(formData: FormData) {
   "use server";
@@ -30,7 +30,7 @@ async function signUp(formData: FormData) {
       `/signup/developer?state=error&code=${result.code}&email=${encodeURIComponent(email)}`,
     );
   }
-  redirect(`/signup/developer?state=sent&email=${encodeURIComponent(email)}`);
+  redirect(`/signup/developer?state=sent&email=${encodeURIComponent(email)}&delivery=${result.data.verificationDelivery??"queued"}`);
 }
 
 export default async function DeveloperSignUpPage({
@@ -46,10 +46,7 @@ export default async function DeveloperSignUpPage({
         <p className="eyebrow">Verify your email</p>
         <h1 className="h2-display">Check {search.email}</h1>
         <p className="prose-muted">
-          A verification link is on its way. It expires in twenty-four hours;
-          if it lapses, sign in and a new one is sent. Nothing about the project
-          is set up until the address is verified, because the register
-          publishes who the operator is.
+          {search.delivery==='unavailable'?'Your account was created, but email delivery is not available yet. Contact your administrator for a verification link. You cannot sign in until your email is verified.':'Your account was created and a verification email has been requested. Follow the link when it arrives; it expires in one hour. If it does not arrive, contact your administrator.'}
         </p>
         <Link href="/signin" className="btn-outline btn-sm">
           Go to sign in
