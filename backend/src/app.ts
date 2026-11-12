@@ -37,9 +37,9 @@ export async function createApp(db: Store, suppliedService?: Service) {
   const rates=new Map<string,{at:number;n:number}>();
   app.addHook('onRequest',async(req)=>{
     if(req.url==='/healthz')return;
-    const key=req.ip;const minute=Math.floor(Date.now()/60_000);const bucket=rates.get(key);const n=bucket?.at===minute?bucket.n+1:1; rates.set(key,{at:minute,n});
+    let principal:Principal|undefined;if(req.headers.authorization||req.headers.cookie?.includes('attest.session-token'))try{principal=await session(db,req.headers.authorization,req.headers.cookie);}catch{}const key=principal?'user:'+principal.id:'ip:'+req.ip,limit=principal?600:120;const minute=Math.floor(Date.now()/60_000);const bucket=rates.get(key);const n=bucket?.at===minute?bucket.n+1:1; rates.set(key,{at:minute,n});
     if(rates.size>10000)for(const[k,v]of rates)if(v.at!==minute)rates.delete(k);
-    ensure(n<=120,'RATE_LIMITED',429);
+    ensure(n<=limit,'RATE_LIMITED',429);
   });
   app.addHook('onSend',async(req,reply,payload)=>{reply.header('Referrer-Policy','no-referrer');reply.header('X-Content-Type-Options','nosniff');if(!req.url.startsWith('/api/public/'))reply.header('Cache-Control','no-store');return payload;});
   app.setErrorHandler((err:unknown,req,reply)=>{const status=typeof err==='object'&&err!==null&&'statusCode'in err&&typeof err.statusCode==='number'?err.statusCode:500;const e=err instanceof Fault?err:new Fault(status===413?'INVALID_REQUEST':'INTERNAL_ERROR',status);reply.code(e.status).send({status:'error',error:{code:e.code,message:e.message,field:e.field,remediation:null},request_id:req.id});});
