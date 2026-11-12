@@ -20,11 +20,11 @@ Work branch: `mark/production`. Integrated deployment baseline: `deploy/team05-p
 
 ## Validation
 
-- Full backend suite: 107 tests passed, including permission, period-correction and alert-management cases. A further rounding regression check follows below.
+- Full backend suite: 109 tests passed, including permission, period-correction, alert management, exact category rounding and authenticated request-limit regression cases.
 - Frontend suite: 25 tests passed. Lint and production builds passed during implementation; final release verification follows below.
 - 15 end-to-end API journeys passed across authentication, supplied PDF/KML, field capture, bank runs, receipts/disputes, reports, verifier and operations.
 - Four extended product journeys passed: point-only setup and original PDF retention, explicit sample-agreement approval, encrypted community import and automatic weighted household/community-fund payments with reserved deductions.
-- Seven integrated browser journeys passed for protected access, duplicate receipts, automatic payouts, mobile wallet, saved drafts, payment maps, verifier privacy and money navigation.
+- Ten integrated browser journeys passed for protected access, duplicate receipts, automatic payouts, mobile wallet, saved drafts, payment maps, verifier privacy, money navigation, Back/Continue setup restoration, organisation review and alert controls.
 - Layout audit: 408 viewport checks across 68 pages at 320, 390, 768, 1024, 1440 and 1920 px; no overflow or navigation errors. Invitation pages require their own valid one-time token and were excluded from that layout inventory.
 - OpenStreetMap tiles loaded at their actual 256 px image dimensions in the browser. This was checked separately from marker rendering.
 - Private hosted database backup saved locally with explicit user approval; no backup or deployment credentials are committed.
@@ -40,8 +40,16 @@ A synthetic receiving-account probe successfully created a virtual account and r
 3. Institution self-service approval/provisioning and administrative dispute adjudication remain limited to existing supported/manual processes. Developer responses cannot resolve complaints without appropriate bank/participant evidence.
 4. Operator withdrawals, refunds, post-payout incoming reversals and release of reserved business deductions still need provider-supported, reviewed workflows. Held funds are not represented as freely withdrawable earnings.
 5. Large-volume GIS performance, offline basemap availability, dataset replacement/version comparisons and broader assistive-technology testing need further acceptance work. The completed viewport audit measures layout, not every possible business-state combination.
-6. A live-money rollout remains separate from this sandbox release. Configure external services, reconcile bank history and approve a single controlled pilot before enabling unattended financial automation on real funds.
+6. The public team05 hostname is protected by the platform’s Cloudflare Access policy. External visitors need platform sign-in, and provider callback access needs platform configuration. Attest does not control that external access policy.
+7. Registry lookups currently use the configured demonstration mode. Approved registry exports are supported; real registry verification needs a configured approved source.
+8. A live-money rollout remains separate from this sandbox release. Configure external services, reconcile bank history and approve a single controlled pilot before enabling unattended financial automation on real funds.
 
 ## Release update
 
-Pending final verification and deployment. This section is updated only after observed results.
+Runtime revision `ee3223c13a1794e4c1b74e8b3239b0d93223caae` is deployed on the API, frontend and worker. The [final deployment workflow](https://github.com/Lideeyah/attest-team-terra/actions/runs/43326199420) completed successfully after a retry for delayed Kubernetes controller status. All four deployments, including PostgreSQL, report 1/1 available.
+
+Migration 005 is applied, the original PVC remains Bound and the hosted database has zero active automatic-payment policies. Both direct API checks and the final frontend-to-API hosted login/workspace smoke check passed. No additional hosted payments were submitted during smoke testing.
+
+Final validation: 109 backend tests, 25 frontend tests, lint, local and CI production builds, 15 API journeys, four extended product journeys, ten browser journeys and 408 viewport checks. The supplied PDF and point KML were used in isolated acceptance tests.
+
+Public access still requires the platform’s Cloudflare Access sign-in. The deployment is a sandbox release; the product/provider gaps above remain. See `team05-release-handoff-2026-11-13.md` for the rollout history and operational details.
