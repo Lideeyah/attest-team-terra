@@ -18,6 +18,10 @@ def current(kind,name):
 def apply(item):
     existing=current(item['kind'],item['metadata']['name'])
     if existing and existing['metadata'].get('labels',{}).get('app.kubernetes.io/managed-by')!='attest-team05':raise RuntimeError('Unmanaged resource: '+item['metadata']['name'])
+    if existing and item['kind']=='PersistentVolumeClaim' and existing.get('status',{}).get('phase')=='Bound':
+        if existing['spec']['accessModes']!=item['spec']['accessModes'] or existing['spec']['resources']['requests']['storage']!=item['spec']['resources']['requests']['storage']:raise RuntimeError('Existing bound claim requires explicit storage review: '+item['metadata']['name'])
+        print('Preserved bound volume claim '+item['metadata']['name'],flush=True)
+        return
     print(kubectl('apply','--server-side','--field-manager=attest-team05','-f','-',body=item).strip(),flush=True)
 
 if kubectl('config','view','--minify','-o','jsonpath={.contexts[0].context.namespace}').strip()!=namespace:raise RuntimeError('Kubeconfig namespace mismatch')
