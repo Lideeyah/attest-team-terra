@@ -73,7 +73,7 @@ else:print('Preserved completed bootstrap Job for controller tracking',flush=Tru
 for item in items:
     if item['metadata']['name'] in ['api','worker','frontend','app']:apply(item)
 for name in ['api','worker','frontend']:
-    try:print(kubectl('rollout','status','deployment/'+name,'--timeout=300s'),flush=True)
+    try:print(kubectl('rollout','status','deployment/'+name,'--timeout=600s'),flush=True)
     except RuntimeError:
         print(kubectl('get','pods','-o','wide'),flush=True)
         print(kubectl('logs','deployment/'+name,'--all-containers=true','--tail=30'),flush=True);raise
