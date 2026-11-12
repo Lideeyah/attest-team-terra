@@ -50,9 +50,19 @@ except RuntimeError:
     raise
 job=next(item for item in items if item['kind']=='Job');name=job['metadata']['name']
 if current('job',name) is None:apply(job)
-try:print(kubectl('wait','--for=condition=complete','job/'+name,'--timeout=600s'),flush=True)
+try:
+    deadline=time.monotonic()+600
+    while time.monotonic()<deadline:
+        status=current('job',name).get('status',{})
+        if status.get('succeeded')==1:print('Bootstrap completed',flush=True);break
+        if status.get('failed') or any(c.get('type')=='Failed' and c.get('status')=='True' for c in status.get('conditions',[])):raise RuntimeError('Bootstrap job failed')
+        time.sleep(5)
+    else:raise RuntimeError('Bootstrap readiness timed out')
 except RuntimeError:
-    print(kubectl('logs','job/'+name,'--all-containers=true','--tail=40'),flush=True);raise
+    for container in ['fetch-runtime','bootstrap']:
+        try:print(kubectl('logs','job/'+name,'-c',container,'--tail=40'),flush=True)
+        except RuntimeError:print('Logs unavailable for '+container,flush=True)
+    raise
 print(kubectl('delete','job',name,'--wait=true','--timeout=90s'),flush=True)
 for item in items:
     if item['metadata']['name'] in ['api','worker','frontend','app']:apply(item)

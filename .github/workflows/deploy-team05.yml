@@ -44,6 +44,22 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             backend/package-lock.json
+      - name: Verify non-root archive extraction
+        run: |
+          test "$(id -u)" != 0
+          extraction_test="$RUNNER_TEMP/attest-extraction-check"
+          mkdir -p "$extraction_test/source" "$extraction_test/target"
+          printf 'non-root extraction' > "$extraction_test/source/check.txt"
+          tar -czf "$extraction_test/check.tar.gz" -C "$extraction_test/source" .
+          sudo chown root:"$(id -g)" "$extraction_test/target"
+          sudo chmod 2775 "$extraction_test/target"
+          if tar -xzf "$extraction_test/check.tar.gz" --no-same-owner -C "$extraction_test/target" 2> "$extraction_test/expected-error.log"; then
+            echo 'Expected the old extraction command to reject root-directory metadata changes'
+            exit 1
+          fi
+          tar -xzf "$extraction_test/check.tar.gz" --strip-components=1 --no-same-owner --no-same-permissions --no-overwrite-dir -C "$extraction_test/target"
+          test "$(cat "$extraction_test/target/check.txt")" = 'non-root extraction'
+          echo 'Non-root extraction regression passed'
       - run: npm ci
       - run: npm ci --prefix backend
       - run: npm run build:production --prefix backend

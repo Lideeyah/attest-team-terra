@@ -11,5 +11,6 @@ if(!response.ok||!response.body)throw Error('Release download failed: HTTP '+res
 const hash=createHash('sha256');
 await pipeline(Readable.fromWeb(response.body),new Transform({transform(chunk,_encoding,callback){hash.update(chunk);callback(null,chunk);}}),createWriteStream('/tmp/runtime.tar.gz'));
 if(hash.digest('hex')!==expected)throw Error('Runtime bundle checksum mismatch');
-execFileSync('tar',['-xzf','/tmp/runtime.tar.gz','--no-same-owner','-C','/runtime']);
+// Bundles have a leading ./ entry; omit it so tar never changes the volume root.
+execFileSync('tar',['-xzf','/tmp/runtime.tar.gz','--strip-components=1','--no-same-owner','--no-same-permissions','--no-overwrite-dir','-C','/runtime']);
 console.log('Verified '+kind.toLowerCase()+' runtime extracted.');
