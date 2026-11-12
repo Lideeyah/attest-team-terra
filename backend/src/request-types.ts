@@ -14,7 +14,7 @@ export interface RequestBodies{
  '/api/projects/lookup':{registryId:string};
  '/api/projects':{registryId?:string;boundaryId?:string;registryRecord?:{registryId:string;boundaryId?:string}};
  '/api/registry/boundary':BoundaryInput;
- '/api/admin/projects/:id/account':{accountNumber:string};
+ '/api/admin/projects/:id/account':{accountNumber:string;ownershipVerified:boolean;reason:string};
  '/api/admin/registry/import':{record:unknown};
  '/api/admin/extractions/:id/review':{commitment:Review;reason:string};
  '/api/projects/:id/commitment':{field:string;value:unknown;reason:string};
