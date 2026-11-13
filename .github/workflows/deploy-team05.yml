@@ -66,10 +66,20 @@ jobs:
       - run: npm run build
       - run: npm prune --omit=dev --prefix backend
       - run: node scripts/package-team05.mjs
-      - name: Publish immutable runtime bundles
+      - name: Publish or reuse immutable runtime bundles
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "team05-${GITHUB_SHA}" .release/frontend.tar.gz .release/backend.tar.gz .release/SHA256SUMS --target "$GITHUB_SHA" --prerelease --title "team05 ${GITHUB_SHA}" --notes "Linux Node 24 runtime bundles for the team05 Kubernetes deployment."
+        run: |
+          tag="team05-${GITHUB_SHA}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,targetCommitish,assets > "$RUNNER_TEMP/team05-release.json" 2>/dev/null; then
+            test "$(jq -r '.tagName' "$RUNNER_TEMP/team05-release.json")" = "$tag"
+            test "$(jq -r '.targetCommitish' "$RUNNER_TEMP/team05-release.json")" = "$GITHUB_SHA"
+            assets=$(jq -r '[.assets[].name] | sort | join(",")' "$RUNNER_TEMP/team05-release.json")
+            test "$assets" = "SHA256SUMS,backend.tar.gz,frontend.tar.gz"
+            echo "Verified and reusing immutable release $tag"
+          else
+            gh release create "$tag" .release/frontend.tar.gz .release/backend.tar.gz .release/SHA256SUMS --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "team05 ${GITHUB_SHA}" --notes "Linux Node 24 runtime bundles for the team05 Kubernetes deployment."
+          fi
   deploy:
     needs: package
     runs-on: ubuntu-latest
