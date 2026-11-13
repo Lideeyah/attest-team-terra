@@ -214,19 +214,9 @@ async function beat3_theRefusal(h: Human, ctx: BrowserContext): Promise<void> {
   await h.settle();
   await h.read(1800, 2400);
 
-  /* A name that resolves to somebody else: flagged, not blocked. */
-  await h.page.goto(`${BASE}/field/enrol`, { waitUntil: "networkidle" });
-  await h.settle();
-  await h.click("[data-consent]");
-  await h.click("[data-step-next]");
-  await h.settle();
-  await h.type("[data-identity]", "23456789097");
-  await h.click("[data-step-next]");
-  await h.page.waitForSelector('[data-identity-state="mismatch"]', { timeout: 15_000 });
-  await h.read(1600, 2200);
-
-  /* A duplicate identity: blocked outright, with the words an agent reads
-     aloud. Hold on the block. */
+  /* One capture flow only; the single refusal that follows is a different
+     screen state, not a replay. A duplicate identity: blocked outright,
+     with the words an agent reads aloud. Hold on the block. */
   await h.page.goto(`${BASE}/field/enrol`, { waitUntil: "networkidle" });
   await h.settle();
   await h.click("[data-consent]");
