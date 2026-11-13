@@ -92,7 +92,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
     },
     {
       key: "required",
-      header: "Commitment required",
+      header: "Agreement required",
       numeric: true,
       cell: (period) => formatNaira(period.required),
     },
@@ -165,7 +165,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
 
       {closed.length === 0 ? (
         <Notice title="No period has closed yet">
-          The project is enrolled and its commitment is recorded. Nothing has
+          The project is enrolled and its agreement is recorded. Nothing has
           been paid under it yet, and the figures below say so rather than
           being absent.
         </Notice>
@@ -199,7 +199,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
       </div>
 
       <div className="stack">
-        <h2 className="h3-display">The commitment</h2>
+        <h2 className="h3-display">The agreement</h2>
         <div className="document">
           <div className="stack">
             <p className="quotation">{project.commitment.sourceQuote}</p>
@@ -224,7 +224,7 @@ async function ProjectBody({ projectId }: { projectId: string }) {
           </div>
         </div>
         <p className="prose-muted">
-          The commitment is the developer&rsquo;s own published words, not
+          The agreement is the developer&rsquo;s own published words, not
           Attest&rsquo;s reading of them. Every figure on this page is measured
           against it.
         </p>

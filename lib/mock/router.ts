@@ -794,7 +794,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
         {
           ...SESSION,
           email,
-          emailVerified: !/^unverified/i.test(email),
+          emailVerified: false,
         },
         null,
         "Signed in",
@@ -808,7 +808,7 @@ const ROUTES: { method: string; pattern: string; handler: Handler }[] = [
       success(
         { ...SESSION, email: String(body.email ?? SESSION.email), emailVerified: false },
         null,
-        "Verification email sent",
+        "Account created. You can sign in now.",
       ),
   },
   {

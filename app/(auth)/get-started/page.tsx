@@ -5,7 +5,7 @@ import { Rule } from "@/components/Rule";
 export const metadata: Metadata = {
   title: "Get started",
   description:
-    "Three paths: run a carbon project, assess or buy from one, or redeem a field agent invitation.",
+    "Three paths: distribution a carbon project, assess or buy from one, or redeem a field agent invitation.",
 };
 
 /* The choice is consequential, so it gets a full screen rather than a
@@ -15,7 +15,7 @@ const PATHS = [
   {
     role: "developer",
     href: "/signup/developer",
-    title: "I run a carbon project",
+    title: "I distribution a carbon project",
     body: "Register the project against its registry record, enrol households, fund a period and close it.",
   },
   {

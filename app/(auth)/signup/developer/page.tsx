@@ -30,7 +30,7 @@ async function signUp(formData: FormData) {
       `/signup/developer?state=error&code=${result.code}&email=${encodeURIComponent(email)}`,
     );
   }
-  redirect(`/signup/developer?state=sent&email=${encodeURIComponent(email)}&delivery=${result.data.verificationDelivery??"queued"}`);
+  redirect(`/signin?state=created&email=${encodeURIComponent(email)}`);
 }
 
 export default async function DeveloperSignUpPage({
@@ -40,20 +40,7 @@ export default async function DeveloperSignUpPage({
 }) {
   const search = await searchParams;
 
-  if (search.state === "sent") {
-    return (
-      <div className="stack-lg">
-        <p className="eyebrow">Verify your email</p>
-        <h1 className="h2-display">Check {search.email}</h1>
-        <p className="prose-muted">
-          {search.delivery==='unavailable'?'Your account was created, but email delivery is not available yet. Contact your administrator for a verification link. You cannot sign in until your email is verified.':'Your account was created and a verification email has been requested. Follow the link when it arrives; it expires in one hour. If it does not arrive, contact your administrator.'}
-        </p>
-        <Link href="/signin" className="btn-outline btn-sm">
-          Go to sign in
-        </Link>
-      </div>
-    );
-  }
+  if (search.state === "sent") redirect(`/signin?state=created&email=${encodeURIComponent(search.email??'')}`);
 
   const problem =
     search.state === "weak-password"
@@ -68,7 +55,7 @@ export default async function DeveloperSignUpPage({
             title: search.field === "email" ? "That is not an email address" : "The organisation is missing",
             body:
               search.field === "email"
-                ? "The address is where the verification link goes."
+                ? "Enter the email address you want to use to sign in."
                 : "The organisation's name appears on the public register beside every project it operates.",
           }
         : search.state === "error" && search.code === "DUPLICATE_REQUEST"
@@ -103,7 +90,7 @@ export default async function DeveloperSignUpPage({
         type="email"
         autoComplete="email"
         defaultValue={search.email}
-        error={search.field === "email" ? "Enter the address the verification link should go to" : undefined}
+        error={search.field === "email" ? "Enter a valid email address" : undefined}
       />
       <Field
         label="Password"

@@ -2,7 +2,7 @@ import type { Envelope } from "@attest/contracts";
 import { requestContext } from "#api-context";
 import {redirectExpiredSession} from './expired-session';
 export function messageForError(code:string,status:number):string {
-  if(code==='AUTOMATION_MANAGED_PROJECT')return 'This project uses automatic distributions. Review its wallet and payment rules instead of creating a separate manual payment run.';
+  if(code==='AUTOMATION_MANAGED_PROJECT')return 'This project uses automatic distributions. Review its wallet and payment rules instead of creating a separate manual distribution.';
   if(code==='OWNERSHIP_EVIDENCE_REQUIRED')return 'An administrator must record verified account ownership and debit authority before linking this account.';
   if(code==='ACCOUNT_CHANGE_BLOCKED')return 'Resolve outstanding payments before changing the payout account.';
   if(code==='SOURCE_REVIEW_REQUIRED')return 'A newer source document is available. Start a fresh review from the latest source terms before approving.';

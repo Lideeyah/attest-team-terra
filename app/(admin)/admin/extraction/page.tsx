@@ -40,7 +40,7 @@ export default async function ExtractionReviewPage() {
           {formatCount(undecided.length)} of {formatCount(rows.length)} waiting
         </h1>
         <p className="lede">
-          Every commitment on the register was read out of a project design
+          Every agreement on the register was read out of a project design
           document. Where the reading was not confident, a person reads the
           sentence it came from. The extraction stays on the record either way,
           and so does the decision.

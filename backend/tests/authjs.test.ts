@@ -4,9 +4,9 @@ import { MemoryStore } from '../src/store.js';
 import { createApp } from '../src/app.js';
 import { passwordHash } from '../src/auth.js';
 import { row, hash } from '../src/core.js';
-test('Auth.js credentials sign-in issues an encrypted cookie accepted by the API',async()=>{
+test('Auth.js accepts an account without email confirmation and still revokes changed sessions',async()=>{
  process.env.AUTH_SECRET='synthetic-auth-secret-with-at-least-thirty-two-characters';process.env.PUBLIC_URL='http://localhost:8080';
- const db=new MemoryStore(),email='authjs@example.test';await db.put('users',row({id:hash(email),email,passwordHash:passwordHash('synthetic-password-12345'),verified:true,role:'verifier',organisationId:'org'}));const app=await createApp(db);
+ const db=new MemoryStore(),email='authjs@example.test';await db.put('users',row({id:hash(email),email,passwordHash:passwordHash('synthetic-password-12345'),verified:false,role:'verifier',organisationId:'org'}));const app=await createApp(db);
  try{
  const csrf=await app.inject('/auth/csrf');assert.equal(csrf.statusCode,200,csrf.body);const cookies=csrf.cookies.map(c=>c.name+'='+c.value).join('; ');
  const result=await app.inject({method:'POST',url:'/auth/callback/credentials',headers:{'content-type':'application/x-www-form-urlencoded',cookie:cookies},payload:new URLSearchParams({email,password:'synthetic-password-12345',csrfToken:csrf.json().csrfToken,callbackUrl:'http://localhost:8080/'}).toString()});

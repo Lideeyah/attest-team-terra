@@ -138,7 +138,7 @@ export default async function VerifierProject({
         </Notice>
       ) : null}
 
-      <section className="stack" aria-label="The commitment">
+      <section className="stack" aria-label="The agreement">
         <h2 className="h3-display">What this project committed to</h2>
         <Rule />
         <p className="quotation">{project.commitment.sourceQuote}</p>

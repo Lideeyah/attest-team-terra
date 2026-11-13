@@ -46,7 +46,7 @@ export function ExecuteRun({
       </Button>
 
       {outcome.kind === "refused" ? (
-        <Notice tone="blocked" title="The run was not submitted">
+        <Notice tone="blocked" title="The distribution was not submitted">
           <p>{outcome.line}</p>
           <p className="note">{outcome.note}</p>
         </Notice>
@@ -54,7 +54,7 @@ export function ExecuteRun({
 
       <Modal
         open={open}
-        title="Execute this run"
+        title="Execute this distribution"
         onClose={() => setOpen(false)}
         footer={
           <>
@@ -72,7 +72,7 @@ export function ExecuteRun({
         </p>
         {Number(shortfall) > 0 ? (
           <p className="prose">
-            Funding is {formatNaira(shortfall)} short. The run proceeds and the
+            Funding is {formatNaira(shortfall)} short. The distribution proceeds and the
             shortfall is recorded in this period&rsquo;s attestation.
           </p>
         ) : null}

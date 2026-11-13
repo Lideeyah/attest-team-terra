@@ -1,7 +1,10 @@
 "use client";
+import {formCopy} from "@/lib/copy/forms";
 
 import {
   useId,
+  isValidElement,
+  cloneElement,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -20,17 +23,20 @@ type FieldProps = {
 export function Field({ label, note, error, children }: FieldProps) {
   const id = useId();
   const invalid = error !== undefined;
+  const copy = formCopy(label);
+  const control=children(id,invalid);
+  const required=isValidElement<{required?:boolean}>(control)&&control.props.required;
   return (
     <div className="field">
       <label className="label" htmlFor={id}>
-        {label}
+        {copy.label}<span className="field-requirement" aria-hidden="true">{required?'Required':'Optional'}</span>
       </label>
-      {children(id, invalid)}
+      {isValidElement<{'aria-describedby'?:string;'aria-label'?:string}>(control)?cloneElement(control,{'aria-label':copy.label,'aria-describedby':`${id}-help`}):control}
       {invalid ? (
-        <p className="field-error">{error}</p>
+        <p id={`${id}-help`} className="field-error">{error}</p>
       ) : note ? (
-        <p className="field-note">{note}</p>
-      ) : null}
+        <p id={`${id}-help`} className="field-note">{note}</p>
+      ) : <p id={`${id}-help`} className="field-note">{copy.help}</p>}
     </div>
   );
 }

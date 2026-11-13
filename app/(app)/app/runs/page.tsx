@@ -14,7 +14,7 @@ import { settledOf } from "@/lib/console-format";
 import type { RunState } from "@/lib/api/contract";
 
 export const metadata: Metadata = {
-  title: "Runs",
+  title: "Distributions",
 };
 
 const TONE: Partial<Record<RunState, "flagged" | "blocked" | "review">> = {
@@ -34,7 +34,7 @@ export default async function RunsPage() {
     return (
       <div className="console-page stack-lg">
         <Notice tone="review" title="This account is not on a project yet">
-          <p>A run belongs to a project, so this opens once one exists.</p>
+          <p>A distribution belongs to a project, so this opens once one exists.</p>
         </Notice>
       </div>
     );
@@ -58,18 +58,18 @@ export default async function RunsPage() {
   return (
     <div className="console-page stack-lg">
       <header className="stack">
-        <p className="eyebrow">Runs</p>
+        <p className="eyebrow">Distributions</p>
         <div className="row-between">
-          <h1 className="h2-display">{formatCount(runs.length)} runs</h1>
-          <ButtonLink href="/app/runs/new">New run</ButtonLink>
+          <h1 className="h2-display">{formatCount(runs.length)} distributions</h1>
+          <ButtonLink href="/app/runs/new">New distribution</ButtonLink>
         </div>
         <Rule weight="heavy" />
       </header>
 
       {runs.length === 0 ? (
         <EmptyState
-          line="No run has been created yet. A run pays one period's roster in one bulk transfer."
-          action={<ButtonLink href="/app/runs/new">New run</ButtonLink>}
+          line="No distribution has been created yet. A distribution pays one period's participants in one bulk transfer."
+          action={<ButtonLink href="/app/runs/new">New distribution</ButtonLink>}
         />
       ) : (
         <div className="stack">

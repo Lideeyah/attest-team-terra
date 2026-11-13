@@ -317,17 +317,17 @@
 
 .panel {
   background: var(--surface-reading);
-  border: var(--hairline) solid var(--rule-hairline);
+  border: 0;
 }
 
 .panel-elevated {
   background: var(--surface-elevated);
-  border: var(--hairline) solid var(--rule-hairline);
+  border: 0;
 }
 
 .panel-sunken {
   background: var(--surface-sunken);
-  border: var(--hairline) solid var(--rule-hairline);
+  border: 0;
 }
 
 .panel.stack,

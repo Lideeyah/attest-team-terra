@@ -308,7 +308,7 @@ export function LiveRun({ run: initialRun, first }: LiveRunProps) {
   return (
     <div className="stack-lg">
       {connection === "reconnecting" ? (
-        <Notice tone="review" title="The connection to the run dropped">
+        <Notice tone="review" title="The connection to the distribution dropped">
           <p data-stream="reconnecting">{RUN_COPY.streamDropped}</p>
         </Notice>
       ) : null}
@@ -319,7 +319,7 @@ export function LiveRun({ run: initialRun, first }: LiveRunProps) {
           title={
             failed > 0
               ? `The run is complete with ${formatCount(failed)} transfers outstanding`
-              : "The run is complete"
+              : "The distribution is complete"
           }
         >
           <p data-run-complete={failed > 0 ? "with-failures" : "clean"}>
@@ -363,7 +363,7 @@ export function LiveRun({ run: initialRun, first }: LiveRunProps) {
         <h2 className="h3-display">Failures by class</h2>
         <Rule />
         {run.failures.length === 0 ? (
-          <p className="prose">No transfer in this run has failed.</p>
+          <p className="prose">No transfer in this distribution has failed.</p>
         ) : (
           <ul className="stack">
             {run.failures.map((failure) => {

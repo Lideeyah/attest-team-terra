@@ -18,7 +18,7 @@ import {
 import { formatCount } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "Roster",
+  title: "Participants",
 };
 
 type Search = {
@@ -54,7 +54,7 @@ export default async function RosterPage({
     return (
       <div className="console-page stack-lg">
         <Notice tone="review" title="This account is not on a project yet">
-          <p>The roster opens once a project is created.</p>
+          <p>The participants opens once a project is created.</p>
         </Notice>
       </div>
     );

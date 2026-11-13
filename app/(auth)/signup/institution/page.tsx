@@ -30,7 +30,7 @@ async function signUp(formData: FormData) {
       `/signup/institution?state=error&code=${result.code}&email=${encodeURIComponent(email)}`,
     );
   }
-  redirect(`/signup/institution?state=sent&email=${encodeURIComponent(result.data.email)}`);
+  redirect(`/signin?state=created&email=${encodeURIComponent(email)}`);
 }
 
 export default async function InstitutionSignUpPage({
@@ -41,21 +41,7 @@ export default async function InstitutionSignUpPage({
   const search = await searchParams;
   if(process.env.ATTEST_API_MODE==='live')return <section className="auth-frame"><div className="auth-column stack"><h1 className="h2-display">Institution access</h1><p>Verifier accounts must be provisioned by the platform. Public signup creates developer accounts only.</p><Link className="btn" href="/signin">Sign in with an existing institution account</Link></div></section>;
 
-  if (search.state === "sent") {
-    return (
-      <div className="stack-lg">
-        <p className="eyebrow">Verify your email</p>
-        <h1 className="h2-display">Check {search.email}</h1>
-        <p className="prose-muted">
-          A verification link is on its way. It expires in twenty-four hours;
-          if it lapses, sign in and a new one is sent.
-        </p>
-        <Link href="/signin" className="btn-outline btn-sm">
-          Go to sign in
-        </Link>
-      </div>
-    );
-  }
+  if(search.state==='sent') redirect('/signin?state=created');
 
   const problem =
     search.state === "weak-password"

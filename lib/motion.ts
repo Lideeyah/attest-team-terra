@@ -11,7 +11,7 @@ export const FRAME_MS = FRAME * 1000;
 export const DURATION = {
   press: FRAME * 3,
   base: FRAME * 5,
-  screen: FRAME * 7,
+  screen: FRAME * 5,
   stamp: FRAME * 8,
   draw: FRAME * 8,
   ink: FRAME * 8,

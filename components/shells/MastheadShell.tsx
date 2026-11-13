@@ -35,45 +35,18 @@ export function MastheadShell({
   const pathname = usePathname();
 
   return (
-    <div>
-      <header className="masthead">
-        <div className="measure">
-          <div className="row-between masthead-row">
-            <div className="row">
-              <Lockup size={18} />
-              <span className="eyebrow">{surface}</span>
-            </div>
-            <span className="masthead-account">
-              {context ? <span className="record-cell">{context}</span> : null}
-              {process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<SessionAccount/>:<><span className="eyebrow">{account.organisation}</span><span className="record-cell console-account">{account.email}</span></>}
-              <SignOut/>
-            </span>
-          </div>
-        </div>
-      </header>
-      <div className="measure">
-        <nav className="tab-rail" aria-label={surface}>
-          <WorkspaceMenu current={sections.find(section=>pathname===section.href||(section.href!==sections[0]?.href&&pathname.startsWith(section.href+'/')))?.label??surface}>
-          {sections.map((section) => {
-            const active =
-              pathname === section.href ||
-              (section.href !== sections[0]?.href && pathname.startsWith(`${section.href}/`));
-            return (
-              <Link
-                key={section.href}
-                href={section.href}
-                className="tab"
-                prefetch={false}
-                aria-current={active ? "page" : undefined}
-              >
-                {section.label}
-              </Link>
-            );
-          })}
-          </WorkspaceMenu>
-        </nav>
-      </div>
-      <div className="measure section-tight masthead-content">{children}</div>
+    <div className="console-shell">
+      <nav className="console-rail" aria-label={surface}>
+        <div className="console-rail-head"><Lockup size={18}/><p className="note">{surface}</p></div>
+        <WorkspaceMenu current={sections.find(section=>pathname===section.href)?.label??surface}>
+          <ul className="console-nav">{sections.map((section,index)=>{
+            const active=pathname===section.href||(index>0&&pathname.startsWith(section.href+'/'));
+            return <li key={section.href}><Link className="console-nav-link" href={section.href} aria-current={active?'page':undefined}>{section.label}</Link></li>;
+          })}</ul>
+          <div className="console-rail-foot">{process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?<SessionAccount/>:<><p>{account.organisation}</p><p>{account.email}</p></>}<SignOut/></div>
+        </WorkspaceMenu>
+      </nav>
+      <div className="console-main masthead-content">{context?<p className="workspace-context">{context}</p>:null}{children}</div>
     </div>
   );
 }

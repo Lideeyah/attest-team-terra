@@ -20,9 +20,9 @@ import {
 import { formatDateTime } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "The commitment",
+  title: "The agreement",
   description:
-    "The commitment extracted from the project design document, shown with the sentence it came from.",
+    "The agreement extracted from the project design document, shown with the sentence it came from.",
 };
 
 /* The four fields the extraction produces, each correctable, each correction
@@ -50,11 +50,11 @@ const FIELDS: {
   {
     key: "cadence",
     label: "Cadence",
-    note: "How often the commitment falls due.",
+    note: "How often the agreement falls due.",
     options: [
       { value: "quarterly", label: "Quarterly" },
       { value: "annual", label: "Annual" },
-      { value: "staged", label: "Staged against verification" },
+      { value: "staged", label: "Waiting for approval against verification" },
     ],
   },
   {
@@ -177,13 +177,13 @@ export default async function CommitmentStep({
       ? {
           tone: "blocked" as const,
           title: headingFor("PDD_UNREADABLE", "The document could not be read"),
-          body: "Upload a text-based PDF rather than a scan, under 40MB. A scan has no text in it to find a commitment in.",
+          body: "Upload a text-based PDF rather than a scan, under 40MB. A scan has no text in it to find a agreement in.",
         }
       : search.code === "PDD_NO_COMMITMENT"
         ? {
             tone: "blocked" as const,
-            title: headingFor("PDD_NO_COMMITMENT", "No benefit-sharing commitment was found in it"),
-            body: "Upload the document that carries the commitment, or enter it by hand with the sentence and page it comes from.",
+            title: headingFor("PDD_NO_COMMITMENT", "No benefit-sharing agreement was found in it"),
+            body: "Upload the document that carries the agreement, or enter it by hand with the sentence and page it comes from.",
           }
         : search.code === "EXTRACTION_LOW_CONFIDENCE"
           ? {
@@ -195,7 +195,7 @@ export default async function CommitmentStep({
             ? {
                 tone: "flagged" as const,
                 title: headingFor("MODEL_UNAVAILABLE", "The extraction service did not answer"),
-                body: "The document is queued and extraction runs when the service answers. Nothing was lost.",
+                body: "The document is queued and extraction distributions when the service answers. Nothing was lost.",
               }
             : search.state === "no-file"
               ? {
@@ -207,7 +207,7 @@ export default async function CommitmentStep({
                 ? {
                     tone: "flagged" as const,
                     title: "That is not a PDF",
-                    body: "The project design document as a text-based PDF. A photograph of a page has no text in it to find a commitment in.",
+                    body: "The project design document as a text-based PDF. A photograph of a page has no text in it to find a agreement in.",
                   }
                 : search.state === "invalid"
                   ? {
@@ -259,7 +259,7 @@ export default async function CommitmentStep({
           </p>
         ) : (
           <p className="note">
-            A text-based PDF, under 40MB. The commitment below is read out of
+            A text-based PDF, under 40MB. The agreement below is read out of
             it, and the sentence it came from is quoted beside the figure.
           </p>
         )}
@@ -383,7 +383,7 @@ export default async function CommitmentStep({
               <p className="field-note">
                 For the basis, &ldquo;net&rdquo; or &ldquo;gross&rdquo;; for the
                 cadence, &ldquo;quarterly&rdquo;, &ldquo;annual&rdquo; or
-                &ldquo;staged&rdquo;.
+                &ldquo;waiting for approval&rdquo;.
               </p>
             </div>
             <div className="field">
@@ -410,7 +410,7 @@ export default async function CommitmentStep({
           </form>
 
           <form action={accept} className="row">
-            <Button type="submit">This is the commitment</Button>
+            <Button type="submit">This is the agreement</Button>
           </form>
         </>
       ) : (

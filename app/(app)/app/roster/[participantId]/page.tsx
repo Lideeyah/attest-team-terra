@@ -97,7 +97,7 @@ export default async function ParticipantPage({
       </header>
 
       {participant.status === "removed" ? (
-        <Notice tone="blocked" title="This household is removed from the roster">
+        <Notice tone="blocked" title="This household is removed from the participants">
           <p data-status-note="removed">
             {PARTICIPANT_COPY.removedNote(
               participant.statusReason ?? "No reason was recorded.",
@@ -113,7 +113,7 @@ export default async function ParticipantPage({
       ) : null}
 
       {participant.status === "excluded" ? (
-        <Notice tone="flagged" title="Excluded from the current run">
+        <Notice tone="flagged" title="Excluded from the current distribution">
           <p data-status-note="excluded">
             {participant.statusReason ?? "No reason was recorded."}
           </p>

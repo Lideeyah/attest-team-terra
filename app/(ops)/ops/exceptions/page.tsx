@@ -48,7 +48,7 @@ export default async function ExceptionsPage({
         <p className="lede">
           A check that did not pass, a name that did not match, a wallet whose
           limit is below the payment. Each is about one enrolment and is
-          resolved on the project&rsquo;s own roster.
+          resolved on the project&rsquo;s own participants.
         </p>
         <Rule weight="heavy" />
       </header>

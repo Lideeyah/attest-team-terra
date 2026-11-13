@@ -164,7 +164,7 @@ async function AttestationBody({ attestationId }: { attestationId: string }) {
               </p>
             </div>
             <div style={{ background: "var(--surface-reading)", padding: "var(--pad-panel)" }}>
-              <p className="eyebrow">Commitment required</p>
+              <p className="eyebrow">Agreement required</p>
               <p className="figure-value">{formatNaira(record.required)}</p>
               <p className="figure-denominator">
                 shortfall {formatNaira(record.shortfall)}

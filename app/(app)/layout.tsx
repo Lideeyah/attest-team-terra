@@ -5,7 +5,6 @@ import { Surface } from "@/components/Surface";
 import { DeveloperShell } from "@/components/shells/DeveloperShell";
 import { consoleContext } from "@/lib/console";
 import { api } from "@/lib/api/client";
-import { ProjectPicker } from "@/components/console/ProjectPicker";
 import {requireRole} from '@/lib/api/access';
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -39,7 +38,6 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <Surface>
       <DeveloperShell {...shell}>
-        {process.env.ATTEST_API_MODE==='live'?<div className="console-page"><ProjectPicker projectId={session.ok?session.data.projectId??undefined:undefined}/></div>:null}
         <RouteTransition>{children}</RouteTransition>
       </DeveloperShell>
     </Surface>

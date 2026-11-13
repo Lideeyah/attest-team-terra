@@ -18,7 +18,7 @@ export async function generateMetadata({
   const { runId } = await params;
   const result = await api.run(runId);
   return {
-    title: result.ok ? `${formatPeriod(result.data.period)} run` : "Run not found",
+    title: result.ok ? `${formatPeriod(result.data.period)} run` : "Distribution not found",
   };
 }
 
@@ -92,21 +92,21 @@ export default async function RunPage({
       </header>
 
       {run.rosterSize === 0 ? (
-        <Notice tone="review" title="This run has not executed">
+        <Notice tone="review" title="This distribution has not executed">
           <p data-run-state={run.state}>
             {run.state === "awaiting-funding"
-              ? "The run is built and waiting for funding to arrive in the disbursement account."
+              ? "The distribution is built and waiting for funding to arrive in the disbursement account."
               : run.state === "funded"
-                ? "Funding has arrived. Pre-flight runs before the transfers are submitted."
+                ? "Funding has arrived. Pre-flight distributions before the transfers are submitted."
                 : run.state === "preflight-running"
-                  ? "Pre-flight is reading every enrolment on the roster against the bank."
+                  ? "Pre-flight is reading every enrolment on the participants against the bank."
                   : run.state === "preflight-failed"
                     ? "Pre-flight found enrolments that cannot be paid as they stand. Each must be excluded with a reason or corrected."
                     : run.state === "cancelled"
-                      ? "The run was cancelled before any transfer was submitted, so no household was paid from it."
+                      ? "The distribution was cancelled before any transfer was submitted, so no household was paid from it."
                       : run.state === "failed"
-                        ? "The bulk transfer was refused and no transfer in this run was submitted."
-                        : "The run is a draft. Nothing has been submitted."}
+                        ? "The bulk transfer was refused and no transfer in this distribution was submitted."
+                        : "The distribution is a draft. Nothing has been submitted."}
           </p>
         </Notice>
       ) : (

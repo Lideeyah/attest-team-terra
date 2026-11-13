@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import {useDialogFocus} from './useDialogFocus';
+import {OverlayPortal} from "./OverlayPortal";
 import { AnimatePresence, motion } from "motion/react";
 import { scrimIn, sheetIn } from "@/lib/motion";
 
@@ -21,21 +23,11 @@ export function Sheet({
   onClose,
   children,
 }: SheetProps) {
-  useEffect(() => {
-    if (!open || holdsUnsavedInput) {
-      return;
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, holdsUnsavedInput, onClose]);
+  const panel=useRef<HTMLElement>(null);
+  useDialogFocus(open,panel,onClose,holdsUnsavedInput);
 
   return (
-    <AnimatePresence>
+    <OverlayPortal><AnimatePresence>
       {open ? (
         <>
           <motion.div
@@ -47,6 +39,8 @@ export function Sheet({
             onClick={holdsUnsavedInput ? undefined : onClose}
           />
           <motion.aside
+            ref={panel}
+            tabIndex={-1}
             className="sheet"
             role="dialog"
             aria-modal="true"
@@ -66,6 +60,6 @@ export function Sheet({
           </motion.aside>
         </>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence></OverlayPortal>
   );
 }

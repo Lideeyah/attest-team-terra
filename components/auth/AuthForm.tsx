@@ -1,6 +1,7 @@
+import {PasswordInput} from "./PasswordInput";
 import type { ReactNode } from "react";
 import { Notice } from "@/components/Notice";
-import { Rule } from "@/components/Rule";
+import { formCopy } from "@/lib/copy/forms";
 import { Submit } from "@/components/auth/Submit";
 
 /* The sign-up and sign-in surfaces are deliberately clean: the mark, the
@@ -34,7 +35,7 @@ export function AuthForm({
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="h2-display">{title}</h1>
         {lede ? <p className="lede">{lede}</p> : null}
-        <Rule weight="heavy" />
+
       </div>
 
       {problem ? (
@@ -77,12 +78,13 @@ export function Field({
   attribute?: string;
 }) {
   const id = `field-${name}`;
+  const Control = type==='password'?PasswordInput:'input';
   return (
     <div className="field">
       <label className="label" htmlFor={id}>
-        {label}
+        {formCopy(label).label}<span className="field-requirement" aria-hidden="true">Required</span>
       </label>
-      <input
+      <Control
         id={id}
         name={name}
         type={type}
@@ -90,14 +92,17 @@ export function Field({
         defaultValue={defaultValue}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        required
+        aria-label={formCopy(label).label}
+        aria-describedby={`${id}-help`}
         aria-invalid={error ? "true" : undefined}
         {...(attribute ? { [attribute]: "" } : {})}
       />
       {error ? (
-        <p className="field-error">{error}</p>
+        <p id={`${id}-help`} className="field-error">{error}</p>
       ) : note ? (
-        <p className="field-note">{note}</p>
-      ) : null}
+        <p id={`${id}-help`} className="field-note">{note}</p>
+      ) : <p id={`${id}-help`} className="field-note">{formCopy(label).help}</p>}
     </div>
   );
 }

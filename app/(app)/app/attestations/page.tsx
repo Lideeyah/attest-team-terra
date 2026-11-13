@@ -126,7 +126,7 @@ export default async function AttestationsPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="eyebrow">Required by the commitment</dt>
+                  <dt className="eyebrow">Required by the agreement</dt>
                   <dd className="record-cell">{formatNaira(attestation.required)}</dd>
                 </div>
                 <div>

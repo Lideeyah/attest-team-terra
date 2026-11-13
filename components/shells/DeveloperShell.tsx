@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lockup } from "@/components/Mark";
-import { UNKNOWN, formatPeriod } from "@/lib/record";
 import {WorkspaceMenu} from './WorkspaceMenu';
+import {SessionAccount} from './SessionAccount';
 import {SignOut} from '@/components/auth/SignOut';
 
 type Section = {
@@ -20,19 +20,13 @@ type Section = {
 };
 
 const SECTIONS: Section[] = [
-  { href: "/app", label: "Home" },
-  { href: "/app/roster", label: "Roster" },
-  { href: "/app/map", label: "Project map" },
-  { href: "/app/agents", label: "Agents" },
-  { href: "/app/runs", label: "Payments" },
-  { href: "/app/wallet", label: "Wallet" },
-  { href: "/app/automation", label: "Payment rules" },
-  { href: "/app/documents", label: "Documents" },
-  { href: "/app/messages", label: "Messages" },
-  { href: "/app/ledger", label: "Funds history" },
-  { href: "/app/disputes", label: "Disputes" },
-  { href: "/app/attestations", label: "Attestations" },
-  { href: "/app/settings", label: "Settings" },
+ {href:'/app',label:'Overview'}, {href:'/app/wallet',label:'Wallet'},
+ {href:'/app/runs',label:'Distributions'}, {href:'/app/map',label:'Project map'},
+ {href:'/app/roster',label:'Participants'}, {href:'/app/agents',label:'Field officers'},
+ {href:'/app/automation',label:'Payment rules'}, {href:'/app/documents',label:'Agreement & documents'},
+ {href:'/app/messages',label:'Messages'}, {href:'/app/ledger',label:'Funds history'},
+ {href:'/app/disputes',label:'Disputes'}, {href:'/app/attestations',label:'Payment reports'},
+ {href:'/app/settings',label:'Settings'},
 ];
 
 type DeveloperShellProps = {
@@ -59,9 +53,6 @@ export function DeveloperShell({
     organisation: "Ekuri Initiative Limited",
     email: "operations@ekuri-initiative.ng",
   },
-  /* No default figures: a shell that invents a period would put a date on
-     every screen that no record supports. Without a period it says so. */
-  period,
 }: DeveloperShellProps) {
   const pathname = usePathname();
 
@@ -72,37 +63,6 @@ export function DeveloperShell({
           <Lockup size={17} />
         </div>
         <WorkspaceMenu current={SECTIONS.find(section=>section.href==='/app'?pathname==='/app':pathname.startsWith(section.href))?.label??'Workspace'}>
-        <div
-          className="period-indicator"
-          data-period-indicator={period ? period.label : "none"}
-        >
-          <p className="eyebrow">
-            {period === undefined
-              ? "Period"
-              : period.state === "closed"
-                ? "Period"
-                : "Open period"}
-          </p>
-          <p className="record-cell">
-            {period ? formatPeriod(period.label) : UNKNOWN}
-          </p>
-          <p className="record-cell">
-            {period === undefined
-              ? "No period is open"
-              : period.state === "closed"
-                ? `Closed · ${period.closesOn}`
-                : `${
-                    period.daysToClose === 1
-                      ? "1 day to close"
-                      : `${period.daysToClose} days to close`
-                  } · ${period.closesOn}`}
-          </p>
-          {period !== undefined && period.state !== "closed" && period.daysToClose <= 3 ? (
-            <p className="record-cell console-closing" data-closing="true">
-              Closing
-            </p>
-          ) : null}
-        </div>
         <ul className="console-nav">
           {SECTIONS.map((section) => {
             const active =
@@ -138,7 +98,7 @@ export function DeveloperShell({
         </ul>
         <div className="console-rail-foot">
           <p className="eyebrow">{account.organisation}</p>
-          <p className="record-cell console-account">{account.email}</p>
+          {account.email?<p className="record-cell console-account">{account.email}</p>:<SessionAccount/>}
           <SignOut/>
         </div>
         </WorkspaceMenu>

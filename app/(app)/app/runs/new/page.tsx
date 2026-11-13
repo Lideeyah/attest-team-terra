@@ -14,13 +14,13 @@ import type { ErrorCode } from "@/lib/api/contract";
 import { UNKNOWN, formatCount, formatNaira, formatPeriod } from "@/lib/record";
 
 export const metadata: Metadata = {
-  title: "New run",
+  title: "New distribution",
 };
 
 type Search = { step?: string; funding?: string };
 
 const STEPS = [
-  { id: "roster", label: "Roster" },
+  { id: "roster", label: "Participants" },
   { id: "arithmetic", label: "Arithmetic" },
   { id: "preflight", label: "Pre-flight" },
   { id: "confirm", label: "Confirm" },
@@ -31,7 +31,7 @@ const STEPS = [
 const REFUSAL: Partial<Record<ErrorCode, { title: string; line: string }>> = {
   ROSTER_EMPTY: {
     title: "Nobody is enrolled",
-    line: "Nobody is enrolled on this project, so there is no roster to pay. Enrolments arrive from the field app.",
+    line: "Nobody is enrolled on this project, so there is no participants to pay. Enrolments arrive from the field app.",
   },
   PERIOD_CLOSED: {
     title: "That period is closed",
@@ -39,15 +39,15 @@ const REFUSAL: Partial<Record<ErrorCode, { title: string; line: string }>> = {
   },
   FUNDING_NOT_RECEIVED: {
     title: "No funding has arrived",
-    line: "No funding has arrived for this period. The run can be built now and executes when the account is funded.",
+    line: "No funding has arrived for this period. The distribution can be built now and executes when the account is funded.",
   },
   FUNDING_INSUFFICIENT: {
     title: "Funding is less than the amount required",
-    line: "What is in the account is less than the amount required by the commitment. The run proceeds on what is funded and the shortfall is recorded in the attestation.",
+    line: "What is in the account is less than the amount required by the agreement. The distribution proceeds on what is funded and the shortfall is recorded in the attestation.",
   },
   PREFLIGHT_EXCLUSIONS_REQUIRED: {
-    title: "Enrolments must be excluded before this run executes",
-    line: "Pre-flight found enrolments that cannot be paid as they stand. Each must be excluded with a reason or corrected before the run executes.",
+    title: "Enrolments must be excluded before this distribution executes",
+    line: "Pre-flight found enrolments that cannot be paid as they stand. Each must be excluded with a reason or corrected before the distribution executes.",
   },
   FUNDING_EXCLUDES_CHARGES: {
     title: "Funding covers the payments but not the charges",
@@ -70,7 +70,7 @@ export default async function NewRunPage({
     return (
       <div className="console-page stack-lg">
         <Notice tone="review" title="This account is not on a project yet">
-          <p>A run belongs to a project, so this opens once one exists.</p>
+          <p>A distribution belongs to a project, so this opens once one exists.</p>
         </Notice>
       </div>
     );
@@ -113,7 +113,7 @@ export default async function NewRunPage({
       <div className="console-page stack-lg">
         <header className="stack">
           <p className="eyebrow">{RUN_COPY.newHeading}</p>
-          <h1 className="h2-display">No run can be created</h1>
+          <h1 className="h2-display">No distribution can be created</h1>
           <Rule weight="heavy" />
         </header>
         <Notice
@@ -126,7 +126,7 @@ export default async function NewRunPage({
         >
           <p data-run-blocked={project.status}>
             The record stays readable and every figure already published stands.
-            No new run is created while the project is {project.status}.
+            No new distribution is created while the project is {project.status}.
           </p>
         </Notice>
       </div>
@@ -200,8 +200,8 @@ export default async function NewRunPage({
       </header>
 
       {step === "roster" ? (
-        <section className="stack" aria-label="Roster and period">
-          <h2 className="h3-display">What this run pays</h2>
+        <section className="stack" aria-label="Participants and period">
+          <h2 className="h3-display">What this distribution pays</h2>
           <Rule />
           <dl className="record-grid">
             <div>
@@ -211,7 +211,7 @@ export default async function NewRunPage({
               </dd>
             </div>
             <div>
-              <dt className="eyebrow">Roster</dt>
+              <dt className="eyebrow">Participants</dt>
               <dd className="record-cell">
                 {formatCount(project?.enrolled ?? 0)} households enrolled
               </dd>
@@ -223,14 +223,14 @@ export default async function NewRunPage({
               </dd>
             </div>
             <div>
-              <dt className="eyebrow">Funding allocated to this run</dt>
+              <dt className="eyebrow">Funding allocated to this distribution</dt>
               <dd className="record-cell">
                 {figures ? formatNaira(figures.funded) : UNKNOWN}
               </dd>
             </div>
           </dl>
           <p className="note">
-            Every household on the roster with an active wallet is paid. An
+            Every household on the participants with an active wallet is paid. An
             exclusion is a decision with a reason, made at pre-flight.
           </p>
         </section>
@@ -254,11 +254,11 @@ export default async function NewRunPage({
 
       {step === "confirm" && figures ? (
         <section className="stack" aria-label="Confirm">
-          <h2 className="h3-display">What executing this run does</h2>
+          <h2 className="h3-display">What executing this distribution does</h2>
           <Rule />
           <ArithmeticPanel figures={figures} />
           {shortfall > 0 ? (
-            <Notice tone="flagged" title="Funding is short of what this run requires">
+            <Notice tone="flagged" title="Funding is short of what this distribution requires">
               <p data-shortfall={figures.shortfall}>
                 {RUN_COPY.shortfall(formatNaira(figures.shortfall))}
               </p>
@@ -269,7 +269,7 @@ export default async function NewRunPage({
               </p>
             </Notice>
           ) : (
-            <Notice title="Funding covers this run">
+            <Notice title="Funding covers this distribution">
               <p>{RUN_COPY.noShortfall}</p>
             </Notice>
           )}
@@ -280,7 +280,7 @@ export default async function NewRunPage({
             >
               <p data-execute-blocked="exclusions">
                 Each has to be excluded with a reason or corrected first. The
-                run does not execute while pre-flight has not passed.
+                distribution does not execute while pre-flight has not passed.
               </p>
               <p>
                 <Link href="/app/runs/new?step=preflight" prefetch={false}>

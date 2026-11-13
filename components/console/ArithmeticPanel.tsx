@@ -22,7 +22,7 @@ export function ArithmeticPanel({ figures }: { figures: Arithmetic }) {
   const rows: Row[] = [
     {
       key: "commitmentPct",
-      label: "Commitment",
+      label: "Agreement",
       note: "From the project design document, as extracted and corrected.",
       value: String(figures.commitmentPct),
       display: `${figures.commitmentPct}% of net revenue`,
@@ -37,14 +37,14 @@ export function ArithmeticPanel({ figures }: { figures: Arithmetic }) {
     {
       key: "required",
       label: "Required to households",
-      note: "The declared gross at the commitment percentage. Nobody types this figure.",
+      note: "The declared gross at the agreement percentage. Nobody types this figure.",
       value: figures.required,
       display: formatNaira(figures.required),
     },
     {
       key: "estimatedCharges",
       label: "Estimated charges",
-      note: "The bank's own schedule applied to the transfers this run makes. Charges are borne by the project, never deducted from a household.",
+      note: "The bank's own schedule applied to the transfers this distribution makes. Charges are borne by the project, never deducted from a household.",
       value: figures.estimatedCharges,
       display: formatNaira(figures.estimatedCharges),
     },
@@ -58,14 +58,14 @@ export function ArithmeticPanel({ figures }: { figures: Arithmetic }) {
     {
       key: "funded",
       label: "Funded",
-      note: "What this run is funded with. The disbursement account's own balance, and what it holds for other runs in the period, are on the funding screen.",
+      note: "What this distribution is funded with. The disbursement account's own balance, and what it holds for other distributions in the period, are on the funding screen.",
       value: figures.funded,
       display: formatNaira(figures.funded),
     },
     {
       key: "shortfall",
       label: "Shortfall",
-      note: "The total needed less what is funded. A shortfall does not stop a run; it is recorded in the attestation.",
+      note: "The total needed less what is funded. A shortfall does not stop a distribution; it is recorded in the attestation.",
       value: figures.shortfall,
       display: formatNaira(figures.shortfall),
     },

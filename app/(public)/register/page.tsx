@@ -188,7 +188,7 @@ async function RegisterRows({ search }: { search: Search }) {
               <th scope="col">Country</th>
               <th scope="col">Registry</th>
               <th scope="col" className="numeric">
-                Commitment
+                Agreement
               </th>
               <th scope="col">Last closed period</th>
               <th scope="col" className="numeric">

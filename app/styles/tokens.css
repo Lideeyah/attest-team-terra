@@ -78,14 +78,14 @@
   --fs-h3: 1.22rem;
   --fs-lede: 1.125rem;
   --fs-body: 16px;
-  --fs-eyebrow: 12px;
-  --fs-stamp: 10.5px;
-  --fs-btn: 13px;
-  --fs-console: 11px;
+  --fs-eyebrow: 13px;
+  --fs-stamp: 12px;
+  --fs-btn: 14px;
+  --fs-console: 13px;
   --fs-figure: clamp(1.6rem, 3vw, 2.4rem);
-  --fs-record-cell: 12px;
-  --fs-input: 14px;
-  --fs-label: 12px;
+  --fs-record-cell: 14px;
+  --fs-input: 16px;
+  --fs-label: 14px;
   --fs-toast: 14px;
 
   --fw-display: 700;
@@ -115,14 +115,14 @@
   --measure-reading: 980px;
   --bp-wide: 1180px;
   --bp-mid: 1080px;
-  --gutter: 40px;
+  --gutter: 32px;
   --gutter-tight: 20px;
   --section: 76px;
   --section-sm: 48px;
   --section-tight: 36px;
   --movement: 152px;
   --stack: 14px;
-  --stack-lg: 28px;
+  --stack-lg: 24px;
   --grid-rule: 1px;
 
   --pad-btn-y: 13px;
@@ -172,7 +172,7 @@
   --frame: 41.667ms;
   --t-press: 125ms;    /* 3 frames  */
   --t-base: 208ms;     /* 5 frames  */
-  --t-screen: 292ms;   /* 7 frames  */
+  --t-screen: 208ms;   /* 5 frames  */
   --t-stamp: 333ms;    /* 8 frames  */
   --t-draw: 333ms;     /* 8 frames  */
   --t-ink: 333ms;      /* 8 frames  */

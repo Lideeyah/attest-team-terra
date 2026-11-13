@@ -27,7 +27,7 @@ export function Table<Row>({
   activeRowKey,
 }: TableProps<Row>) {
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" role="region" aria-label={caption} tabIndex={0}>
     <table className="table">
       <caption className="visually-hidden">{caption}</caption>
       <thead>

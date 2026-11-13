@@ -73,7 +73,7 @@ export function PreflightExclusions({
         }
       >
         <p data-preflight="exclusions">
-          Each must be excluded with a reason or corrected before the run
+          Each must be excluded with a reason or corrected before the distribution
           executes. An exclusion stays on the record and is counted in the
           period&rsquo;s coverage denominator, so excluding a household is not
           a way of improving the figure.
@@ -125,7 +125,7 @@ export function PreflightExclusions({
                   onClick={() => void exclude(exclusion.participantId)}
                   data-exclude={exclusion.participantId}
                 >
-                  Exclude from this run
+                  Exclude from this distribution
                 </Button>
               </div>
             )}

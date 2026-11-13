@@ -133,7 +133,7 @@ export default async function FundingPage() {
         </dl>
         <p className="note">
           Charges are borne by the project. A household receives the amount the
-          commitment owes it and nothing is deducted from the payment.
+          agreement owes it and nothing is deducted from the payment.
         </p>
       </section>
 

@@ -1,4 +1,4 @@
-import { Lockup } from "@/components/Mark";
+import { AccessFrame } from "@/components/auth/AccessFrame";
 import { RouteTransition } from "@/components/RouteTransition";
 import { Surface } from "@/components/Surface";
 
@@ -6,14 +6,7 @@ import { Surface } from "@/components/Surface";
 export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
     <Surface>
-      <div className="auth-frame">
-        <div className="auth-column stack-lg">
-          <Lockup size={20} />
-          {/* Wizard progress carries routeForward and routeBack, which is
-              where a step moving forward differs from one going back. */}
-          <RouteTransition>{children}</RouteTransition>
-        </div>
-      </div>
+      <AccessFrame><RouteTransition>{children}</RouteTransition></AccessFrame>
     </Surface>
   );
 }

@@ -52,7 +52,7 @@ export default function AboutPage() {
             Account creation, identity verification, tiered limits, transfers,
             balances and settlement are Access Bank&rsquo;s. Who is entitled,
             whether they were paid, whether they confirmed it, what the
-            commitment was and what the record says are ours.
+            agreement was and what the record says are ours.
           </p>
         </div>
       </div>

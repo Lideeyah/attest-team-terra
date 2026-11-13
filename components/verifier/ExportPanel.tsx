@@ -179,7 +179,7 @@ export function ExportPanel({
           {state.report ? (
             <div className="definition" data-export-report>
               <div className="definition-row">
-                <span className="eyebrow">Commitment</span>
+                <span className="eyebrow">Agreement</span>
                 <span className="record-cell">
                   {state.report.commitment.percentage}% of {state.report.commitment.basis}{" "}
                   revenue · &ldquo;{state.report.commitment.sourceQuote}&rdquo; — PDD page{" "}

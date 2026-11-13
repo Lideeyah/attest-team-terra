@@ -87,7 +87,7 @@ async function DeveloperBody({ developerId }: { developerId: string }) {
 
       {closedPeriods.length === 0 ? (
         <Notice title="No period has closed under this operator">
-          Its projects are enrolled and their commitments are recorded. Nothing
+          Its projects are enrolled and their agreements are recorded. Nothing
           has been paid under them yet.
         </Notice>
       ) : null}

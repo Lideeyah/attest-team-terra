@@ -1,4 +1,6 @@
 import {FinanceWorkspace} from '@/components/console/FinanceWorkspace';
+import {ProjectPicker} from '@/components/console/ProjectPicker';
+import {PeriodBanner} from '@/components/console/PeriodBanner';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -42,7 +44,31 @@ export default async function ConsoleHome() {
     );
   }
 
-  if(process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live')return <div className="console-page stack-lg"><FinanceWorkspace projectId={context.project.id} compact/><section className="panel stack"><h2 className="h3-display">Continue your project</h2><p>Review your agreement, community members and payout readiness before activating automatic distributions.</p><div className="finance-tabs"><Link href="/app/documents">Review document</Link><Link href="/app/roster">Community members</Link><Link href="/app/map">Project map</Link><Link href="/app/automation">Automatic payment rules</Link></div></section></div>;
+  const overviewHeader = (
+    <div className="overview-header-group stack">
+      <ProjectPicker projectId={context.project.id} variant="overview" />
+      <PeriodBanner period={context.period} />
+    </div>
+  );
+
+  if (process.env.NEXT_PUBLIC_ATTEST_API_MODE === 'live') {
+    return (
+      <div className="console-page stack-lg">
+        {overviewHeader}
+        <FinanceWorkspace projectId={context.project.id} compact />
+        <section className="panel stack">
+          <h2 className="h3-display">Continue your project</h2>
+          <p>Review your agreement, community members and payout readiness before activating automatic distributions.</p>
+          <div className="finance-tabs">
+            <Link href="/app/documents">Review document</Link>
+            <Link href="/app/roster">Community members</Link>
+            <Link href="/app/map">Project map</Link>
+            <Link href="/app/automation">Automatic payment rules</Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
   const {
     project,
     openPeriod,
@@ -63,6 +89,7 @@ export default async function ConsoleHome() {
 
   return (
     <div className="console-page stack-lg">
+      {overviewHeader}
       <header className="stack">
         <p className="eyebrow">{project.name}</p>
         <h1 className="h2-display">
@@ -107,7 +134,7 @@ export default async function ConsoleHome() {
       {enrolled === 0 ? (
         <EmptyState
           line={CONSOLE_COPY.preFirstEnrolment}
-          action={<ButtonLink href="/app/roster">Import a roster</ButtonLink>}
+          action={<ButtonLink href="/app/roster">Import a participants</ButtonLink>}
         />
       ) : (
         <>
@@ -134,7 +161,7 @@ export default async function ConsoleHome() {
               denominator={
                 Number(shortfall) > 0
                   ? `against ${formatNaira(openPeriod?.required ?? "0.00")} required by the commitment`
-                  : "Funding covers what the commitment requires"
+                  : "Funding covers what the agreement requires"
               }
             />
             <Figure
@@ -160,13 +187,13 @@ export default async function ConsoleHome() {
           </section>
 
           {openRun ? (
-            <section className="stack" aria-label="Run in flight">
+            <section className="stack" aria-label="Distribution in flight">
               <div className="row-between">
                 <h2 className="h3-display">
-                  {formatPeriod(openRun.period)} run · {RUN_STATE_LABEL[openRun.state]}
+                  {formatPeriod(openRun.period)} distribution · {RUN_STATE_LABEL[openRun.state]}
                 </h2>
                 <ButtonLink href={`/app/runs/${openRun.id}`} variant="outline" small>
-                  Open the run
+                  Open the distribution
                 </ButtonLink>
               </div>
               <LiveRunStrip

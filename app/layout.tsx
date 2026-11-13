@@ -9,7 +9,7 @@ import {RequestFeedback} from "@/components/RequestFeedback";
    anything attached here would be attached there. */
 
 const DESCRIPTION =
-  "Attest moves carbon revenue to households through the bank and emits a record of what was paid, what was not, and against which commitment.";
+  "Attest moves carbon revenue to households through the bank and emits a record of what was paid, what was not, and against which agreement.";
 
 export const metadata: Metadata = {
   title: {

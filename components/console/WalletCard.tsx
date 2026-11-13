@@ -18,7 +18,7 @@ export function WalletCard({wallet}:{wallet:WalletSummary}) {
       <div className="wallet-balance">
         <div className="row"><p>Bank available balance</p><button type="button" className="wallet-visibility" aria-label={visible?'Hide wallet balance':'Show wallet balance'} aria-pressed={!visible} onClick={()=>setVisible(!visible)}>{visible?'Hide':'Show'}</button></div>
         <strong>{!visible?'••••••':wallet.bankAvailable===null?'Unavailable':formatNaira(wallet.bankAvailable)}</strong>
-        <p className="wallet-caption">Confirmed by the bank. Community commitments are tracked separately below.</p>
+        <p className="wallet-caption">Confirmed by the bank. Community agreements are tracked separately below.</p>
       </div>
       <div className="wallet-card-foot"><div><span>Project receiving account</span><p>{account??'Link an account to get started'}</p></div><span className="wallet-access">access<span>Bank-connected payments</span></span></div>
     </article>

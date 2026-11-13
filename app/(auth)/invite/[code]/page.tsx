@@ -117,7 +117,7 @@ export default async function InvitePage({
           </span>
           <p data-invite-state="identity-pending">
             The number given is being checked against the name the project
-            invited. The invitation stays open while it runs and is not used up
+            invited. The invitation stays open while it distributions and is not used up
             by this. It usually answers in under a minute.
           </p>
         </Notice>

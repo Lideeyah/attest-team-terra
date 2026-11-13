@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import {OverlayPortal} from "./OverlayPortal";
 import { AnimatePresence, motion } from "motion/react";
 import { modalIn, scrimIn } from "@/lib/motion";
 
@@ -95,7 +96,7 @@ export function Modal({
   }, [open]);
 
   return (
-    <AnimatePresence>
+    <OverlayPortal><AnimatePresence>
       {open ? (
         <>
           <motion.div
@@ -106,7 +107,7 @@ export function Modal({
             exit="gone"
             onClick={holdsUnsavedInput ? undefined : onClose}
           />
-          <motion.div
+          <div className="modal-position"><motion.div
             className="modal"
             ref={panel}
             tabIndex={-1}
@@ -126,9 +127,9 @@ export function Modal({
             </header>
             <div className="modal-body">{children}</div>
             {footer ? <div className="modal-foot">{footer}</div> : null}
-          </motion.div>
+          </motion.div></div>
         </>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence></OverlayPortal>
   );
 }

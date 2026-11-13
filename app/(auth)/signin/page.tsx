@@ -30,9 +30,6 @@ async function signIn(formData: FormData) {
   if (!result.ok) {
     redirect(`/signin?state=error&code=${result.code}&email=${encodeURIComponent(email)}`);
   }
-  if (!result.data.emailVerified) {
-    redirect(`/signin?state=unverified&email=${encodeURIComponent(email)}`);
-  }
   redirect(next || "/app");
 }
 
@@ -42,7 +39,7 @@ export default async function SignInPage({
   searchParams: Promise<Search>;
 }) {
   const search = await searchParams;
-  if (process.env.ATTEST_API_MODE === "live") return <BackendSignIn next={search.next} />;
+  if (process.env.ATTEST_API_MODE === "live") return <BackendSignIn next={search.next} email={search.email} created={search.state==='created'} />;
 
   const problem =
     search.state === "error" && search.code === "FORBIDDEN"

@@ -23,8 +23,8 @@ import type { ParticipantStatus } from "@/lib/api/contract";
 const STATUS_OPTIONS: { value: ParticipantStatus; label: string }[] = [
   { value: "active", label: "Active" },
   { value: "flagged", label: "Flagged for review" },
-  { value: "excluded", label: "Excluded from the current run" },
-  { value: "removed", label: "Removed from the roster" },
+  { value: "excluded", label: "Excluded from the current distribution" },
+  { value: "removed", label: "Removed from the participants" },
 ];
 
 type Outcome = { kind: "idle" } | { kind: "saved"; line: string } | { kind: "refused"; line: string; note: string };
@@ -117,7 +117,7 @@ export function ParticipantActions({
             onChange={(event) => setNextStatus(event.target.value as ParticipantStatus)}
             data-status-value="true"
           >
-            {(process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?[{value:'active',label:'Active'},{value:'suspended',label:'Suspended'},{value:'removed',label:'Removed from the roster'}]:STATUS_OPTIONS).map((option) => (
+            {(process.env.NEXT_PUBLIC_ATTEST_API_MODE==='live'?[{value:'active',label:'Active'},{value:'suspended',label:'Suspended'},{value:'removed',label:"Removed from the participants"}]:STATUS_OPTIONS).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

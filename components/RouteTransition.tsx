@@ -1,9 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useIsPresent, type Variants } from "motion/react";
 import { routeBack, routeForward } from "@/lib/motion";
-import { useState, type ReactNode } from "react";
+import { forwardRef, useState, type ReactNode } from "react";
+
+// Outgoing pages remain visible briefly, but must not expose a second set of
+// interactive controls to keyboard users or assistive technology.
+const TransitionScreen=forwardRef<HTMLElement,{children:ReactNode;variants:Variants}>(function TransitionScreen({children,variants},ref){
+  const present=useIsPresent();
+  return <motion.main ref={ref} variants={variants} initial="rest" animate="shown" exit="gone" aria-hidden={!present||undefined} inert={!present}>{children}</motion.main>;
+});
 
 function depthOf(pathname: string): number {
   return pathname.split("/").filter(Boolean).length;
@@ -27,15 +34,12 @@ export function RouteTransition({ children }: { children: ReactNode }) {
 
   return (
     <AnimatePresence mode="popLayout" initial={false}>
-      <motion.main
+      <TransitionScreen
         key={pathname}
         variants={variants}
-        initial="rest"
-        animate="shown"
-        exit="gone"
       >
         {children}
-      </motion.main>
+      </TransitionScreen>
     </AnimatePresence>
   );
 }

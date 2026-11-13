@@ -101,8 +101,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
     ensure(!c.b.role||c.b.role==='developer_admin','FORBIDDEN',403);
     const email=c.b.email.toLowerCase();const uid=hash(email);ensure(!await c.s.db.get('users',uid),'DUPLICATE_REQUEST',409);
     const u=await c.s.db.put('users',row({id:uid,email,passwordHash:passwordHash(c.b.password),organisationId:id(),organisation:c.b.organisation,role:'developer_admin',verified:false}));
-    // Provision verification via the operator command until an email provider is configured.
-    await c.s.authEmail(u,'verify');await c.s.audit(u.id,'auth.verification_required');return {id:u.id,verificationRequired:true,verificationDelivery:emailDelivery()};
+    await c.s.audit(u.id,'auth.account_created',undefined,{emailVerificationRequired:false});return {id:u.id,email:u.email,verificationRequired:false};
   },undefined,true);
   route('POST','/api/auth/resend-verification',async c=>{
     const user=await c.s.db.get('users',hash(c.b.email.toLowerCase()));
@@ -110,7 +109,7 @@ export async function createApp(db: Store, suppliedService?: Service) {
     return {accepted:true,delivery:emailDelivery()};
   },undefined,true);
   route('POST','/api/auth/signin',async c=>{
-    const user=await c.s.db.get('users',hash(String(c.b.email).toLowerCase()));ensure(user&&passwordValid(c.b.password,user.passwordHash)&&user.verified&&!user.suspended,'UNAUTHORIZED',401);
+    const user=await c.s.db.get('users',hash(String(c.b.email).toLowerCase()));ensure(user&&passwordValid(c.b.password,user.passwordHash)&&!user.suspended,'UNAUTHORIZED',401);
     if(user.role==='agent')ensure((await c.s.db.get('agents',user.id))?.status==='active','FORBIDDEN',403);
     return {token:await issueSession(c.s.db,user.id),expiresIn:28800};
   },undefined,true);

@@ -14,7 +14,7 @@ export async function session(db: Store, authorization?: string, cookie?: string
     ensure(token?.sub,'UNAUTHORIZED',401);user=await db.get('users',token.sub);
     ensure(user&&(user.authVersion??0)===(token.authVersion??0),'UNAUTHORIZED',401);
   }
-  ensure(user&&user.verified&&!user.suspended,'UNAUTHORIZED',401);
+  ensure(user&&!user.suspended,'UNAUTHORIZED',401);
   if(user.role==='agent'){const agent=await db.get('agents',user.id);ensure(agent?.status==='active','FORBIDDEN',403);}
   return {id:user.id,role:user.role,organisationId:user.organisationId!,projectId:user.projectId,deviceKey:user.deviceKey};
 }

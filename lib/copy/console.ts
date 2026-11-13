@@ -14,15 +14,15 @@ export const CONSOLE_COPY = {
   preFirstEnrolment:
     "Nobody is enrolled yet. Coverage is a fraction of the households on the roster, so it has no denominator until the first enrolment is synced.",
   suspended:
-    "This project is suspended. The record stays readable and no run can be created while it is.",
+    "This project is suspended. The record stays readable and no distribution can be created while it is.",
 } as const;
 
 /** The home screen's action list, ordered by what blocks the next payment. */
 export const ACTION_COPY = {
   funding: (shortfall: string) =>
-    `Funding is short by ${shortfall}. A run proceeds on what is funded and the shortfall is recorded in the attestation.`,
+    `Funding is short by ${shortfall}. A distribution proceeds on what is funded and the shortfall is recorded in the attestation.`,
   exclusions: (count: number) =>
-    `${count} enrolments must be excluded or resolved before a run can execute.`,
+    `${count} enrolments must be excluded or resolved before payments can start.`,
   disputes: (count: number) =>
     `${count} reports are open. A report closes on a participant confirmation or a reversal.`,
   flags: (count: number) => `${count} enrolments carry a flag and have not been reviewed.`,
@@ -38,11 +38,11 @@ export const ACTION_COPY = {
    the contract's spelling, not a reader's. */
 export const TRANSFER_STATE_LABEL: Record<string, string> = {
   queued: "Queued",
-  in_flight: "In flight",
-  settled: "Settled",
+  in_flight: "Processing",
+  settled: "Paid",
   failed: "Failed",
-  reversed: "Reversed after settling",
-  unconfirmed: "Settled, not confirmed",
+  reversed: "Returned after payment",
+  unconfirmed: "Paid; receipt not confirmed",
 };
 
 export const WALLET_STATE_LABEL: Record<string, string> = {
@@ -56,7 +56,7 @@ export const PARTICIPANT_STATE_LABEL: Record<string, string> = {
   suspended: "Suspended",
   active: "Active",
   flagged: "Flagged",
-  excluded: "Excluded from the current run",
+  excluded: "Excluded from the current distribution",
   disputed: "Disputed",
   "duplicate-blocked": "Blocked as a duplicate",
   removed: "Removed from the roster",
@@ -66,9 +66,9 @@ export const RUN_STATE_LABEL: Record<RunState, string> = {
   draft: "Draft",
   "awaiting-funding": "Awaiting funding",
   funded: "Funded",
-  "preflight-running": "Pre-flight running",
-  "preflight-failed": "Pre-flight failed",
-  executing: "Executing",
+  "preflight-running": "Checking payment readiness",
+  "preflight-failed": "Payment checks need attention",
+  executing: "Payments in progress",
   "partially-complete": "Partially complete",
   complete: "Complete",
   cancelled: "Cancelled",
@@ -146,7 +146,7 @@ export const PARTICIPANT_COPY = {
     "A payment to this household is reported. The report is below, and it closes on the household's confirmation or on a reversal.",
   removedNote: (reason: string, date: string) =>
     `Removed on ${date}. ${reason}`,
-  excludedNote: (reason: string) => `Excluded from the current run. ${reason}`,
+  excludedNote: (reason: string) => `Excluded from the current distribution. ${reason}`,
 } as const;
 
 export const DISPUTE_COPY = {
@@ -178,7 +178,7 @@ export const SETTINGS_COPY = {
 
 export const NOTIFICATION_LABEL: Record<NotificationEvent, string> = {
   "dispute.opened": "A household reports a payment",
-  "run.complete": "A run finishes with transfers outstanding",
+  "run.complete": "A distribution finishes with transfers outstanding",
   "funding.received": "Funding arrives in the disbursement account",
   "period.closing": "A period closes within seven days",
   "reconciliation.mismatch": "A period does not reconcile",
@@ -208,21 +208,21 @@ export const FUNDING_COPY = {
 } as const;
 
 export const RUN_COPY = {
-  newHeading: "New run",
-  arithmeticHeading: "What this run requires",
+  newHeading: "New distribution",
+  arithmeticHeading: "What this distribution requires",
   arithmeticNote:
-    "Every term is shown, because the amount a household is owed is a consequence of the commitment and the declared gross rather than a figure anybody types.",
+    "Every term is shown, because the amount a household is owed is a consequence of the agreement and the total project income rather than a figure anybody types.",
   shortfall: (amount: string) =>
-    `Funding is ${amount} short of what this run requires. The run proceeds and the shortfall is recorded in the period's attestation, where it stays published.`,
+    `Funding is ${amount} short of what this distribution requires. The distribution proceeds and the shortfall is recorded in the period's attestation, where it stays published.`,
   noShortfall: "Funding covers the amount required and the estimated charges.",
-  execute: "Execute this run",
+  execute: "Start this distribution",
   executeNote:
     "This submits one bulk transfer. Nothing here can be unsent once it is submitted.",
   preflightPassed: "Pre-flight passed. No enrolment is excluded.",
   requery:
     "Requery reads the transfer's state at the bank. It never resends, so nothing can be paid twice.",
   streamDropped:
-    "The connection to the run dropped. Reconnecting. The rows below are the last state received and nothing has been discarded.",
+    "The connection to the distribution was lost. Reconnecting. The rows below are the last state received and nothing has been discarded.",
 } as const;
 
 export const AGENT_COPY = {

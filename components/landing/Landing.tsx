@@ -383,7 +383,7 @@ function SealBody({ progress }: { progress: MotionValue<number> }) {
           <p className="record-cell">
             {formatCoverage(CLOSED_PERIOD.paid, CLOSED_PERIOD.enrolled)} households
             paid · {formatNaira(CLOSED_PERIOD.amountToHouseholds)} received ·{" "}
-            {formatNaira(CLOSED_PERIOD.shortfall)} short of the commitment
+            {formatNaira(CLOSED_PERIOD.shortfall)} short of the agreement
           </p>
         </div>
       </div>
@@ -501,11 +501,11 @@ function Sections() {
     <div className="measure section">
       <div className="landing-foot">
         <div className="stack">
-          <p className="eyebrow">If you run a carbon project</p>
+          <p className="eyebrow">If you distribution a carbon project</p>
           <Rule weight="contrast" />
           <p className="prose-muted">
             Register the project against its registry record, enrol households
-            with a named agent, fund a period and close it. The commitment comes
+            with a named agent, fund a period and close it. The agreement comes
             from your own project design document, quoted with its page number.
             What the register publishes is what the bank settled.
           </p>

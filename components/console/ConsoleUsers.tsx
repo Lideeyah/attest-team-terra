@@ -11,8 +11,8 @@ import type { ConsoleRole, ConsoleUser } from "@/lib/api/contract";
 import { formatDate } from "@/lib/record";
 
 const ROLES: { value: ConsoleRole; label: string; note: string }[] = [
-  { value: "admin", label: "Administrator", note: "Adds users, keys and endpoints, and executes runs." },
-  { value: "operator", label: "Operator", note: "Builds and executes runs, responds to reports." },
+  { value: "admin", label: "Administrator", note: "Adds users, keys and endpoints, and executes distributions." },
+  { value: "operator", label: "Operator", note: "Builds and executes distributions, responds to reports." },
   { value: "viewer", label: "Viewer", note: "Reads the record and downloads it." },
 ];
 

@@ -360,7 +360,7 @@ export function EnrolFlow({
           {identityState === "queued" ? (
             <Notice tone="flagged" title="The identity service did not answer">
               <p data-identity-state="queued">
-                The enrolment is captured and the check runs when this phone
+                The enrolment is captured and the check distributions when this phone
                 syncs. Nothing is lost.
               </p>
             </Notice>
