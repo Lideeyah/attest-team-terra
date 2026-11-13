@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
-import { useReducedMotion } from "motion/react";
 import type { MotionValue } from "motion/react";
 import { ButtonLink } from "@/components/Button";
 import { PublicMasthead } from "@/components/shells/PublicMasthead";
@@ -16,6 +15,7 @@ import {
   useCrossed,
   useNarrow,
   useReveal,
+  useReducedMotion,
 } from "@/components/landing/Movement";
 import { FRAME_MS, PRIMITIVE_CLASS, hashResolve, tallyTo } from "@/lib/motion";
 import {

@@ -9,6 +9,7 @@
 @import "./styles/console.css";
 @import "./styles/field.css";
 @import "./styles/finance.css";
+@import "./styles/access.css";
 
 
 /* Tailwind's own palette, type scale, radii and shadows are removed so they

@@ -13,11 +13,23 @@ import {
   motion,
   useMotionValue,
   useMotionValueEvent,
-  useReducedMotion,
   useScroll,
   useTransform,
 } from "motion/react";
 import type { MotionValue } from "motion/react";
+
+function subscribeReducedMotion(callback: () => void) {
+  const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  preference.addEventListener("change", callback);
+  return () => preference.removeEventListener("change", callback);
+}
+const reducedMotionSnapshot = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const serverMotionSnapshot = () => false;
+
+/** Match the server's first render, then apply the device preference after hydration. */
+export function useReducedMotion() {
+  return useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, serverMotionSnapshot);
+}
 
 /* The landing page is one object through six movements, so the movements share
    one screen rather than each taking a screen of their own. A track of six

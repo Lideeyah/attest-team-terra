@@ -50,6 +50,7 @@ export function Lockup({
       >
         Attest
       </span>
+      <span className="brand-context">Access Bank / AFF<span>Hackathon showcase</span></span>
     </span>
   );
 }

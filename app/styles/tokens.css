@@ -1,35 +1,46 @@
-/* Attest tokens. Every colour, size, duration, easing and travel distance in
-   the product is defined here and nowhere else. A literal value elsewhere is a defect. */
+/* Shared Attest design tokens. Access Bank / AFF showcase palette. */
 
 :root {
+  /* Access Bank orange/blue, with AFF's warm orange surface accents.
+     Orange uses dark ink for accessible small button labels. */
+  --access-orange: #EE7E01;
+  --access-orange-hover: #D96D00;
+  --access-orange-wash: #FFF1DF;
+  --access-navy: #173F7A;
+  --access-navy-deep: #102D59;
+  --access-lime: #A4C519;
+  --success-ink: #176346;
+  --success-wash: #E8F6EE;
+  --shadow-card: 0 6px 24px rgba(16, 45, 89, .06);
+  --shadow-floating: 0 18px 60px rgba(16, 45, 89, .16);
   /* ---- Canvas and surfaces ---------------------------------------------- */
-  --canvas-paper: #F7F4EB;
-  --surface-elevated: #EFECE1;
-  --surface-sunken: #E7E3D5;
-  --surface-reading: #FDFCFA;
+  --canvas-paper: #F5F7FB;
+  --surface-elevated: #EEF2F8;
+  --surface-sunken: #E2E8F2;
+  --surface-reading: #FFFFFF;
 
   /* ---- Rules ------------------------------------------------------------ */
-  --rule-hairline: #D8D4C5;
-  --rule-contrast: #BAAEA2;
-  --rule-heavy: #181816;
+  --rule-hairline: #DDE4EF;
+  --rule-contrast: #A4B2C8;
+  --rule-heavy: #162744;
 
   /* ---- Ink -------------------------------------------------------------- */
-  --ink-primary: #181816;
-  --ink-muted: #5C5A55;
+  --ink-primary: #162744;
+  --ink-muted: #4C5D75;
   /* Dim ink meets the 4.5:1 text contrast minimum on all four surfaces. */
-  --ink-dim: #68655D;
-  --ink-paper: #F7F4EB; /* ink reversed out on bottle */
+  --ink-dim: #596A80;
+  --ink-paper: #FFFFFF; /* ink reversed out on bottle */
 
-  /* ---- Bottle green, the anchor tone ------------------------------------ */
-  --bottle-deep: #1E3A2E;
-  --bottle-mid: #2C5342;
-  --bottle-muted: #5A7D6B;
-  --bottle-wash: rgba(30, 58, 46, 0.05);
+  /* ---- Blue brand aliases, retained for existing components ------------- */
+  --bottle-deep: #173F7A;
+  --bottle-mid: #245693;
+  --bottle-muted: #57769E;
+  --bottle-wash: rgba(23, 63, 122, 0.07);
 
   /* ---- Status stamps, functional colour --------------------------------- */
-  --stamp-sealed-ink: #181816;
-  --stamp-sealed-wash: #EFECE1;
-  --stamp-sealed-border: #BAAEA2;
+  --stamp-sealed-ink: #162744;
+  --stamp-sealed-wash: #EEF2F8;
+  --stamp-sealed-border: #A4B2C8;
 
   --stamp-flagged-ink: #7A5038;
   --stamp-flagged-wash: #F2EBE4;
@@ -56,13 +67,10 @@
   /* All three faces are self-hosted by next/font, which exposes each as a CSS
      variable, so the token reads that variable and keeps a real fallback
      stack behind it. */
-  --font-display: var(--font-cabinet, "Cabinet Grotesk"), var(--font-inter-tight, "Inter Tight"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-editorial: var(--font-newsreader, "Newsreader"), Georgia, "Times New Roman", serif;
-  /* Courier Prime has no naira sign, so the stack names a monospace that does
-     before falling back to one that does not. Without it every amount in the
-     product breaks out of the record face at its first character. */
-  --font-record: var(--font-courier-prime, "Courier Prime"), Menlo, Consolas,
-    "DejaVu Sans Mono", "Courier New", ui-monospace, monospace;
+  --font-display: var(--font-parkinsans, "Parkinsans"), "Segoe UI", Arial, sans-serif;
+  --font-editorial: var(--font-parkinsans, "Parkinsans"), "Segoe UI", Arial, sans-serif;
+  --font-record: var(--font-parkinsans, "Parkinsans"), "Segoe UI", Arial, sans-serif;
+  --font-mono: Consolas, Menlo, ui-monospace, monospace;
 
   /* ---- Type scale ------------------------------------------------------- */
   --fs-h1: clamp(2.6rem, 5.2vw, 4.1rem);
@@ -80,7 +88,7 @@
   --fs-label: 12px;
   --fs-toast: 14px;
 
-  --fw-display: 800;
+  --fw-display: 700;
   --fw-regular: 400;
   --fw-stamp: 700;
 
